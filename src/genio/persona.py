@@ -1,29 +1,19 @@
 from __future__ import annotations
-from dataclasses import dataclass, fields
-from abc import ABC
+from dataclasses import dataclass
+from typing import Annotated
+from genio.base import DocStringArg, Mythical, generate_using_docstring
+from yaml import safe_dump
+from functools import wraps
 import inspect
-from typing import Any, Type, Annotated, get_origin, get_args
+from base import inst_for_struct
 
 from langchain_community.chat_models import ChatOllama
-from langchain_core.output_parsers import BaseOutputParser
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.exceptions import OutputParserException
 import re
 
 pattern: re.Pattern = re.compile(
     r"^```(?:ya?ml)?(?P<yaml>[^`]*)", re.MULTILINE | re.DOTALL
 )
 
-from yaml import safe_load, safe_dump
-import yaml
-
-
-class Mythical(ABC):
-
-    def make_context(self) -> str:
-        docstrings = get_docstrings(self.__class__)
-        flds = [f"{field.name}: {getattr(self, field.name)}" for field in fields(self.__class__)]
-        return f"{docstrings.main_description}\n" + "\n".join(flds)
 
 @dataclass
 class Designer(Mythical):
@@ -56,47 +46,9 @@ class BrandConcept(Mythical):
     
 
 @dataclass
-class DocStringArg:
-    name: str
-    type: str
-    description: str
-
-
-@dataclass
 class DocStrings:
     main_description: str
     args: list[DocStringArg]
-
-
-def get_docstrings(cls: type) -> DocStrings:
-    main_description = inspect.getdoc(cls)
-    args = []
-    for field in fields(cls):
-        typ = eval(field.type)
-        if get_origin(typ) is Annotated:
-            typ, metadata = get_args(typ)
-        else:
-            metadata = None
-        args.append(DocStringArg(field.name, field.type, metadata))
-    return DocStrings(main_description, args)
-
-
-def generate_using_docstring(llm, klass: Type[Mythical], args: dict) -> Mythical:
-    docstrings = get_docstrings(klass)
-    prompt = "Generate me a "
-    desc = list(' '.join(docstrings.main_description.split("\n")))
-    desc[0] = desc[0].lower()
-    prompt += ''.join(desc)
-    
-    prompt += "\n"
-    prompt += "It should contain the following information:\n"
-    for arg in docstrings.args:
-        prompt += f"- {arg.name}: {arg.description}\n" if arg.description else f"- {arg.name}\n"
-    prompt += "Please return in YAML."
-
-    template = ChatPromptTemplate.from_template(prompt)
-    chain = template | llm | YamlParser(cls=klass)
-    return chain.invoke(args)
 
 
 @dataclass
@@ -109,32 +61,52 @@ class ResumeRatingResult:
             raise ValueError(f"Score must be between 1 and 10: got {self.score}")
 
 
+@dataclass
+class CandidateResume:
+    # TODO: fill this out.
+    ...
+
+def sparkle(f):
+    doc = inspect.getdoc(f)
+    if doc is None:
+        raise ValueError(f"Function {f} has no docstring.")
+    return_type = inspect.signature(f).return_annotation
+    if return_type is inspect.Signature.empty:
+        raise ValueError(f"Function {f} has no return type.")
+    sig = inspect.signature(f)
+    @wraps(f)
+    def wrapper(self, *args, **kwargs):
+        # Check it calls.
+        try:
+            f(self, *args, **kwargs)
+        except Exception as e:
+            raise ValueError(f"Failed to call {f} with {args} and {kwargs}") from e
+        ba = sig.bind(self, *args, **kwargs)
+        ctxt = [f"Act as {self.make_context()}."]
+        ba.apply_defaults()
+        ctxt.append(f"You are given the following information:")
+        ctxt.append("```yml")
+        for name, value in ba.arguments.items():
+            value_str = str(value) if not getattr(value, "get_context", None) else value.get_context()
+            ctxt.append(f"{name}: {value_str}")
+        ctxt.append("```")
+        ctxt.append(f"You job is to {doc}.")
+
+        ctxt.append("Fill out the following:")
+        ctxt.append(inst_for_struct(return_type))
+    return wrapper
+
 class Recruiter(Mythical):
     @staticmethod
     def generate() -> Recruiter:
         ...
 
-    def rate_resume() -> RatingResult:
+    @sparkle
+    def rate_resume(self, concept: BrandConcept, resume: CandidateResume) -> ResumeRatingResult:
+        """Rate a resume. How strong do you think this resume is, judging by the alignment
+        to your recruitment philosophy and the company values."""
 
 
-class YamlParser(BaseOutputParser):
-    cls: Type
-
-    def parse(self, text: str) -> Any:
-        if "```" in text:
-            text = pattern.search(text).group("yaml")
-        text.replace(":\n", ": ")
-        try:
-            data = safe_load(text.replace("\\_", "_"))
-            data = {k.replace(" ", "_"): v for k, v in data.items()}
-            data = {k.lower(): v for k, v in data.items()}
-            return self.cls(**data)
-        except yaml.YAMLError as e:
-            msg = f"Failed to parse YAML from completion {text}. Got: {e}"
-            raise OutputParserException(msg, llm_output=text) from e
-        except Exception as e:
-            msg = f"Failed to parse {self.cls} from completion {text}. Got: {e}"
-            raise OutputParserException(msg, llm_output=text) from e
 
 llm = ChatOllama(model="mistral:7b-instruct-q5_0")
 
