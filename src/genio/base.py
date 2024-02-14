@@ -1,27 +1,24 @@
 from __future__ import annotations
 
-from abc import ABC
-from yaml import safe_load
-from dataclasses import dataclass, fields
-import yaml
 import inspect
 import re
-from typing import TypeVar
-
-from langchain_core.output_parsers import BaseOutputParser, StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate
-from langchain.output_parsers import RetryOutputParser
-
-from langchain_core.exceptions import OutputParserException
-
-from typing import Annotated, Any, Type, get_args, get_origin
-from langchain_community.chat_models import ChatOllama
-
+from abc import ABC
+from dataclasses import dataclass, fields
 from functools import cache, wraps
+from typing import Annotated, Any, Type, TypeVar, get_args, get_origin
+
+import yaml
+from langchain.output_parsers import OutputFixingParser
+from langchain_community.chat_models import ChatOllama
+from langchain_core.exceptions import OutputParserException
+from langchain_core.output_parsers import BaseOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from yaml import safe_load
 
 pattern: re.Pattern = re.compile(
     r"^```(?:ya?ml)?(?P<yaml>[^`]*)", re.MULTILINE | re.DOTALL
 )
+
 
 @cache
 def default_llm() -> ChatOllama:
@@ -40,6 +37,7 @@ class DocStrings:
     main_description: str
     args: list[DocStringArg]
 
+
 def get_docstrings(cls: type) -> DocStrings:
     main_description = inspect.getdoc(cls)
     args = []
@@ -53,6 +51,56 @@ def get_docstrings(cls: type) -> DocStrings:
     return DocStrings(main_description, args)
 
 
+def levenshtein_distance(string1, string2):
+    n = len(string1)
+    m = len(string2)
+    d = [[0 for x in range(n + 1)] for y in range(m + 1)]
+
+    for i in range(1, m + 1):
+        d[i][0] = i
+
+    for j in range(1, n + 1):
+        d[0][j] = j
+
+    for j in range(1, n + 1):
+        for i in range(1, m + 1):
+            if string1[j - 1] is string2[i - 1]:
+                delta = 0
+            else:
+                delta = 1
+
+            d[i][j] = min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + delta)
+
+    return d[m][n]
+
+
+def auto_fix_typos(
+    expected_fields: list[str], actual_fields: dict[str, Any]
+) -> dict[str, Any]:
+    matched = {}
+    expected = set(expected_fields)
+    # if len(actual_fields) < len(expected):
+    # for
+    not_matched = []
+    for k, v in actual_fields.items():
+        if k in expected:
+            matched[k] = v
+            expected.remove(k)
+        else:
+            # Find the closest match
+            not_matched.append([k, v])
+            # closest = min(expected, key=lambda x: levenshtein_distance(x, k))
+            # matched[closest] = v
+            # expected.remove(closest)
+    for k, v in not_matched:
+        if not expected:
+            break
+        closest = min(expected, key=lambda x: levenshtein_distance(x, k))
+        matched[closest] = v
+        expected.remove(closest)
+    return matched
+
+
 class YamlParser(BaseOutputParser):
     cls: Type
 
@@ -62,6 +110,11 @@ class YamlParser(BaseOutputParser):
         lines = text.split("\n")
         cleaned = []
         for l in lines:
+            if l.strip() == "---":
+                continue
+            if l.strip().startswith("*"):
+                cleaned.append("-" + l.strip()[1:])
+                continue
             cleaned.append(l.strip())
         text = "\n".join(cleaned)
         text = text.replace(":\n", ": ")
@@ -70,6 +123,7 @@ class YamlParser(BaseOutputParser):
             data = safe_load(text.replace("\\_", "_"))
             data = {k.replace(" ", "_"): v for k, v in data.items()}
             data = {k.lower(): v for k, v in data.items()}
+            data = auto_fix_typos([f.name for f in fields(self.cls)], data)
             return self.cls(**data)
         except yaml.YAMLError as e:
             msg = f"Failed to parse YAML from completion {text}. Got: {e}"
@@ -78,29 +132,44 @@ class YamlParser(BaseOutputParser):
             msg = f"Failed to parse {self.cls} from completion {text}. Got: {e}"
             raise OutputParserException(msg, llm_output=text) from e
 
-class Mythical(ABC):
+    def get_format_instructions(self) -> str:
+        return inst_for_struct(self.cls)
 
+
+class Mythical(ABC):
     def make_context(self) -> str:
         docstrings = get_docstrings(self.__class__)
-        flds = [f"{field.name}: {getattr(self, field.name)}" for field in fields(self.__class__)]
+        flds = [
+            f"{field.name}: {getattr(self, field.name)}"
+            for field in fields(self.__class__)
+        ]
         return f"{docstrings.main_description}\n" + "\n".join(flds)
 
 
 T = TypeVar("T", bound=Mythical)
+
+
 def generate_using_docstring(klass: Type[T], args: dict) -> T:
     llm = default_llm()
     docstrings = get_docstrings(klass)
     prompt = "Generate me a "
-    desc = list(' '.join(docstrings.main_description.split("\n")))
+    desc = list(" ".join(docstrings.main_description.split("\n")))
     desc[0] = desc[0].lower()
-    prompt += ''.join(desc)
+    prompt += "".join(desc)
 
     prompt += "\n"
     prompt += inst_for_struct(klass)
     template = ChatPromptTemplate.from_template(prompt)
-    chain = template | llm | StrOutputParser()
-    s = chain.invoke(args)
-    return RetryOutputParser.from_llm(parser=YamlParser(cls=klass), llm=llm).parse_with_prompt(s, prompt)
+
+    # s = chain.invoke(args)
+    chain = (
+        template
+        | llm
+        | OutputFixingParser.from_llm(parser=YamlParser(cls=klass), llm=llm)
+    )
+    # main_chain = RunnableParallel(completion=chain, prompt_value=template) | RunnableLambda(lambda x: retry_parser.parse_with_prompt(**x))
+    return chain.invoke(args)
+    # return RetryOutputParser.from_llm(parser=YamlParser(cls=klass), llm=llm).parse_with_prompt(s, template)
 
 
 def inst_for_struct(klass):
@@ -108,20 +177,28 @@ def inst_for_struct(klass):
     prompt = ""
     prompt += "It should contain the following information:\n"
     for arg in docstrings.args:
-        prompt += f"- {arg.name}: {arg.description}\n" if arg.description else f"- {arg.name}\n"
+        prompt += (
+            f"- {arg.name}: {arg.description}\n"
+            if arg.description
+            else f"- {arg.name}\n"
+        )
     prompt += "Please return in YAML."
     return prompt
+
+
+from typing import get_type_hints
 
 
 def sparkle(f):
     doc = inspect.getdoc(f)
     if doc is None:
         raise ValueError(f"Function {f} has no docstring.")
-    return_type = inspect.signature(f).return_annotation
+    return_type = get_type_hints(f).get("return", inspect.Signature.empty)
     if return_type is inspect.Signature.empty:
         raise ValueError(f"Function {f} has no return type.")
     sig = inspect.signature(f)
     llm = default_llm()
+
     @wraps(f)
     def wrapper(self, *args, **kwargs):
         # Check it calls.
@@ -135,7 +212,11 @@ def sparkle(f):
         ctxt.append("You are given the following information:")
         ctxt.append("```yml")
         for name, value in ba.arguments.items():
-            value_str = str(value) if not getattr(value, "get_context", None) else value.get_context()
+            value_str = (
+                str(value)
+                if not getattr(value, "get_context", None)
+                else value.get_context()
+            )
             ctxt.append(f"{name}: {value_str}")
         ctxt.append("```")
         ctxt.append(f"You job is to {doc}.")
@@ -144,6 +225,5 @@ def sparkle(f):
         prompt = ChatPromptTemplate.from_template("\n".join(ctxt))
         chain = prompt | llm | YamlParser(cls=return_type)
         return chain.invoke({})
+
     return wrapper
-
-
