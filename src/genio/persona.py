@@ -1,12 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Annotated
-from genio.base import DocStringArg, Mythical, generate_using_docstring
-from yaml import safe_dump
-from functools import wraps
-import inspect
-from base import inst_for_struct
-
+from genio.base import DocStringArg, Mythical, generate_using_docstring, sparkle
 from langchain_community.chat_models import ChatOllama
 import re
 
@@ -40,9 +35,9 @@ class BrandConcept(Mythical):
     one_line_pitch: Annotated[str, "A one-line pitch for the brand to the investors."]
 
     @staticmethod
-    def generate(llm, designer: Designer) -> BrandConcept:
+    def generate(designer: Designer) -> BrandConcept:
         ctxt = designer.make_context()
-        return generate_using_docstring(llm, BrandConcept, {"description": ctxt})
+        return generate_using_docstring(BrandConcept, {"description": ctxt})
     
 
 @dataclass
@@ -66,35 +61,6 @@ class CandidateResume:
     # TODO: fill this out.
     ...
 
-def sparkle(f):
-    doc = inspect.getdoc(f)
-    if doc is None:
-        raise ValueError(f"Function {f} has no docstring.")
-    return_type = inspect.signature(f).return_annotation
-    if return_type is inspect.Signature.empty:
-        raise ValueError(f"Function {f} has no return type.")
-    sig = inspect.signature(f)
-    @wraps(f)
-    def wrapper(self, *args, **kwargs):
-        # Check it calls.
-        try:
-            f(self, *args, **kwargs)
-        except Exception as e:
-            raise ValueError(f"Failed to call {f} with {args} and {kwargs}") from e
-        ba = sig.bind(self, *args, **kwargs)
-        ctxt = [f"Act as {self.make_context()}."]
-        ba.apply_defaults()
-        ctxt.append(f"You are given the following information:")
-        ctxt.append("```yml")
-        for name, value in ba.arguments.items():
-            value_str = str(value) if not getattr(value, "get_context", None) else value.get_context()
-            ctxt.append(f"{name}: {value_str}")
-        ctxt.append("```")
-        ctxt.append(f"You job is to {doc}.")
-
-        ctxt.append("Fill out the following:")
-        ctxt.append(inst_for_struct(return_type))
-    return wrapper
 
 class Recruiter(Mythical):
     @staticmethod
@@ -105,13 +71,11 @@ class Recruiter(Mythical):
     def rate_resume(self, concept: BrandConcept, resume: CandidateResume) -> ResumeRatingResult:
         """Rate a resume. How strong do you think this resume is, judging by the alignment
         to your recruitment philosophy and the company values."""
+        ...
 
 
-
-llm = ChatOllama(model="mistral:7b-instruct-q5_0")
-
-designer = generate_using_docstring(llm, Designer, {"speciality": "children's shoes"})
+designer = generate_using_docstring(Designer, {"speciality": "children's shoes"})
 print(designer)
 
-brand_concept = BrandConcept.generate(llm, designer)
+brand_concept = BrandConcept.generate(designer)
 print(brand_concept)
