@@ -5,17 +5,23 @@ from yaml import safe_load
 from dataclasses import dataclass, fields
 import yaml
 import inspect
+import re
 from typing import TypeVar
 
-from langchain_core.output_parsers import BaseOutputParser
+from langchain_core.output_parsers import BaseOutputParser, StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
+from langchain.output_parsers import RetryOutputParser
+
 from langchain_core.exceptions import OutputParserException
-from genio.persona import DocStrings, pattern
+
 from typing import Annotated, Any, Type, get_args, get_origin
 from langchain_community.chat_models import ChatOllama
 
 from functools import cache, wraps
 
+pattern: re.Pattern = re.compile(
+    r"^```(?:ya?ml)?(?P<yaml>[^`]*)", re.MULTILINE | re.DOTALL
+)
 
 @cache
 def default_llm() -> ChatOllama:
@@ -28,6 +34,11 @@ class DocStringArg:
     type: str
     description: str
 
+
+@dataclass
+class DocStrings:
+    main_description: str
+    args: list[DocStringArg]
 
 def get_docstrings(cls: type) -> DocStrings:
     main_description = inspect.getdoc(cls)
@@ -48,7 +59,13 @@ class YamlParser(BaseOutputParser):
     def parse(self, text: str) -> Any:
         if "```" in text:
             text = pattern.search(text).group("yaml")
-        text.replace(":\n", ": ")
+        lines = text.split("\n")
+        cleaned = []
+        for l in lines:
+            cleaned.append(l.strip())
+        text = "\n".join(cleaned)
+        text = text.replace(":\n", ": ")
+        text = text.replace(": -", ":\n-")
         try:
             data = safe_load(text.replace("\\_", "_"))
             data = {k.replace(" ", "_"): v for k, v in data.items()}
@@ -81,8 +98,9 @@ def generate_using_docstring(klass: Type[T], args: dict) -> T:
     prompt += "\n"
     prompt += inst_for_struct(klass)
     template = ChatPromptTemplate.from_template(prompt)
-    chain = template | llm | YamlParser(cls=klass)
-    return chain.invoke(args)
+    chain = template | llm | StrOutputParser()
+    s = chain.invoke(args)
+    return RetryOutputParser.from_llm(parser=YamlParser(cls=klass), llm=llm).parse_with_prompt(s, prompt)
 
 
 def inst_for_struct(klass):
@@ -114,7 +132,7 @@ def sparkle(f):
         ba = sig.bind(self, *args, **kwargs)
         ctxt = [f"Act as {self.make_context()}."]
         ba.apply_defaults()
-        ctxt.append(f"You are given the following information:")
+        ctxt.append("You are given the following information:")
         ctxt.append("```yml")
         for name, value in ba.arguments.items():
             value_str = str(value) if not getattr(value, "get_context", None) else value.get_context()
