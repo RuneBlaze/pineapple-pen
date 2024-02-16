@@ -13,11 +13,9 @@ from langchain_community.chat_models import ChatOllama
 from langchain_core.exceptions import OutputParserException
 from langchain_core.output_parsers import BaseOutputParser
 from langchain_core.prompts import ChatPromptTemplate
+from typing import get_type_hints
 from yaml import safe_load
-
-pattern: re.Pattern = re.compile(
-    r"^```(?:ya?ml)?(?P<yaml>[^`]*)", re.MULTILINE | re.DOTALL
-)
+from .glueyaml import clean_yaml
 
 
 @cache
@@ -87,11 +85,7 @@ def auto_fix_typos(
             matched[k] = v
             expected.remove(k)
         else:
-            # Find the closest match
             not_matched.append([k, v])
-            # closest = min(expected, key=lambda x: levenshtein_distance(x, k))
-            # matched[closest] = v
-            # expected.remove(closest)
     for k, v in not_matched:
         if not expected:
             break
@@ -101,26 +95,19 @@ def auto_fix_typos(
     return matched
 
 
+pattern: re.Pattern = re.compile(
+    r"^```(?:ya?ml)?(?P<yaml>[^`]*)", re.MULTILINE | re.DOTALL
+)
+
+
 class YamlParser(BaseOutputParser):
     cls: Type
 
     def parse(self, text: str) -> Any:
         if "```" in text:
             text = pattern.search(text).group("yaml")
-        lines = text.split("\n")
-        cleaned = []
-        for l in lines:
-            if l.strip() == "---":
-                continue
-            if l.strip().startswith("*"):
-                cleaned.append("-" + l.strip()[1:])
-                continue
-            cleaned.append(l.strip())
-        text = "\n".join(cleaned)
-        text = text.replace(":\n", ": ")
-        text = text.replace(": -", ":\n-")
         try:
-            data = safe_load(text.replace("\\_", "_"))
+            data = clean_yaml(text.replace("\\_", "_"))
             data = {k.replace(" ", "_"): v for k, v in data.items()}
             data = {k.lower(): v for k, v in data.items()}
             data = auto_fix_typos([f.name for f in fields(self.cls)], data)
@@ -161,15 +148,12 @@ def generate_using_docstring(klass: Type[T], args: dict) -> T:
     prompt += inst_for_struct(klass)
     template = ChatPromptTemplate.from_template(prompt)
 
-    # s = chain.invoke(args)
     chain = (
         template
         | llm
         | OutputFixingParser.from_llm(parser=YamlParser(cls=klass), llm=llm)
     )
-    # main_chain = RunnableParallel(completion=chain, prompt_value=template) | RunnableLambda(lambda x: retry_parser.parse_with_prompt(**x))
     return chain.invoke(args)
-    # return RetryOutputParser.from_llm(parser=YamlParser(cls=klass), llm=llm).parse_with_prompt(s, template)
 
 
 def inst_for_struct(klass):
@@ -184,9 +168,6 @@ def inst_for_struct(klass):
         )
     prompt += "Please return in YAML."
     return prompt
-
-
-from typing import get_type_hints
 
 
 def sparkle(f):

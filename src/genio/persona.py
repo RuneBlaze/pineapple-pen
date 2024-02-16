@@ -9,6 +9,89 @@ from langchain_core.prompts import ChatPromptTemplate
 
 from .base import Mythical, default_llm, generate_using_docstring, sparkle
 
+import random
+
+
+def generate_inspiration_keywords():
+    categories = {
+        "natural_elements": ["water", "fire", "earth", "air", "stone", "wood"],
+        "emotions": ["joy", "sorrow", "excitement", "calm", "fear", "hope"],
+        "urban_scenes": [
+            "cityscape",
+            "street art",
+            "neon lights",
+            "subway",
+            "cafes",
+            "skyscrapers",
+        ],
+        "plants": ["roses", "orchids", "cacti", "bamboo", "fern", "ivy"],
+        "animals": ["butterfly", "lion", "swan", "fox", "elephant", "owl"],
+        "art_styles": [
+            "abstract",
+            "minimalist",
+            "surreal",
+            "pop art",
+            "cubism",
+            "art nouveau",
+        ],
+        "personal_life": [
+            "family",
+            "friendship",
+            "love",
+            "childhood",
+            "adventure",
+            "solitude",
+        ],
+    }
+    keywords = [random.choice(categories[category]) for category in categories]
+    return keywords
+
+
+@dataclass
+class SeasonConcept(Mythical):
+    """A **guiding** concept for a fashion season designed for a specific brand.
+
+    The executive designer is
+    ```
+    {designer}
+    ```
+
+    The brand concept is
+    ```
+    {brand}
+    ```
+
+    The designer has taken inspiration by the following keywords for this season:
+    ```
+    {keywords}
+    ```
+    """
+
+    title: Annotated[
+        str,
+        "A public title suitable for PR and marketing for this fashion season for the brand.",
+    ]
+    tagline: str
+    distinguishing_feature: Annotated[
+        str,
+        "A distinguishing feature of the season. One or two sentences, containing the color palette, concept.",
+    ]
+    business_goal: Annotated[
+        str, "The business goal of the season. One or two sentences."
+    ]
+
+    @staticmethod
+    def generate(designer: Designer, brand_concept: BrandConcept) -> SeasonConcept:
+        keywords = generate_inspiration_keywords()
+        return generate_using_docstring(
+            SeasonConcept,
+            {
+                "designer": designer.make_context(),
+                "brand": brand_concept.make_context(),
+                "keywords": keywords,
+            },
+        )
+
 
 @dataclass
 class Designer(Mythical):
@@ -82,7 +165,6 @@ class CandidateResume:
                 | StrOutputParser()
             )
             one_line_bio = chain.invoke({})
-            ic(one_line_bio)
         return generate_using_docstring(
             CandidateResume, {"industry": industry, "one_line_bio": one_line_bio}
         )
@@ -125,12 +207,12 @@ class Recruiter(Mythical):
 
 designer = generate_using_docstring(Designer, {"speciality": "children's shoes"})
 brand_concept = BrandConcept.generate(designer)
-# resume = CandidateResume.generate("fashion")
-resumes = [CandidateResume.generate("fashion") for _ in range(5)]
-recruiter = ic(
-    Recruiter.generate(brand_concept, "a energetic cat-girl with a sweet-tooth")
-)
-for resume in resumes:
-    print("========")
-    ic(resume)
-    ic(recruiter.rate_resume(brand_concept, resume))
+for _ in range(5):
+    season_concept = ic(SeasonConcept.generate(designer, brand_concept))
+# resumes = [CandidateResume.generate("fashion") for _ in range(5)]
+# recruiter = ic(
+#     Recruiter.generate(brand_concept, "a energetic cat-girl with a sweet-tooth")
+# )
+# for resume in resumes:
+#     ic(resume)
+#     ic(recruiter.rate_resume(brand_concept, resume))

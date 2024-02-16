@@ -1,0 +1,59 @@
+[[writer]]
+name = "The Poetic Dreamer"
+tone = "Expressive, metaphorical"
+register = "Artistic, sophisticated"
+genres = ["poetry", "romance", "fantasy"]
+
+[[writer]]
+name = "The Hard-boiled Detective"
+tone = "Gruff, succinct"
+register = "No-nonsense, straightforward"
+genres = ["mystery", "crime", "thriller"]
+
+[[writer]]
+name = "The Sci-fi Visionary"
+tone = "Inquisitive, imaginative"
+register = "Technical, speculative"
+genres = ["science fiction", "futuristic"]
+
+[[writer]]
+name = "The Historical Scholar"
+tone = "Detailed, authoritative"
+register = "Formal, informative"
+genres = ["historical fiction", "biography"]
+
+[[writer]]
+name = "The Satirical Humorist"
+tone = "Witty, ironic"
+register = "Casual, playful"
+genres = ["comedy", "satire", "parody"]
+
+[[writer]]
+name = "The Young Adult Whisperer"
+tone = "Empathetic, relatable"
+register = "Conversational, youthful"
+genres = ["young adult", "coming of age", "drama"]
+
+[[writer]]
+name = "The Horror Enthusiast"
+tone = "Eerie, suspenseful"
+register = "Intense, vivid"
+genres = ["horror", "supernatural", "thriller"]
+
+[[writer]]
+name = "The Romance Novelist"
+tone = "Passionate, emotional"
+register = "Expressive, descriptive"
+genres = ["romance", "drama"]
+
+[[writer]]
+name = "The Fantasy World-builder"
+tone = "Imaginative, descriptive"
+register = "Elaborate, mythical"
+genres = ["fantasy", "adventure", "epic"]
+
+[[writer]]
+name = "The Investigative Journalist"
+tone = "Inquisitive, factual"
+register = "Analytical, concise"
+genres = ["non-fiction", "investigative", "journalism"]
