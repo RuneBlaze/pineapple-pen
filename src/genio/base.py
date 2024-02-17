@@ -48,7 +48,7 @@ def tomlkit_to_popo(d):
 @cache
 def default_llm() -> ChatOllama:
     return ChatOllama(
-        model="mistral:7b-instruct-q5_0", base_url="http://192.168.40.9:11434"
+        model="openhermes:7b-mistral-v2-q5_0", base_url="http://192.168.40.9:11434"
     )
 
 
