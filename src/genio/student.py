@@ -1,17 +1,22 @@
 from __future__ import annotations
 
 import random
-from random import gauss
-from typing import Annotated
-from typing import Literal
-import yaml
-from dataclasses import is_dataclass, dataclass
-
-from .base import Mythical, generate_using_docstring
-from .base import WriterArchetype, sparkle, slurp_toml
-from icecream import ic
+from dataclasses import dataclass, is_dataclass
 from functools import cache
+from random import gauss
+from typing import Annotated, Literal
+
 import faker
+import yaml
+from icecream import ic
+
+from .base import (
+    Mythical,
+    WriterArchetype,
+    generate_using_docstring,
+    slurp_toml,
+    sparkle,
+)
 
 fake = faker.Faker()
 
@@ -20,6 +25,7 @@ def to_yaml(ds: object) -> str:
     if is_dataclass(ds):
         return yaml.dump(ds.__dict__)
     return yaml.dump(ds)
+
 
 @dataclass
 class Backdrop:
@@ -32,6 +38,7 @@ class Backdrop:
         with open("assets/lore.txt") as fh:
             lore = fh.read().strip()
         return Backdrop(city_name="Auroravale", description=lore)
+
 
 @dataclass
 class Parent(Mythical):
@@ -74,7 +81,7 @@ class Parent(Mythical):
         writer_archetype: WriterArchetype,
         socioeconomic_score: int,
         spouse: Parent | None = None,
-        gender: Literal["male", "female"] = "female"
+        gender: Literal["male", "female"] = "female",
     ) -> Parent:
         return generate_using_docstring(
             Parent,
@@ -90,9 +97,9 @@ class Parent(Mythical):
     @sparkle
     def affected_by_move(self, new_city: Backdrop) -> Parent:
         """Modify the person's bio. This person has moved to a new city. Add only **one or two** sentences
-         to the bio to reflect the move. Be creative, always modify, without changing the person's core personality.
+        to the bio to reflect the move. Be creative, always modify, without changing the person's core personality.
 
-         Also, fix the company name to reflect the move. They might have changed jobs due to relocation."""
+        Also, fix the company name to reflect the move. They might have changed jobs due to relocation."""
         ...
 
     def make_context(self) -> str:
@@ -105,6 +112,7 @@ class Parent(Mythical):
             f"Hobbies: {self.hobbies}."
         )
 
+
 from dataclasses import field
 
 
@@ -115,6 +123,7 @@ def family_secrets_template() -> dict[str, list[str]]:
         "aspirations": list(struct["family_secret_aspirations"].values()),
         "skeletons": list(struct["family_secret_skeletons"].values()),
     }
+
 
 @cache
 def family_events() -> list[str]:
@@ -129,15 +138,20 @@ def family_events() -> list[str]:
 
 from random import sample
 
+
 @dataclass
 class MemoryFragment:
-    reaction: Annotated[str, "A four sentence paragraph of reactions to the event, give the situation and describe their reaction and emotional feelings."]
+    reaction: Annotated[
+        str,
+        "A four sentence paragraph of reactions to the event, give the situation and describe their reaction and emotional feelings.",
+    ]
 
     def __post_init__(self):
         if isinstance(self.reaction, str):
             self.reaction = [self.reaction]
         if isinstance(self.reaction, dict):
             self.reaction = list(self.reaction.values())
+
 
 @dataclass
 class FamilySecret(Mythical):
@@ -154,7 +168,10 @@ class FamilySecret(Mythical):
     {sketch}
     ```
     """
-    family_secret: Annotated[str, "A brief sketch of the family secret, in four to six sentences."]
+
+    family_secret: Annotated[
+        str, "A brief sketch of the family secret, in four to six sentences."
+    ]
 
     @staticmethod
     def generate(household: Household) -> FamilySecret:
@@ -175,7 +192,6 @@ class Household:
     secondary_parent: Parent
     memories: list[MemoryFragment] = field(default_factory=list)
     family_secret: FamilySecret | None = None
-
 
     @sparkle
     def react_to_event(self, event_string: str) -> MemoryFragment:
@@ -209,6 +225,7 @@ class Household:
 
     def make_context(self) -> str:
         return self.short_context()
+
 
 class Student(Mythical):
     ...

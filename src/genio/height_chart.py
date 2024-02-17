@@ -1,8 +1,10 @@
 from __future__ import annotations
-import pandas as pd
-from bisect import bisect_left
+
 import pickle as pkl
+from bisect import bisect_left
 from dataclasses import dataclass
+
+import pandas as pd
 
 from .base import Mythical
 

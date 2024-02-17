@@ -1,5 +1,6 @@
-from genio.base import Mythical, generate_using_docstring
 from dataclasses import dataclass
+
+from genio.base import Mythical, generate_using_docstring
 
 
 @dataclass

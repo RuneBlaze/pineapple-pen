@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass
 from typing import Annotated
 
@@ -8,8 +9,6 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
 from .base import Mythical, default_llm, generate_using_docstring, sparkle
-
-import random
 
 
 def generate_inspiration_keywords():

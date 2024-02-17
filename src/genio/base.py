@@ -6,19 +6,18 @@ import re
 from abc import ABC
 from dataclasses import dataclass, fields
 from functools import cache, wraps
-from typing import Annotated, Any, Type, TypeVar, get_args, get_origin
+from typing import Annotated, Any, Type, TypeVar, get_args, get_origin, get_type_hints
 
-from icecream import ic
-import tomlkit as tomllib
 import tomlkit
+import tomlkit as tomllib
 import yaml
+from icecream import ic
 from langchain.output_parsers import OutputFixingParser
 from langchain_community.chat_models import ChatOllama
 from langchain_core.exceptions import OutputParserException
 from langchain_core.output_parsers import BaseOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from typing import get_type_hints
-from yaml import safe_load
+
 from .glueyaml import clean_yaml
 
 
@@ -199,7 +198,9 @@ def inst_for_struct(klass):
     prompt += "Please return in YAML."
     return prompt
 
-from dataclasses import is_dataclass, asdict
+
+from dataclasses import asdict, is_dataclass
+
 
 def make_str_of_value(value):
     if isinstance(value, str):
@@ -208,6 +209,7 @@ def make_str_of_value(value):
         return value.make_context()
     if is_dataclass(value):
         return yaml.dump(asdict(value))
+
 
 def sparkle(f):
     """Decorate a function to make it use LLM to generate responses."""
@@ -267,6 +269,7 @@ def load_writer_archetypes() -> list[WriterArchetype]:
     with open("assets/writer_persona.toml", "r") as f:
         parsed_data = tomlkit_to_popo(tomllib.load(f))
     return [WriterArchetype(**archetype) for archetype in parsed_data["writer"]]
+
 
 def slurp_toml(path):
     with open(path, "r") as f:
