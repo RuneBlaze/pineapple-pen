@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import inspect
+import random
 import re
 from abc import ABC
 from dataclasses import dataclass, fields
 from functools import cache, wraps
 from typing import Annotated, Any, Type, TypeVar, get_args, get_origin
 
+from icecream import ic
+import tomlkit as tomllib
+import tomlkit
 import yaml
 from langchain.output_parsers import OutputFixingParser
 from langchain_community.chat_models import ChatOllama
@@ -18,9 +22,35 @@ from yaml import safe_load
 from .glueyaml import clean_yaml
 
 
+def tomlkit_to_popo(d):
+    try:
+        result = getattr(d, "value")
+    except AttributeError:
+        result = d
+
+    if isinstance(result, list):
+        result = [tomlkit_to_popo(x) for x in result]
+    elif isinstance(result, dict):
+        result = {
+            tomlkit_to_popo(key): tomlkit_to_popo(val) for key, val in result.items()
+        }
+    elif isinstance(result, tomlkit.items.Integer):
+        result = int(result)
+    elif isinstance(result, tomlkit.items.Float):
+        result = float(result)
+    elif isinstance(result, tomlkit.items.String):
+        result = str(result)
+    elif isinstance(result, tomlkit.items.Bool):
+        result = bool(result)
+
+    return result
+
+
 @cache
 def default_llm() -> ChatOllama:
-    return ChatOllama(model="mistral:7b-instruct-q5_0")
+    return ChatOllama(
+        model="mistral:7b-instruct-q5_0", base_url="http://192.168.40.9:11434"
+    )
 
 
 @dataclass
@@ -40,7 +70,7 @@ def get_docstrings(cls: type) -> DocStrings:
     main_description = inspect.getdoc(cls)
     args = []
     for field in fields(cls):
-        typ = eval(field.type)
+        typ = eval(field.type) if isinstance(field.type, str) else field.type
         if get_origin(typ) is Annotated:
             typ, metadata = get_args(typ)
         else:
@@ -171,6 +201,7 @@ def inst_for_struct(klass):
 
 
 def sparkle(f):
+    """Decorate a function to make it use LLM to generate responses."""
     doc = inspect.getdoc(f)
     if doc is None:
         raise ValueError(f"Function {f} has no docstring.")
@@ -208,3 +239,22 @@ def sparkle(f):
         return chain.invoke({})
 
     return wrapper
+
+
+@dataclass
+class WriterArchetype:
+    name: str
+    tone: str
+    register: str
+    genres: list[str]
+
+    @staticmethod
+    def random() -> WriterArchetype:
+        return random.choice(load_writer_archetypes())
+
+
+@cache
+def load_writer_archetypes() -> list[WriterArchetype]:
+    with open("assets/writer_persona.toml", "r") as f:
+        parsed_data = tomlkit_to_popo(tomllib.load(f))
+    return [WriterArchetype(**archetype) for archetype in parsed_data["writer"]]
