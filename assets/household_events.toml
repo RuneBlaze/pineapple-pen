@@ -1,0 +1,23 @@
+[happy_events]
+event1 = "A local inventor visits your household to demonstrate a groundbreaking new household gadget."
+event2 = "Your family wins a year's supply of your favorite food from a city-wide lucky draw."
+event3 = "A famous local artist paints a mural on your house, turning it into a city landmark."
+event4 = "A rare, beautiful cherry blossom tree blooms unexpectedly in your backyard."
+event5 = "Your family receives an honorary award from the city for community service."
+event6 = "An ancient artifact is discovered in your basement, attracting positive attention."
+event7 = "A renowned chef opens a restaurant nearby, bringing delightful aromas and flavors."
+event8 = "Your house is chosen for a futuristic upgrade by a leading technology company."
+event9 = "A family member's science project wins a prestigious city-wide competition."
+event10 = "A friendly, intelligent robot becomes your new household assistant."
+
+[sad_events]
+event1 = "A sudden technology malfunction causes a week-long power outage in your home."
+event2 = "A beloved family pet goes missing in the bustling city streets."
+event3 = "An unexpected financial crisis hits, forcing budget cuts at home."
+event4 = "A heavy storm causes damage to your house's unique architecture."
+event5 = "A family heirloom is lost during a large city festival."
+event6 = "A misunderstanding with neighbors leads to a stressful community meeting."
+event7 = "A rare illness spreads in your neighborhood, causing concern and anxiety."
+event8 = "A major project at work fails, bringing disappointment to the household."
+event9 = "A cherished local park where your family relaxes gets closed for redevelopment."
+event10 = "News of an old friend's passing reaches your family, bringing a time of mourning."

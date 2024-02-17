@@ -37,7 +37,11 @@ def clean_yaml(text):
         # Handle colon followed by newline
         if ":" in stripped_line:
             key, value = stripped_line.split(":", 1)
-            cleaned.append(f"{key.strip()}: {value.strip()}")
+            if not value.strip():
+                cleaned.append(f"{key.strip()}:")
+                continue
+            escaped = value.strip().replace("'", "''")
+            cleaned.append(f"{key.strip()}: '{escaped}'")
         else:
             cleaned.append(stripped_line)
 
