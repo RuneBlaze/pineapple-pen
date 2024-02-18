@@ -32,17 +32,18 @@ class NameGenerator:
             origin = tag
 
         first_name_candidates = self.forenames[
-            (self.forenames.Country == origin) & (self.forenames.Gender == gender.upper())
-            ]["Romanized Name"].tolist()
+            (self.forenames.Country == origin)
+            & (self.forenames.Gender == gender.upper())
+        ]["Romanized Name"].tolist()
 
-        last_name_candidates = self.surnames[
-            self.surnames.Country == origin
-            ]["Romanized Name"].tolist()
+        last_name_candidates = self.surnames[self.surnames.Country == origin][
+            "Romanized Name"
+        ].tolist()
 
         return NamePair(
             first_name=choice(first_name_candidates),
             last_name=choice(last_name_candidates),
-            origin=origin
+            origin=origin,
         )
 
     @staticmethod
@@ -50,6 +51,10 @@ class NameGenerator:
     def default() -> NameGenerator:
         forenames = pd.read_csv("assets/common-forenames-by-country.csv")
         surnames = pd.read_csv("assets/common-surnames-by-country.csv")
-        forenames = forenames[forenames.Country.isin(["JP", "KR", "US", "CN", "TW", "GB"])][["Country", "Gender", "Romanized Name"]]
-        surnames = surnames[surnames.Country.isin(["JP","KR","US","CN","TW","GB"])][["Country", "Romanized Name"]]
+        forenames = forenames[
+            forenames.Country.isin(["JP", "KR", "US", "CN", "TW", "GB"])
+        ][["Country", "Gender", "Romanized Name"]]
+        surnames = surnames[
+            surnames.Country.isin(["JP", "KR", "US", "CN", "TW", "GB"])
+        ][["Country", "Romanized Name"]]
         return NameGenerator(forenames, surnames)

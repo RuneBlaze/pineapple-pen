@@ -137,10 +137,13 @@ class YamlParser(BaseOutputParser):
             text = pattern.search(text).group("yaml")
         try:
             data = clean_yaml(text.replace("\\_", "_"))
-            data = {k.replace(" ", "_"): v for k, v in data.items()}
-            data = {k.lower(): v for k, v in data.items()}
-            data = auto_fix_typos([f.name for f in fields(self.cls)], data)
-            return self.cls(**data)
+            if isinstance(data, dict):
+                data = {k.replace(" ", "_"): v for k, v in data.items()}
+                data = {k.lower(): v for k, v in data.items()}
+                data = auto_fix_typos([f.name for f in fields(self.cls)], data)
+                return self.cls(**data)
+            else:
+                return self.cls(data)
         except yaml.YAMLError as e:
             msg = f"Failed to parse YAML from completion {text}. Got: {e}"
             raise OutputParserException(msg, llm_output=text) from e

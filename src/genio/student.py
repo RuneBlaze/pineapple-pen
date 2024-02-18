@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import random
 from dataclasses import dataclass, is_dataclass
 from functools import cache
 from random import gauss
 from typing import Annotated, Literal
+
 from .namegen import NameGenerator
 
 import faker
@@ -91,10 +91,12 @@ class Parent(Mythical):
         return generate_using_docstring(
             Parent,
             {
-                "writing_style": to_yaml({
-                    "tone": writer_archetype.tone,
-                    "register": writer_archetype.register,
-                }),
+                "writing_style": to_yaml(
+                    {
+                        "tone": writer_archetype.tone,
+                        "register": writer_archetype.register,
+                    }
+                ),
                 "sketches": generate_expanded_life_story(socioeconomic_score),
                 "marital": spouse.bio if spouse else "unknown",
                 "wealth": socioeconomic_score,
@@ -240,7 +242,12 @@ class Household:
 
 
 class Student(Mythical):
-    ...
+    name: str
+    bio: Annotated[str, ""]
+    hobbies: Annotated[list[str], "A YAML list of hobbies."]
+    aspirations: Annotated[str, "A brief description of the aspirations."]
+    age: int
+    height: Annotated[int, "The height of the student, in CM."]
 
 
 def pair_of_socioeonomic_status() -> tuple[int, int]:
@@ -252,11 +259,13 @@ def pair_of_socioeonomic_status() -> tuple[int, int]:
 
 import random
 
+
 def madlib_event(event_template, attributes):
     # Replace placeholders in the template with random attributes
     for key, values in attributes.items():
         event_template = event_template.replace("{" + key + "}", random.choice(values))
     return event_template
+
 
 def generate_expanded_life_story(score: int):
     socioeconomic_status = score
@@ -309,7 +318,7 @@ def generate_expanded_life_story(score: int):
     madlib_templates = [
         "As a {hobby} enthusiast, {achievement} {place}.",
         "Started {hobby} at a young age and {achievement} {place}.",
-        "Passion for {hobby} led to {achievement} {place}."
+        "Passion for {hobby} led to {achievement} {place}.",
     ]
 
     # Select events based on socioeconomic status
@@ -324,18 +333,24 @@ def generate_expanded_life_story(score: int):
     selected_events = []
     for _ in range(3):
         if random.random() < 0.5:  # 50% chance to select a MadLib-style event
-            selected_events.append(madlib_event(random.choice(madlib_templates), attributes))
+            selected_events.append(
+                madlib_event(random.choice(madlib_templates), attributes)
+            )
         else:
             selected_events.append(random.choice(event_list))
 
     # Combine life stages with events
-    life_story_keywords = [f"{stage}: {event}" for stage, event in zip(life_stages, selected_events)]
+    life_story_keywords = [
+        f"{stage}: {event}" for stage, event in zip(life_stages, selected_events)
+    ]
 
     return life_story_keywords
+
 
 CULTURE_POOL = ["JP", "CN", "US", "GB"]
 
 from random import choice
+
 
 @dataclass
 class HouseholdSummary(Mythical):
@@ -351,9 +366,18 @@ class HouseholdSummary(Mythical):
     ```
     """
 
-    wealth_score: Annotated[int, "A number from 1 to 5, where 3 is middle-class, 5 is very well-off, and 1 is poor."]
-    cultural_background: Annotated[str, "A single phrase, representing the cultural, racial background. Make a best guess."]
-    bullet_points: Annotated[list[str], "A list of bullet points (YAML list), a succinct but descriptive bio encompassing key points of the family bio."]
+    wealth_score: Annotated[
+        int,
+        "A number from 1 to 5, where 3 is middle-class, 5 is very well-off, and 1 is poor.",
+    ]
+    cultural_background: Annotated[
+        str,
+        "A single phrase, representing the cultural, racial background. Make a best guess.",
+    ]
+    bullet_points: Annotated[
+        list[str],
+        "A list of bullet points (YAML list), a succinct but descriptive bio encompassing key points of the family bio.",
+    ]
 
     @staticmethod
     def generate(household: Household) -> HouseholdSummary:
@@ -364,8 +388,8 @@ class HouseholdSummary(Mythical):
             },
         )
 
-class HouseholdGenerator:
 
+class HouseholdGenerator:
     @staticmethod
     def generate_household(cultural_origin: str | None = None) -> Household:
         if not cultural_origin:
@@ -373,7 +397,9 @@ class HouseholdGenerator:
         writer_archetype = WriterArchetype.random()
         s1, s2 = pair_of_socioeonomic_status()
         parent = Parent.generate(writer_archetype, s1, cultural_origin, gender="male")
-        parent2 = Parent.generate(writer_archetype, s2, cultural_origin, parent, gender="female")
+        parent2 = Parent.generate(
+            writer_archetype, s2, cultural_origin, parent, gender="female"
+        )
         household = Household(main_parent=parent, secondary_parent=parent2)
         household.face_random_event()
         secret = FamilySecret.generate(household)

@@ -1,5 +1,6 @@
 from genio.namegen import NameGenerator
 
+
 def test_name_generator_can_generate_name():
     generator = NameGenerator.default()
 

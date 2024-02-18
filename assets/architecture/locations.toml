@@ -1,0 +1,55 @@
+[locations.mundane]
+classrooms = ["Standard Classroom", "Science Lab", "Art Room", "Music Room", "Home Economics Room"]
+faculty_rooms = ["Staff Room", "Principal's Office", "Counselor's Office", "Nurse's Office"]
+administrative = ["School Entrance", "Hallways", "Staircases", "Lockers"]
+recreational = ["Schoolyard", "Playground", "Sports Field", "Gymnasium"]
+cafeteria = ["Lunchroom", "Cafeteria Line", "Outdoor Eating Area"]
+library = ["Main Reading Area", "Study Carrels", "Private Study Rooms"]
+maintenance = ["Janitor's Closet", "Storage Rooms", "Boiler Room"]
+outdoor = ["School Garden", "Bicycle Racks", "Parking Lot"]
+miscellaneous = ["Restrooms", "Water Fountains", "Vending Machines"]
+
+[school_locations]
+[[school_locations.iconic_places]]
+name = "Rooftop"
+description = "Secluded, with a panoramic view, often a site for introspective moments or clandestine meetings."
+
+[[school_locations.iconic_places]]
+name = "Abandoned Classroom"
+description = "Dusty, with remnants of the past, perfect for secret gatherings or uncovering old mysteries."
+
+[[school_locations.iconic_places]]
+name = "Library"
+description = "Quiet and vast, filled with books, a place for study, secret exchanges, or hidden discoveries."
+
+[[school_locations.iconic_places]]
+name = "Schoolyard"
+description = "Open and busy, a hub for social interactions, festivals, and sports activities."
+
+[[school_locations.iconic_places]]
+name = "Science Lab"
+description = "Equipped with various apparatus, a place for experiments, both academic and secret."
+
+[[school_locations.iconic_places]]
+name = "Underground Tunnels"
+description = "Mysterious and labyrinthine, potentially hiding secrets or forbidden areas."
+
+[[school_locations.iconic_places]]
+name = "Music Room"
+description = "Filled with instruments, a place for artistic expression or emotional encounters."
+
+[[school_locations.iconic_places]]
+name = "Cafeteria"
+description = "Busy and noisy, where students gather to eat, gossip, and unwind."
+
+[[school_locations.iconic_places]]
+name = "Dormitories"
+description = "Personal space for students, a setting for late-night conversations and personal drama."
+
+[[school_locations.iconic_places]]
+name = "Principal's Office"
+description = "Authoritative, often involved in crucial plot developments or revealing important information."
+
+[[school_locations.iconic_places]]
+name = "Infirmary"
+description = "A place for care and recovery, often a setting for intimate conversations and revelations."

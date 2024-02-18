@@ -1,0 +1,36 @@
+[classical_literature]
+
+# European
+"Homer's Odyssey" = "Epic journey"
+"Dante's Inferno" = "Hellish voyage"
+"Shakespeare's Hamlet" = "Revenge tragedy"
+"Tolstoy's War and Peace" = "Historical epic"
+"Dostoevsky's Crime and Punishment" = "Psychological struggle"
+
+# Asian
+"Sun Tzu's Art of War" = "Strategic manual"
+"Murasaki's Tale of Genji" = "Heian romance"
+"Laozi's Tao Te Ching" = "Philosophical poetry"
+"Kalidasa's Shakuntala" = "Classical drama"
+"Tagore's Gitanjali" = "Poetic songs"
+
+# Middle Eastern
+"Rumi's Masnavi" = "Sufi poetry"
+"Hafez's Divan" = "Mystical verses"
+"The Thousand and One Nights" = "Fantastical tales"
+"Firdausi's Shahnameh" = "Heroic epics"
+
+# African
+"Achebe's Things Fall Apart" = "Colonial impact"
+"Soyinka's Death and the King's Horseman" = "Cultural clash"
+
+# Latin American
+"García Márquez's One Hundred Years of Solitude" = "Magical realism"
+"Borges' Ficciones" = "Metaphysical puzzles"
+
+# North American
+"Hemingway's The Old Man and the Sea" = "Enduring struggle"
+"Fitzgerald's The Great Gatsby" = "American dream"
+
+# Oceanian
+"Paton's Cry, the Beloved Country" = "Apartheid reflection"

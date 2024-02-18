@@ -1,0 +1,24 @@
+
+    [[Futuristic]]
+    keywords = ["sleek", "glass domes", "floating structures", "holographic displays", "energy-efficient"]
+
+    [[Traditional_Japanese]]
+    keywords = ["wooden structures", "tatami mats", "sliding doors", "zen gardens", "koi ponds"]
+
+    [[Gothic]]
+    keywords = ["stone facades", "stained glass", "tall spires", "arched doorways", "detailed carvings"]
+
+    [[Modern]]
+    keywords = ["minimalist", "open spaces", "large windows", "concrete and steel", "functional"]
+
+    [[Art_Deco]]
+    keywords = ["geometric patterns", "bold colors", "ornate details", "terraced structures", "stylized forms"]
+
+    [[Neo-Classical]]
+    keywords = ["grand columns", "symmetrical", "domed roofs", "marble statues", "classical motifs"]
+
+    [[Sustainable_Green]]
+    keywords = ["living walls", "solar panels", "rainwater harvesting", "natural lighting", "eco-friendly materials"]
+
+    [[Industrial]]
+    keywords = ["exposed brick", "metal beams", "large, open floor plans", "utilitarian", "loft style"]
