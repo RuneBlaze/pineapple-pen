@@ -6,6 +6,7 @@ import re
 from abc import ABC
 from dataclasses import dataclass, fields
 from functools import cache, wraps
+from dataclasses import asdict, is_dataclass
 from typing import Annotated, Any, Type, TypeVar, get_args, get_origin, get_type_hints
 
 import tomlkit
@@ -202,9 +203,6 @@ def inst_for_struct(klass):
     return prompt
 
 
-from dataclasses import asdict, is_dataclass
-
-
 def make_str_of_value(value):
     if isinstance(value, str):
         return value
@@ -248,7 +246,6 @@ def sparkle(f):
         ctxt.append("Fill out the following:")
         ctxt.append(inst_for_struct(return_type))
         prompt = ChatPromptTemplate.from_template("\n".join(ctxt))
-        ic(prompt)
         chain = prompt | llm | YamlParser(cls=return_type)
         return chain.invoke({})
 

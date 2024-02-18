@@ -1,9 +1,12 @@
 from yaml import safe_load
 from collections.abc import Mapping
+
+
 def is_nested_dict(d):
     if not isinstance(d, dict):
         return False
     return any(isinstance(v, dict) for v in d.values())
+
 
 def clean_yaml(text):
     try:

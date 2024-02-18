@@ -21,7 +21,7 @@ df_male = pd.read_excel(f"assets/{ASSET_NAME_MALE}")
 df_female = pd.read_excel(f"assets/{ASSET_NAME_FEMALE}")
 
 
-class HeightLookup:
+class HeightChart:
     months: list[int]
     male_median: list[float]
     female_median: list[float]
@@ -47,10 +47,8 @@ class HeightLookup:
             return self.female_median[index], self.female_stddev[index]
 
     @staticmethod
-    def default() -> "HeightLookup":
-        with open("assets/height_lookup.pkl", "rb") as f:
-            return pkl.load(f)
-
-
-lookup = HeightLookup.default()
-print(lookup.query_params(False, 12 * 12))
+    def default() -> "HeightChart":
+        return HeightChart(
+            df_male,
+            df_female,
+        )

@@ -4,7 +4,8 @@ from dataclasses import dataclass, is_dataclass
 from functools import cache
 from random import gauss, choice
 from typing import Annotated, Literal
-from .student import Backdrop
+from .family import Backdrop
+from random import sample
 
 from .namegen import NameGenerator
 from .base import slurp_toml
@@ -27,9 +28,6 @@ def architectural_elements() -> dict:
     return slurp_toml("assets/architecture/architectural_elements.toml")
 
 
-from random import sample
-
-
 def sample_architectural_keywords() -> list[str]:
     elements = architectural_elements()
     keys = list(elements.keys())
@@ -49,13 +47,16 @@ def sample_literature() -> str:
     k = choice([k for k in kv.keys()])
     return f"{k}: {kv[k]}"
 
+
 def format_markdown_list(items: list[str]) -> str:
     return "\n".join([f"- {i}" for i in items])
+
 
 def yamlize(item: object) -> str:
     if is_dataclass(item):
         return yaml.dump(item.__dict__)
     return yaml.dump(item)
+
 
 @dataclass
 class SchoolConcept(Mythical):
@@ -94,11 +95,15 @@ class SchoolConcept(Mythical):
     @staticmethod
     def generate() -> SchoolConcept:
         city = Backdrop.default()
-        return generate_using_docstring(SchoolConcept, {
-            "city_lore": city.description,
-            "literature": sample_literature(),
-            "elements": format_markdown_list(sample_architectural_keywords()),
-        })
+        return generate_using_docstring(
+            SchoolConcept,
+            {
+                "city_lore": city.description,
+                "literature": sample_literature(),
+                "elements": format_markdown_list(sample_architectural_keywords()),
+            },
+        )
+
 
 @dataclass
 class FloorPlan(Mythical):
@@ -117,25 +122,29 @@ class FloorPlan(Mythical):
     Each grade requires at least half a floor.
     """
 
-    num_floors: Annotated[int, "The number of floors in the building. Should be at least 6. It should be sprawling and almost maze-like"]
+    num_floors: Annotated[
+        int,
+        "The number of floors in the building. Should be at least 6. It should be sprawling and almost maze-like",
+    ]
     floor_description_list: Annotated[
-        list[str], "A list of descriptions for each floor, should be a YAML list, in the format - F0/1/2/3/4: single-line description."
+        list[str],
+        "A list of descriptions for each floor, should be a YAML list, in the format - F0/1/2/3/4: single-line description.",
     ]
 
     @staticmethod
     def generate(concept: SchoolConcept) -> FloorPlan:
-        return generate_using_docstring(FloorPlan, {
-            "concept": concept.make_context()
-        })
+        return generate_using_docstring(FloorPlan, {"concept": concept.make_context()})
 
     def to_individual_floor_concepts(self) -> list[SingleFloorConcept]:
         concepts = []
         num_floors = self.num_floors
         for i in range(num_floors):
-            concepts.append(generate_using_docstring(SingleFloorConcept, {
-                "n": i,
-                "grand_concept": yamlize(self.floor_description_list)
-            }))
+            concepts.append(
+                generate_using_docstring(
+                    SingleFloorConcept,
+                    {"n": i, "grand_concept": yamlize(self.floor_description_list)},
+                )
+            )
         return concepts
 
 
@@ -151,6 +160,7 @@ class SingleFloorConcept:
 
     Q: What's the {n}-th single floor (Floor {n}) for?
     """
+
     floor_title: str
     floor_description: str
 
@@ -170,7 +180,10 @@ class SingleFloorConcept:
 
 @dataclass
 class RoomCatalogue:
-    rooms: Annotated[list[str], "A *single* YAML list of rooms in the floor. Only the names."]
+    rooms: Annotated[
+        list[str], "A *single* YAML list of rooms in the floor. Only the names."
+    ]
+
 
 if __name__ == "__main__":
     school_concept = SchoolConcept.generate()
