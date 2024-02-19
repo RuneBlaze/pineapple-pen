@@ -107,8 +107,7 @@ def auto_fix_typos(
 ) -> dict[str, Any]:
     matched = {}
     expected = set(expected_fields)
-    # if len(actual_fields) < len(expected):
-    # for
+
     not_matched = []
     for k, v in actual_fields.items():
         if k in expected:
@@ -130,10 +129,56 @@ pattern: re.Pattern = re.compile(
 )
 
 
+class RawYmlParser(BaseOutputParser):
+    def parse(self, text: str) -> Any:
+        if "```" in text:
+            text = pattern.search(text).group("yaml")
+        try:
+            return clean_yaml(text.replace("\\_", "_"))
+        except yaml.YAMLError as e:
+            msg = f"Failed to parse YAML from completion {text}. Got: {e}"
+            raise OutputParserException(msg, llm_output=text) from e
+        except Exception as e:
+            msg = f"Failed to parse YAML from completion {text}. Got: {e}"
+            raise OutputParserException(msg, llm_output=text) from e
+
+    def get_format_instructions(self) -> str:
+        return "Please return in YAML."
+
+def ask_for_yaml(prompt: str) -> Any:
+    template = ChatPromptTemplate.from_template(prompt)
+    llm = default_llm()
+    chain = template | llm | RawYmlParser()
+    return chain.invoke({})
+
+T = TypeVar("T")
+def construct_instance(cls: Type[T], data: dict) -> T:
+    try:
+        return cls(**data)
+    except TypeError:
+        docstring = get_docstrings(cls)
+        buf = []
+        args = docstring.args
+        for arg in args:
+            buf.append(f"# {arg.name}: {arg.description}")
+            if arg.name in data:
+                buf.append(f"{arg.name}: {data[arg.name]}")
+            else:
+                buf.append(f"{arg.name}: UNSET # Please fill in")
+        buf_joined = "\n".join(buf)
+        prompt = (f"There is a YAML with some fields UNSET. Please fill out the YAML:\n"
+                  f"```\n"
+                f"{buf_joined}\n"
+                  f"```\n"
+                  "Please return in YAML.\n")
+        yml = ask_for_yaml(prompt)
+        return cls(**yml)
+
 class YamlParser(BaseOutputParser):
     cls: Type
 
     def parse(self, text: str) -> Any:
+        flds = fields(self.cls)
         if "```" in text:
             text = pattern.search(text).group("yaml")
         try:
@@ -141,10 +186,14 @@ class YamlParser(BaseOutputParser):
             if isinstance(data, dict):
                 data = {k.replace(" ", "_"): v for k, v in data.items()}
                 data = {k.lower(): v for k, v in data.items()}
-                data = auto_fix_typos([f.name for f in fields(self.cls)], data)
-                return self.cls(**data)
+                data = auto_fix_typos([f.name for f in flds], data)
+                return construct_instance(self.cls, data)
             else:
-                return self.cls(data)
+                try:
+                    return construct_instance(self.cls, data)
+                except TypeError:
+                    if isinstance(data, list):
+                        return [construct_instance(self.cls, x) for x in data]
         except yaml.YAMLError as e:
             msg = f"Failed to parse YAML from completion {text}. Got: {e}"
             raise OutputParserException(msg, llm_output=text) from e
@@ -206,10 +255,67 @@ def inst_for_struct(klass):
 def make_str_of_value(value):
     if isinstance(value, str):
         return value
+    if isinstance(value, list):
+        return yaml.dump(value)
     if hasattr(value, "make_context"):
         return value.make_context()
     if is_dataclass(value):
         return yaml.dump(asdict(value))
+
+
+def raw_sparkle(f):
+    """Decorate a function to make it use LLM to generate responses.
+
+    The docstring should contain the following:
+    ```
+    {input_yaml}
+    ```
+    and
+    ```
+    {formatting_instructions}
+    ```
+    """
+    doc = inspect.getdoc(f)
+    if doc is None:
+        raise ValueError(f"Function {f} has no docstring.")
+    # if "{input_yaml}" not in doc:
+    #     raise ValueError(f"Function {f} docstring {doc} does not contain {{input_yaml}}")
+    if "{formatting_instructions}" not in doc:
+        raise ValueError(
+            f"Function {f} docstring {doc} does not contain {{formatting_instructions}}"
+        )
+
+    sig = inspect.signature(f)
+    llm = default_llm()
+
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        try:
+            f(*args, **kwargs)
+        except Exception as e:
+            raise ValueError(f"Failed to call {f} with {args} and {kwargs}") from e
+        ba = sig.bind(*args, **kwargs)
+        return_type = get_type_hints(f).get("return", inspect.Signature.empty)
+        if return_type is inspect.Signature.empty:
+            raise ValueError(f"Function {f} has no return type.")
+        ctxt = []
+        ctxt.append("```yml")
+        args = dict(ba.arguments.items())
+        ctxt.append(yaml.dump(args))
+        ctxt.append("```")
+        input_str = "\n".join(ctxt)
+        formatting_instructions = inst_for_struct(return_type)
+        prompt = ChatPromptTemplate.from_template(doc)
+        chain = prompt | llm | YamlParser(cls=return_type)
+        return chain.invoke(
+            {
+                "input_yaml": input_str,
+                "formatting_instructions": formatting_instructions,
+                **{k: make_str_of_value(v) for k, v in args.items()},
+            }
+        )
+
+    return wrapper
 
 
 def sparkle(f):
@@ -236,11 +342,10 @@ def sparkle(f):
         ba.apply_defaults()
         ctxt.append("You are given the following information:")
         ctxt.append("```yml")
-        for name, value in ba.arguments.items():
-            if name == "self":
-                continue
-            value_str = make_str_of_value(value)
-            ctxt.append(f"{name}: {value_str}")
+        args = dict(ba.arguments.items())
+        if "self" in args:
+            del args["self"]
+        ctxt.append(yaml.dump(args))
         ctxt.append("```")
         ctxt.append(f"You job is to {doc}.")
         ctxt.append("Fill out the following:")

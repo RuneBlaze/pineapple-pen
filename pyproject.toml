@@ -15,6 +15,7 @@ pyarrow = "^15.0.0"
 tomlkit = "^0.12.3"
 faker = "^23.2.1"
 jupyter = "^1.0.0"
+sentence-transformers = "^2.3.1"
 
 
 [tool.poetry.group.dev.dependencies]
