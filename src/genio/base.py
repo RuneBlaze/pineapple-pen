@@ -170,6 +170,7 @@ def instantiate_instance(cls: Type[T], data: dict) -> T:
             else:
                 buf.append(f"{arg.name}: UNSET # Please fill in")
         buf_joined = "\n".join(buf)
+        breakpoint()
         prompt = (
             f"There is a YAML with some fields UNSET. Please fill out the YAML:\n"
             f"```\n"

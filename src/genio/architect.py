@@ -8,6 +8,7 @@ from .family import Backdrop
 from random import sample
 import shelve
 from functools import partial
+from .base import raw_sparkle
 import re
 from structlog import get_logger
 
@@ -222,7 +223,7 @@ def is_classroom_name(name: str) -> bool:
 def parse_classroom_name(name: str) -> ClassRef:
     match = CLASSROOM_REGEX.match(name)
     if match:
-        grade, class_num = match
+        grade, class_num = match.groups()
         return ClassRef(int(grade), int(class_num))
 
 
@@ -253,9 +254,6 @@ class HardwareConcept:
 class FurnitureConcept:
     furniture_ideas: Annotated[list[str], "A list of furniture styles."]
     decors: Annotated[list[str], "A list of small decors and accessories for the room."]
-
-
-from .base import raw_sparkle
 
 
 @dataclass
@@ -387,7 +385,7 @@ EXTRA_SENTENCES = {
 
 @raw_sparkle
 def design_hardware_concept(
-    room_type: str, extra: str, architectural_guidelines: ArchitecturalGuidelines
+    room_type: str, extra: str, guidelines: ArchitecturalGuidelines
 ) -> HardwareConcept:
     """Act as an architect and design the hardware (wall, floor, lightning) concept for a {room_type}.
 
@@ -403,12 +401,24 @@ def design_hardware_concept(
     ...
 
 
-design_primary_school_hardware_concept = partial(
-    design_hardware_concept, **EXTRA_SENTENCES["primary"]
-)
-design_secondary_school_hardware_concept = partial(
-    design_hardware_concept, **EXTRA_SENTENCES["secondary"]
-)
+@raw_sparkle
+def design_furniture_concept(
+    room_type: str, extra: str, guidelines: InteriorDesignGuidelines
+) -> FurnitureConcept:
+    """Act as an interior designer and design the furniture concept for a {room_type}.
+
+    {extra}
+
+    Here are the guidelines for the design:
+    ```
+    {guidelines}
+    ```
+
+    {formatting_instructions}
+    """
+    ...
+
+
 
 def cache_retrieve_or_generate(cache: shelve.Shelf, key: str, func: callable, *args, **kwargs):
     if key not in cache:
@@ -416,18 +426,61 @@ def cache_retrieve_or_generate(cache: shelve.Shelf, key: str, func: callable, *a
     return cache[key]
 
 if __name__ == "__main__":
-    school_concept = SchoolConcept.generate()
-    guidelines = ArchitecturalGuidelines.generate(school_concept)
-    interior_guidelines = InteriorDesignGuidelines.generate(school_concept)
-    floor_plan = FloorPlan.generate(school_concept)
-    concepts = floor_plan.to_individual_floor_concepts()
-    concepts_and_catalogs = []
-    for concept in concepts:
-        concepts_and_catalogs.append((concept, concept.generate_room_catalogue()))
-    logger.info("Generated school thingies")
+    # school_concept = SchoolConcept.generate()
+    # guidelines = ArchitecturalGuidelines.generate(school_concept)
+    # interior_guidelines = InteriorDesignGuidelines.generate(school_concept)
+    # floor_plan = FloorPlan.generate(school_concept)
+    # concepts = floor_plan.to_individual_floor_concepts()
+    # concepts_and_catalogs = []
+    # for concept in concepts:
+    #     concepts_and_catalogs.append((concept, concept.generate_room_catalogue()))
+    # logger.info("Generated school thingies")
+    # with shelve.open("assets/test") as db:
+    #     db["school_concept"] = school_concept
+    #     db["guidelines"] = guidelines
+    #     db["interior_guidelines"] = interior_guidelines
+    #     db["floor_plan"] = floor_plan
+    #     db["concepts_and_catalogs"] = concepts_and_catalogs
+
     with shelve.open("assets/test") as db:
-        db["school_concept"] = school_concept
-        db["guidelines"] = guidelines
-        db["interior_guidelines"] = interior_guidelines
-        db["floor_plan"] = floor_plan
-        db["concepts_and_catalogs"] = concepts_and_catalogs
+        school_concept = db["school_concept"]
+        guidelines = db["guidelines"]
+        interior_guidelines = db["interior_guidelines"]
+        floor_plan = db["floor_plan"]
+        concepts_and_catalogs = db["concepts_and_catalogs"]
+
+    ic(school_concept)
+    ic(guidelines)
+    ic(interior_guidelines)
+    ic(concepts_and_catalogs)
+
+    for concept, catalog in concepts_and_catalogs:
+        for room in catalog.rooms:
+            if is_classroom_name(room):
+                class_ref = parse_classroom_name(room)
+                if class_ref.is_primary():
+                    hardware_concept = design_hardware_concept(
+                        f"primary school classroom in a Gakuen Toshi: Grade {class_ref.grade} Class {class_ref.class_num}",
+                        "The classroom should be designed to be friendly and welcoming to children.",
+                        guidelines,
+                    )
+                else:
+                    hardware_concept = design_hardware_concept(
+                        f"secondary school classroom in a Gakuen Toshi: Grade {class_ref.grade} Class {class_ref.class_num}",
+                        "The classroom should be designed to be friendly while studious to accommodate the older students.",
+                        guidelines,
+                    )
+                if class_ref.is_primary():
+                    furniture_concept = design_furniture_concept(
+                        f"primary school classroom in a Gakuen Toshi: Grade {class_ref.grade} Class {class_ref.class_num}",
+                        "The classroom should be designed to be friendly and welcoming to children.",
+                        interior_guidelines,
+                    )
+                else:
+                    furniture_concept = design_furniture_concept(
+                        f"secondary school classroom in a Gakuen Toshi: Grade {class_ref.grade} Class {class_ref.class_num}",
+                        "The classroom should be designed to be friendly while studious to accommodate the older students.",
+                        interior_guidelines,
+                    )
+                ic(hardware_concept)
+                ic(furniture_concept)
