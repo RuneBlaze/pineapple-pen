@@ -6,6 +6,10 @@ from random import gauss, choice
 from typing import Annotated, Literal
 from .family import Backdrop
 from random import sample
+import shelve
+from functools import partial
+import re
+from structlog import get_logger
 
 from .namegen import NameGenerator
 from .base import slurp_toml
@@ -21,6 +25,8 @@ from .base import (
     slurp_toml,
     sparkle,
 )
+
+logger = get_logger()
 
 
 @cache
@@ -135,6 +141,10 @@ class FloorPlan(Mythical):
     def generate(concept: SchoolConcept) -> FloorPlan:
         return generate_using_docstring(FloorPlan, {"concept": concept.make_context()})
 
+    def __post_init__(self):
+        if not isinstance(self.num_floors, int):
+            self.num_floors = int(self.num_floors)
+
     def to_individual_floor_concepts(self) -> list[SingleFloorConcept]:
         concepts = []
         num_floors = self.num_floors
@@ -165,7 +175,7 @@ class SingleFloorConcept:
     floor_description: str
 
     def make_context(self) -> str:
-        return f"## {self.floor_title}\n{self.floor_description}"
+        return f"## Administrative Assistant to {self.floor_title}\n{self.floor_description}"
 
     @sparkle
     def generate_room_catalogue(self) -> RoomCatalogue:
@@ -185,12 +195,239 @@ class RoomCatalogue:
     ]
 
 
+@dataclass
+class ConcreteRoom:
+    """A concrete room to be furnished."""
+
+    is_classroom: bool
+    name: str
+
+    hardware_concept: str
+    furniture_concept: str
+    pitch: str
+
+    description_generic: str
+    description_day: str
+    description_evening: str
+    description_night: str
+
+
+CLASSROOM_REGEX = re.compile(r"grade ([\da-z]+) class ([\da-z]+)", re.IGNORECASE)
+
+
+def is_classroom_name(name: str) -> bool:
+    return "class" in name.lower() and CLASSROOM_REGEX.match(name)
+
+
+def parse_classroom_name(name: str) -> ClassRef:
+    match = CLASSROOM_REGEX.match(name)
+    if match:
+        grade, class_num = match
+        return ClassRef(int(grade), int(class_num))
+
+
+@dataclass
+class ClassRef:
+    grade: int
+    class_num: int
+
+    def is_primary(self) -> bool:
+        return self.grade < 7
+
+    def is_secondary(self) -> bool:
+        return not self.is_primary()
+
+
+@dataclass
+class HardwareConcept:
+    walls_and_windows: Annotated[
+        str, "A description of the walls, as designed by the architect."
+    ]
+    floors: Annotated[str, "A description of the floors, as designed by the architect."]
+    lighting: Annotated[
+        str, "A description of the lighting, as designed by the architect."
+    ]
+
+
+@dataclass
+class FurnitureConcept:
+    furniture_ideas: Annotated[list[str], "A list of furniture styles."]
+    decors: Annotated[list[str], "A list of small decors and accessories for the room."]
+
+
+from .base import raw_sparkle
+
+
+@dataclass
+class ArchitecturalGuidelines(Mythical):
+    """Guidelines for the architecture of a grand school building in a "Gakuen Toshi".
+    You should act as an excellent architect and come up with actionable guidelines for
+    other architects to follow.
+
+    Here is the brief about the concept of the building, a grand school building in a "Gakuen Toshi".
+    ```
+    {concept}
+    ```
+
+    Q: What are the guidelines for the architecture of the building?
+    """
+
+    guidelines: Annotated[list[str], "A YAML list of actionable guidelines."]
+    motifs: Annotated[list[str], "A YAML list of architectural motifs."]
+    materials: Annotated[list[str], "A YAML list of materials."]
+    color_scheme: Annotated[str, "Actionable color scheme of the building."]
+
+    @staticmethod
+    def generate(concept: SchoolConcept) -> ArchitecturalGuidelines:
+        return generate_using_docstring(
+            ArchitecturalGuidelines, {"concept": concept.make_context()}
+        )
+
+
+@dataclass
+class InteriorDesignGuidelines(Mythical):
+    """Guidelines for the interior design of a grand school building in a "Gakuen Toshi".
+    You should act as an excellent interior designer and come up with actionable guidelines for
+    other interior designers to follow.
+
+    Think about the materials, fabrics, and colors that would be used in the interior design.
+
+    Here is the brief about the concept of the building, a grand school building in a "Gakuen Toshi".
+    ```
+    {concept}
+    ```
+
+    Q: What are the guidelines for the interior design of the building?
+    """
+
+    furniture_styles: Annotated[
+        list[str], "A short description of the furniture style."
+    ]
+    primary_school_classroom_design: Annotated[
+        str, "Short interior design concept for primary school classrooms."
+    ]
+    secondary_school_classroom_design: Annotated[
+        str, "Short interior design concept for secondary school classrooms."
+    ]
+    other_rooms_design: Annotated[str, "Short interior design concept for other rooms."]
+
+    @staticmethod
+    def generate(concept: SchoolConcept) -> InteriorDesignGuidelines:
+        return generate_using_docstring(
+            InteriorDesignGuidelines, {"concept": concept.make_context()}
+        )
+
+
+quirk_keywords = [
+    "studious",
+    "athletic",
+    "artistic",
+    "musical",
+    "eco-friendly",
+    "tech-savvy",
+    "bilingual",
+    "multicultural",
+    "nature lovers",
+    "bookworms",
+    "height uniformity",
+    "animal lovers",
+    "culinary experts",
+    "puzzle solvers",
+    "green thumbs",
+    "fashion forward",
+    "drama enthusiasts",
+    "sci-fi fans",
+    "historical buffs",
+    "globetrotters",
+    "comedians",
+    "mystery enthusiasts",
+    "adventure seekers",
+    "debaters",
+    "chess masters",
+    "gadget geeks",
+    "polyglots",
+    "young entrepreneurs",
+    "volunteers",
+    "film buffs",
+    "stargazers",
+    "inventors",
+    "health enthusiasts",
+    "anime fans",
+    "robotics whizzes",
+    "time travelers",
+    "philosophers",
+    "poets",
+    "gamers",
+    "survival experts",
+    "code breakers",
+    "environmental activists",
+    "magicians",
+    "dreamers",
+    "futurists",
+    "historical reenactors",
+    "astronaut trainees",
+    "mythology lovers",
+    "geniuses",
+    "philanthropists",
+    "peacekeepers",
+    "thrill seekers",
+]
+
+EXTRA_SENTENCES = {
+    "primary": {
+        "room_type": "primary school classroom in a Gakuen Toshi",
+        "extra": "The classroom should be designed to be friendly and welcoming to children.",
+    },
+    "secondary": {
+        "room_type": "secondary school classroom in a Gakuen Toshi",
+        "extra": "The classroom should be designed to be friendly while studious to accommodate the older students.",
+    },
+}
+
+
+@raw_sparkle
+def design_hardware_concept(
+    room_type: str, extra: str, architectural_guidelines: ArchitecturalGuidelines
+) -> HardwareConcept:
+    """Act as an architect and design the hardware (wall, floor, lightning) concept for a {room_type}.
+
+    {extra}
+
+    Here are the guidelines for the design:
+    ```
+    {guidelines}
+    ```
+
+    {formatting_instructions}
+    """
+    ...
+
+
+design_primary_school_hardware_concept = partial(
+    design_hardware_concept, **EXTRA_SENTENCES["primary"]
+)
+design_secondary_school_hardware_concept = partial(
+    design_hardware_concept, **EXTRA_SENTENCES["secondary"]
+)
+
+def cache_retrieve_or_generate(cache: shelve.Shelf, key: str, func: callable, *args, **kwargs):
+    if key not in cache:
+        cache[key] = func(*args, **kwargs)
+    return cache[key]
+
 if __name__ == "__main__":
     school_concept = SchoolConcept.generate()
-    ic(school_concept)
+    guidelines = ArchitecturalGuidelines.generate(school_concept)
+    interior_guidelines = InteriorDesignGuidelines.generate(school_concept)
     floor_plan = FloorPlan.generate(school_concept)
-    ic(floor_plan)
     concepts = floor_plan.to_individual_floor_concepts()
+    concepts_and_catalogs = []
     for concept in concepts:
-        ic(concept)
-        ic(concept.generate_room_catalogue())
+        concepts_and_catalogs.append((concept, concept.generate_room_catalogue()))
+    logger.info("Generated school thingies")
+    with shelve.open("assets/test") as db:
+        db["school_concept"] = school_concept
+        db["guidelines"] = guidelines
+        db["interior_guidelines"] = interior_guidelines
+        db["floor_plan"] = floor_plan
+        db["concepts_and_catalogs"] = concepts_and_catalogs

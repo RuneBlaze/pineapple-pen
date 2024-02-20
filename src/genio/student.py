@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import cache
 from random import gauss, choice
-from typing import Annotated, Literal, Protocol
+from typing import Annotated, Protocol
 
 from .architect import yamlize
 from .namegen import NameGenerator
@@ -50,7 +50,7 @@ class Archetype:
 
 
 @dataclass
-class Student(Mythical, AgentLike):
+class StudentProfile(Mythical, AgentLike):
     """A student in a school, the hero in their life.
 
     This student fits under the following archetype:
@@ -81,7 +81,7 @@ class Student(Mythical, AgentLike):
         )
 
     @staticmethod
-    def generate_from_grade(grade: int) -> Student:
+    def generate_from_grade(grade: int) -> StudentProfile:
         """Generate a random student."""
         age = age_from_grade(grade)
         namegen = NameGenerator.default()
@@ -92,7 +92,7 @@ class Student(Mythical, AgentLike):
         height = gauss(0, 1) * stddev + mean
         name = namegen.generate_name("m" if gender else "f", "JP")
         return generate_using_docstring(
-            Student,
+            StudentProfile,
             dict(
                 name=f"{name.first_name} {name.last_name}",
                 grade=grade,
@@ -285,8 +285,14 @@ def age_from_grade(grade: int) -> float:
     return gauss(5 + grade, 0.5)
 
 
+class Student:
+    def __init__(self, profile: StudentProfile, max_memories: int = 8) -> None:
+        self.profile = profile
+        self.memories = MemoryBank(self.profile, max_memories)
+
+
 if __name__ == "__main__":
-    student = Student.generate_from_grade(1)
+    student = StudentProfile.generate_from_grade(1)
     memories = MemoryBank(student, 5)
     for i in range(3):
         memories.witness_event("A cat died.")

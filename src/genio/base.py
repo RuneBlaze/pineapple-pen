@@ -145,14 +145,18 @@ class RawYmlParser(BaseOutputParser):
     def get_format_instructions(self) -> str:
         return "Please return in YAML."
 
+
 def ask_for_yaml(prompt: str) -> Any:
     template = ChatPromptTemplate.from_template(prompt)
     llm = default_llm()
     chain = template | llm | RawYmlParser()
     return chain.invoke({})
 
+
 T = TypeVar("T")
-def construct_instance(cls: Type[T], data: dict) -> T:
+
+
+def instantiate_instance(cls: Type[T], data: dict) -> T:
     try:
         return cls(**data)
     except TypeError:
@@ -166,13 +170,16 @@ def construct_instance(cls: Type[T], data: dict) -> T:
             else:
                 buf.append(f"{arg.name}: UNSET # Please fill in")
         buf_joined = "\n".join(buf)
-        prompt = (f"There is a YAML with some fields UNSET. Please fill out the YAML:\n"
-                  f"```\n"
-                f"{buf_joined}\n"
-                  f"```\n"
-                  "Please return in YAML.\n")
+        prompt = (
+            f"There is a YAML with some fields UNSET. Please fill out the YAML:\n"
+            f"```\n"
+            f"{buf_joined}\n"
+            f"```\n"
+            "Please return in YAML.\n"
+        )
         yml = ask_for_yaml(prompt)
         return cls(**yml)
+
 
 class YamlParser(BaseOutputParser):
     cls: Type
@@ -187,13 +194,13 @@ class YamlParser(BaseOutputParser):
                 data = {k.replace(" ", "_"): v for k, v in data.items()}
                 data = {k.lower(): v for k, v in data.items()}
                 data = auto_fix_typos([f.name for f in flds], data)
-                return construct_instance(self.cls, data)
+                return instantiate_instance(self.cls, data)
             else:
                 try:
-                    return construct_instance(self.cls, data)
+                    return instantiate_instance(self.cls, data)
                 except TypeError:
                     if isinstance(data, list):
-                        return [construct_instance(self.cls, x) for x in data]
+                        return [instantiate_instance(self.cls, x) for x in data]
         except yaml.YAMLError as e:
             msg = f"Failed to parse YAML from completion {text}. Got: {e}"
             raise OutputParserException(msg, llm_output=text) from e
@@ -241,7 +248,7 @@ def generate_using_docstring(klass: Type[T], args: dict) -> T:
 def inst_for_struct(klass):
     docstrings = get_docstrings(klass)
     prompt = ""
-    prompt += "It should contain the following YAML fields:\n"
+    prompt += "Fill out the following YAML fields:\n"
     for arg in docstrings.args:
         prompt += (
             f"- {arg.name}: {arg.description}\n"
@@ -299,10 +306,11 @@ def raw_sparkle(f):
         if return_type is inspect.Signature.empty:
             raise ValueError(f"Function {f} has no return type.")
         ctxt = []
-        ctxt.append("```yml")
         args = dict(ba.arguments.items())
-        ctxt.append(yaml.dump(args))
-        ctxt.append("```")
+        if args:
+            ctxt.append("```yml")
+            ctxt.append(yaml.dump(args))
+            ctxt.append("```")
         input_str = "\n".join(ctxt)
         formatting_instructions = inst_for_struct(return_type)
         prompt = ChatPromptTemplate.from_template(doc)
@@ -340,18 +348,19 @@ def sparkle(f):
             raise ValueError(f"Function {f} has no return type.")
         ctxt = [f"Act as {self.make_context()}."]
         ba.apply_defaults()
-        ctxt.append("You are given the following information:")
-        ctxt.append("```yml")
-        args = dict(ba.arguments.items())
         if "self" in args:
             del args["self"]
-        ctxt.append(yaml.dump(args))
-        ctxt.append("```")
+        if args:
+            ctxt.append("You are given the following information:")
+            args = dict(ba.arguments.items())
+            ctxt.append("```yml")
+            ctxt.append(yaml.dump(args))
+            ctxt.append("```")
         ctxt.append(f"You job is to {doc}.")
-        ctxt.append("Fill out the following:")
         ctxt.append(inst_for_struct(return_type))
         prompt = ChatPromptTemplate.from_template("\n".join(ctxt))
         chain = prompt | llm | YamlParser(cls=return_type)
+        ic(prompt)
         return chain.invoke({})
 
     return wrapper
