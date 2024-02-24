@@ -1,10 +1,9 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
-from random import sample, choice
+from random import choice
 from functools import cache
 import pandas as pd
-import pickle as pkl
 
 
 @dataclass

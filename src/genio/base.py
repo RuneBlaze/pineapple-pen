@@ -7,7 +7,16 @@ from abc import ABC
 from dataclasses import dataclass, fields
 from functools import cache, wraps
 from dataclasses import asdict, is_dataclass
-from typing import Annotated, Any, Type, TypeVar, get_args, get_origin, get_type_hints
+from typing import (
+    Annotated,
+    Any,
+    Type,
+    TypeVar,
+    get_args,
+    get_origin,
+    get_type_hints,
+    Protocol,
+)
 
 import tomlkit
 import tomlkit as tomllib
@@ -389,3 +398,11 @@ def load_writer_archetypes() -> list[WriterArchetype]:
 def slurp_toml(path):
     with open(path, "r") as f:
         return tomlkit_to_popo(tomllib.load(f))
+
+
+class AgentLike(Protocol):
+    def agent_context(self) -> str:
+        ...
+
+    def local_time(self) -> int:
+        ...

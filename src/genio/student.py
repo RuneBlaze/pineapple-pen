@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import cache
 from random import gauss, choice
-from typing import Annotated, Protocol
+from typing import Annotated
 
 from .architect import yamlize
 from .namegen import NameGenerator
@@ -13,25 +13,14 @@ from .utils import embed_single_sentence
 from numpy.typing import NDArray
 from sentence_transformers.util import cos_sim
 
-
-from icecream import ic
-
 from .base import (
     Mythical,
     WriterArchetype,
     generate_using_docstring,
     slurp_toml,
-    sparkle,
     raw_sparkle,
+    AgentLike,
 )
-
-
-class AgentLike(Protocol):
-    def agent_context(self) -> str:
-        ...
-
-    def local_time(self) -> int:
-        ...
 
 
 @cache
@@ -234,6 +223,14 @@ class MemoryBank:
         self.agent = agent
         self.max_memories = max_memories
         self.memories = []
+        self.short_term_memories = []
+        self.short_term_memories_watermark = 0
+
+    def add_short_term_memory(self, log: str) -> None:
+        self.short_term_memories.append(log)
+
+    def catch_up_short_term_memories(self) -> None:
+        self.short_term_memories_watermark = len(self.short_term_memories)
 
     def witness_event(self, log: str) -> None:
         related_events = self.recall(log, max_recall=5)
@@ -258,7 +255,6 @@ class MemoryBank:
             self.memories.append(
                 MemoryEntry(log, significance, embed_single_sentence(log))
             )
-        ic(self.memories)
         self.memories = sorted(
             self.memories, key=lambda x: x.significance, reverse=True
         )[: self.max_memories]

@@ -1,5 +1,4 @@
 from yaml import safe_load
-from collections.abc import Mapping
 
 
 def is_nested_dict(d):
@@ -14,7 +13,7 @@ def clean_yaml(text):
         if is_nested_dict(result) and len(result) == 1:
             return result[list(result.keys())[0]]
         return result
-    except Exception as e:
+    except Exception:
         pass
     lines = text.split("\n")
     processed = []

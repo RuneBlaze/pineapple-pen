@@ -5,6 +5,7 @@ from functools import cache
 from random import gauss
 from typing import Annotated, Literal
 from random import sample
+from dataclasses import field
 import random
 
 from .namegen import NameGenerator
@@ -124,9 +125,6 @@ class Parent(Mythical):
             f"Flaws: {self.flaws}."
             f"Hobbies: {self.hobbies}."
         )
-
-
-from dataclasses import field
 
 
 @cache

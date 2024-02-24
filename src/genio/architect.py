@@ -2,28 +2,23 @@ from __future__ import annotations
 
 from dataclasses import dataclass, is_dataclass
 from functools import cache
-from random import gauss, choice
-from typing import Annotated, Literal
+from random import choice
+from typing import Annotated
 from .family import Backdrop
 from random import sample
 import shelve
-from functools import partial
 from .base import raw_sparkle
 import re
 from structlog import get_logger
 
-from .namegen import NameGenerator
 from .base import slurp_toml
 
-import faker
 import yaml
 from icecream import ic
 
 from .base import (
     Mythical,
-    WriterArchetype,
     generate_using_docstring,
-    slurp_toml,
     sparkle,
 )
 
@@ -419,11 +414,26 @@ def design_furniture_concept(
     ...
 
 
+class LogicalClassroom:
+    def __init__(
+        self,
+        class_ref: ClassRef,
+        hardware_concept: HardwareConcept,
+        furniture_concept: FurnitureConcept,
+    ):
+        self.class_ref = class_ref
+        self.hardware_concept = hardware_concept
+        self.furniture_concept = furniture_concept
+        self.students = []
 
-def cache_retrieve_or_generate(cache: shelve.Shelf, key: str, func: callable, *args, **kwargs):
+
+def cache_retrieve_or_generate(
+    cache: shelve.Shelf, key: str, func: callable, *args, **kwargs
+):
     if key not in cache:
         cache[key] = func(*args, **kwargs)
     return cache[key]
+
 
 if __name__ == "__main__":
     # school_concept = SchoolConcept.generate()
