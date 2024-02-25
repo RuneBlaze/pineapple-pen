@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from functools import cache
 from random import choice
 from typing import Annotated
-from random import choice
 
 from .family import Backdrop
 from random import sample
@@ -17,7 +16,6 @@ from structlog import get_logger
 from tqdm import tqdm
 from .base import slurp_toml
 
-from icecream import ic
 
 from .base import (
     Mythical,

@@ -18,6 +18,8 @@ from typing import (
     Protocol,
 )
 
+from .cmd import parse_command
+
 import tomlkit
 import tomlkit as tomllib
 import yaml
@@ -138,7 +140,7 @@ pattern: re.Pattern = re.compile(
 )
 
 
-class RawYmlParser(BaseOutputParser):
+class RawYamlParser(BaseOutputParser):
     expected_keys: list[str] | None
 
     def parse(self, text: str) -> Any:
@@ -157,10 +159,29 @@ class RawYmlParser(BaseOutputParser):
         return "Please return in YAML."
 
 
+class CmdParser(BaseOutputParser):
+    allowed_commands: list[str]
+
+    def parse(self, text: str) -> Any:
+        parsed = parse_command(text)
+        if not parsed:
+            raise OutputParserException(
+                "No command found in completion." "Commands must start with `>` or `$`",
+                llm_output=text,
+            )
+        command = parsed[0]
+        if command not in self.allowed_commands:
+            raise OutputParserException(
+                f"Command {command} not allowed. Must be one of {self.allowed_commands}",
+                llm_output=text,
+            )
+        return parsed
+
+
 def ask_for_yaml(prompt: str, expected_keys: list[str] | None = None) -> Any:
     template = ChatPromptTemplate.from_template(prompt)
     llm = default_llm()
-    chain = template | llm | RawYmlParser(expected_keys=expected_keys)
+    chain = template | llm | RawYamlParser(expected_keys=expected_keys)
     return chain.invoke({})
 
 
@@ -190,7 +211,7 @@ def instantiate_instance(cls: Type[T], data: dict) -> T:
                 buf.append(f"{arg.name}: UNSET # Please fill in")
         buf_joined = "\n".join(buf)
         prompt = (
-            f"There is a YAML with some fields UNSET. Please fill out the YAML:\n"
+            f"There is a YAML with some fields UNSET. Please fill out the UNSET fields in the YAML:\n"
             f"```\n"
             f"{buf_joined}\n"
             f"```\n"
@@ -261,7 +282,7 @@ def generate_using_docstring(klass: Type[T], args: dict) -> T:
         | llm
         | OutputFixingParser.from_llm(parser=YamlParser(cls=klass), llm=llm)
     )
-    return chain.invoke(args)
+    return chain.with_retry().invoke(args)
 
 
 def inst_for_struct(klass):
@@ -282,6 +303,8 @@ def make_str_of_value(value):
     if isinstance(value, str):
         return value
     if isinstance(value, list):
+        if not value:
+            return "N/A"
         return yaml.dump(value)
     if hasattr(value, "make_context") and "{" not in (ctxt := value.make_context()):
         return ctxt
@@ -304,8 +327,6 @@ def raw_sparkle(f):
     doc = inspect.getdoc(f)
     if doc is None:
         raise ValueError(f"Function {f} has no docstring.")
-    # if "{input_yaml}" not in doc:
-    #     raise ValueError(f"Function {f} docstring {doc} does not contain {{input_yaml}}")
     if "{formatting_instructions}" not in doc:
         raise ValueError(
             f"Function {f} docstring {doc} does not contain {{formatting_instructions}}"
@@ -343,6 +364,46 @@ def raw_sparkle(f):
         )
 
     return wrapper
+
+
+def cmd_sparkle(allowed_commands: list[str]):
+    def decorator(f):
+        doc = inspect.getdoc(f)
+        if doc is None:
+            raise ValueError(f"Function {f} has no docstring.")
+
+        sig = inspect.signature(f)
+        llm = default_llm()
+
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            try:
+                f(*args, **kwargs)
+            except Exception as e:
+                raise ValueError(f"Failed to call {f} with {args} and {kwargs}") from e
+            ba = sig.bind(*args, **kwargs)
+            return_type = get_type_hints(f).get("return", inspect.Signature.empty)
+            if return_type is inspect.Signature.empty:
+                raise ValueError(f"Function {f} has no return type.")
+            ctxt = []
+            args = dict(ba.arguments.items())
+            if args:
+                ctxt.append("```yml")
+                ctxt.append(yaml.dump(args))
+                ctxt.append("```")
+            input_str = "\n".join(ctxt)
+            prompt = ChatPromptTemplate.from_template(doc)
+            chain = prompt | llm | CmdParser(allowed_commands=allowed_commands)
+            return chain.invoke(
+                {
+                    "input_yaml": input_str,
+                    **{k: make_str_of_value(v) for k, v in args.items()},
+                }
+            )
+
+        return wrapper
+
+    return decorator
 
 
 def sparkle(f):

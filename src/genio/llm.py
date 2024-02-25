@@ -4,8 +4,6 @@ from functools import cache
 
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_community.chat_models import ChatOllama
-from langchain_openai import ChatOpenAI
 
 
 @cache

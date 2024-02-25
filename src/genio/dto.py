@@ -1,5 +1,5 @@
 from __future__ import annotations
-from dataclasses import dataclass
+from pydantic.dataclasses import dataclass
 from .architect import (
     InteriorDesignGuidelines,
     ArchitecturalGuidelines,
@@ -9,13 +9,13 @@ from .architect import (
     ConceptPacket,
     TriConcept,
 )
+import pickle as pkl
 
 
 @dataclass
 class RoomDocket:
     name: str
-    classref: ClassRef
-
+    classref: ClassRef | None
     tri_concept: TriConcept
 
 
@@ -61,3 +61,9 @@ class SchoolDocket:
                 )
             ],
         )
+
+
+if __name__ == "__main__":
+    with open("assets/test.pkl", "rb") as f:
+        concept_packet = pkl.load(f)
+    docket = SchoolDocket.from_concept_packet(concept_packet)
