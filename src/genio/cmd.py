@@ -1,12 +1,26 @@
-import shlex
+from typing import Any
+import ast
+import re
+
+pattern: re.Pattern = re.compile(
+    r"^```(?:python)?(?P<python>[^`]*)", re.MULTILINE | re.DOTALL
+)
 
 
-def parse_command(cmd: str) -> list[str]:
-    for line in cmd.splitlines():
-        line = line.strip()
-        if line.startswith(">") or line.startswith("$"):
-            return shlex.split(line[1:])
-    return []
+def grab_python_code(response: str) -> str:
+    if "```" in response:
+        text = pattern.search(response).group("python")
+    else:
+        text = response
+    return text
+
+
+def parse_command(cmd: str) -> list[Any]:
+    pycode = grab_python_code(cmd)
+    expr = ast.parse(pycode, mode="eval").body
+    fn_name = expr.func.id
+    fn_args = [arg.s if hasattr(arg, "s") else arg.id for arg in expr.args]
+    return [fn_name] + fn_args
 
 
 class CommandTarget:

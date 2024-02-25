@@ -166,7 +166,8 @@ class CmdParser(BaseOutputParser):
         parsed = parse_command(text)
         if not parsed:
             raise OutputParserException(
-                "No command found in completion." "Commands must start with `>` or `$`",
+                "No command found in completion."
+                "Commands must be given as a single Python code call statement",
                 llm_output=text,
             )
         command = parsed[0]

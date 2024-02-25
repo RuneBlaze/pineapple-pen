@@ -539,11 +539,14 @@ def _elicit_conversation(
     How would you contribute something new to the conversation? Act almost as a novelist
     trying to create an interesting conversation in a novel, and act as the person you are to push
     the conversation to that direction.
-    You can either do
-    `> sayto <person_in_quotes> <text_in_quotes>` or
-    `> say <text_in_quotes>`
 
-    Remember to prefix your command with `> ` or `$ `. You have two commands to choose from.
+    Return your call on one of two Python functions, in ``python`` code blocks.
+
+    1. `sayto(target_person: str, what_to_say: str) -> None` - Say something to a specific person.
+    2. `say(what_to_say: str) -> None` - Say something to everyone/anyone in the conversation.
+
+    Either give Python code directly, or surround your function call with triple backticks.
+    Remember to always quote the strings, especially when referring to the target person.
     """
     ...
 
