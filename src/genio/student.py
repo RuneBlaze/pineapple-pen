@@ -5,7 +5,6 @@ from functools import cache
 from random import gauss, choice
 from typing import Annotated
 
-from .architect import yamlize
 from .namegen import NameGenerator
 from .height_chart import HeightChart
 
@@ -20,6 +19,7 @@ from .base import (
     slurp_toml,
     raw_sparkle,
     AgentLike,
+    yamlize,
 )
 
 

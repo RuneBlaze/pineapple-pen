@@ -1,19 +1,22 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, is_dataclass
+from dataclasses import dataclass
 from functools import cache
 from random import choice
 from typing import Annotated
+from random import choice
+
 from .family import Backdrop
 from random import sample
 import shelve
-from .base import raw_sparkle
+from .base import raw_sparkle, yamlize
 import re
+import pickle as pkl
 from structlog import get_logger
 
+from tqdm import tqdm
 from .base import slurp_toml
 
-import yaml
 from icecream import ic
 
 from .base import (
@@ -52,12 +55,6 @@ def sample_literature() -> str:
 
 def format_markdown_list(items: list[str]) -> str:
     return "\n".join([f"- {i}" for i in items])
-
-
-def yamlize(item: object) -> str:
-    if is_dataclass(item):
-        return yaml.dump(item.__dict__)
-    return yaml.dump(item)
 
 
 @dataclass
@@ -237,18 +234,28 @@ class ClassRef:
 @dataclass
 class HardwareConcept:
     walls_and_windows: Annotated[
-        str, "A description of the walls, as designed by the architect."
+        str,
+        "A description of the walls, as designed by the architect. No more than two sentences.",
     ]
-    floors: Annotated[str, "A description of the floors, as designed by the architect."]
+    floors: Annotated[
+        str,
+        "A description of the floors, as designed by the architect. No more than two sentences.",
+    ]
     lighting: Annotated[
-        str, "A description of the lighting, as designed by the architect."
+        str,
+        "A description of the lighting, as designed by the architect. No more than two sentences.",
     ]
 
 
 @dataclass
 class FurnitureConcept:
-    furniture_ideas: Annotated[list[str], "A list of furniture styles."]
-    decors: Annotated[list[str], "A list of small decors and accessories for the room."]
+    furniture_ideas: Annotated[
+        list[str], "A list of furniture styles. No more than four list entries."
+    ]
+    decors: Annotated[
+        list[str],
+        "A list of small decors and accessories for the room. No more than four list entries.",
+    ]
 
 
 @dataclass
@@ -414,6 +421,44 @@ def design_furniture_concept(
     ...
 
 
+@dataclass
+class NovelistConcept:
+    room_name: Annotated[str, "The name of the room."]
+    brief_description: Annotated[
+        str, "A brief description of the room, in one sentence."
+    ]
+    longer_description: Annotated[
+        str,
+        (
+            "A longer description of the room, as if intro"
+            "text for the player in a text adventure game."
+            "Describe visuals, sounds, and smells."
+            "Elicit mental imagery."
+        ),
+    ]
+
+
+@raw_sparkle
+def design_novelist_concept(
+    room_name: str,
+    hardware_concept: HardwareConcept,
+    furniture_concept: FurnitureConcept,
+) -> NovelistConcept:
+    """Act as a novelist doing excellent game design, and write the lore text for a {room_name}.
+
+    Remember, you are writing for a game, so the lore text should be engaging and interesting,
+    while be informational to new players.
+
+    Here are the hardware and furniture concepts for the room:
+    ```
+    {hardware_concept}
+    {furniture_concept}
+    ```
+
+    {formatting_instructions}
+    """
+
+
 class LogicalClassroom:
     def __init__(
         self,
@@ -433,6 +478,29 @@ def cache_retrieve_or_generate(
     if key not in cache:
         cache[key] = func(*args, **kwargs)
     return cache[key]
+
+
+@dataclass
+class ConceptPacket:
+    school_concept: SchoolConcept
+    architectural_guidelines: ArchitecturalGuidelines
+    interior_guidelines: InteriorDesignGuidelines
+    floor_plan: FloorPlan
+    concepts_and_catalogues: list[tuple[SingleFloorConcept, RoomCatalogue]]
+    floor_rooms: list[list[TriConcept]]
+
+
+@dataclass
+class TriConcept:
+    hardware_concept: HardwareConcept
+    furniture_concept: FurnitureConcept
+    novelist_concept: NovelistConcept
+
+    classref: ClassRef | None = None
+
+    @property
+    def name(self) -> str:
+        return self.novelist_concept.room_name
 
 
 if __name__ == "__main__":
@@ -458,39 +526,94 @@ if __name__ == "__main__":
         interior_guidelines = db["interior_guidelines"]
         floor_plan = db["floor_plan"]
         concepts_and_catalogs = db["concepts_and_catalogs"]
-
-    ic(school_concept)
-    ic(guidelines)
-    ic(interior_guidelines)
-    ic(concepts_and_catalogs)
-
-    for concept, catalog in concepts_and_catalogs:
-        for room in catalog.rooms:
-            if is_classroom_name(room):
-                class_ref = parse_classroom_name(room)
-                if class_ref.is_primary():
-                    hardware_concept = design_hardware_concept(
-                        f"primary school classroom in a Gakuen Toshi: Grade {class_ref.grade} Class {class_ref.class_num}",
-                        "The classroom should be designed to be friendly and welcoming to children.",
-                        guidelines,
-                    )
+    tri_concepts = []
+    cached_primary_school_hardware = []
+    cached_secondary_school_hardware = []
+    cached_primary_school_furniture = []
+    cached_secondary_school_furniture = []
+    tt = sum([len(c.rooms) for _, c in concepts_and_catalogs])
+    with tqdm(total=tt) as pbar:
+        for concept, catalog in concepts_and_catalogs:
+            tri_concepts.append([])
+            for room in catalog.rooms:
+                if is_classroom_name(room):
+                    class_ref = parse_classroom_name(room)
+                    if class_ref.is_primary():
+                        room_title = f"primary school classroom in a Gakuen Toshi: Grade {class_ref.grade} Class {class_ref.class_num}"
+                        room_extra = "The classroom should be designed to be friendly and welcoming to children."
+                        cache_type = "primary"
+                    else:
+                        room_title = f"secondary school classroom in a Gakuen Toshi: Grade {class_ref.grade} Class {class_ref.class_num}"
+                        room_extra = "The classroom should be designed to be friendly while studious to accommodate the older students."
+                        cache_type = "secondary"
+                else:
+                    class_ref = None
+                    cache_type = None
+                    room_title = f"**{room}** (on floor {concept.floor_title})."
+                    room_extra = f"For context, here is the concept for the school:\n```\n{yamlize(school_concept)}\n```\n"
+                if cache_type == "primary" and len(cached_primary_school_hardware) > 2:
+                    hardware_concept = choice(cached_primary_school_hardware)
+                    # print("cached primary", hardware_concept)
+                elif (
+                    cache_type == "secondary"
+                    and len(cached_secondary_school_hardware) > 2
+                ):
+                    hardware_concept = choice(cached_secondary_school_hardware)
+                    # print("cached secondary", hardware_concept)
                 else:
                     hardware_concept = design_hardware_concept(
-                        f"secondary school classroom in a Gakuen Toshi: Grade {class_ref.grade} Class {class_ref.class_num}",
-                        "The classroom should be designed to be friendly while studious to accommodate the older students.",
+                        room_title,
+                        room_extra,
                         guidelines,
                     )
-                if class_ref.is_primary():
-                    furniture_concept = design_furniture_concept(
-                        f"primary school classroom in a Gakuen Toshi: Grade {class_ref.grade} Class {class_ref.class_num}",
-                        "The classroom should be designed to be friendly and welcoming to children.",
-                        interior_guidelines,
-                    )
+
+                    if cache_type == "primary":
+                        cached_primary_school_hardware.append(hardware_concept)
+                    elif cache_type == "secondary":
+                        cached_secondary_school_hardware.append(hardware_concept)
+
+                if cache_type == "primary" and len(cached_primary_school_furniture) > 2:
+                    furniture_concept = choice(cached_primary_school_furniture)
+                    # print("cached primary", furniture_concept)
+                elif (
+                    cache_type == "secondary"
+                    and len(cached_secondary_school_furniture) > 2
+                ):
+                    furniture_concept = choice(cached_secondary_school_furniture)
+                    # print("cached secondary", furniture_concept)
                 else:
                     furniture_concept = design_furniture_concept(
-                        f"secondary school classroom in a Gakuen Toshi: Grade {class_ref.grade} Class {class_ref.class_num}",
-                        "The classroom should be designed to be friendly while studious to accommodate the older students.",
+                        room_title,
+                        room_extra,
                         interior_guidelines,
                     )
-                ic(hardware_concept)
-                ic(furniture_concept)
+                    if cache_type == "primary":
+                        cached_primary_school_hardware.append(hardware_concept)
+                        cached_primary_school_furniture.append(furniture_concept)
+                    elif cache_type == "secondary":
+                        cached_secondary_school_hardware.append(hardware_concept)
+                        cached_secondary_school_furniture.append(furniture_concept)
+
+                novelist_concept = design_novelist_concept(
+                    room_title, hardware_concept, furniture_concept
+                )
+                tri_concepts[-1].append(
+                    TriConcept(
+                        hardware_concept=hardware_concept,
+                        furniture_concept=furniture_concept,
+                        novelist_concept=novelist_concept,
+                        classref=class_ref,
+                    )
+                )
+                pbar.update(1)
+    concept_packet = ConceptPacket(
+        school_concept=school_concept,
+        architectural_guidelines=guidelines,
+        interior_guidelines=interior_guidelines,
+        floor_plan=floor_plan,
+        concepts_and_catalogues=concepts_and_catalogs,
+        floor_rooms=tri_concepts,
+    )
+
+    with open("assets/test.pkl", "wb") as f:
+        pkl.dump(concept_packet, f)

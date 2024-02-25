@@ -23,12 +23,12 @@ import tomlkit as tomllib
 import yaml
 from icecream import ic
 from langchain.output_parsers import OutputFixingParser
-from langchain_community.chat_models import ChatOllama
 from langchain_core.exceptions import OutputParserException
 from langchain_core.output_parsers import BaseOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
-from .glueyaml import clean_yaml
+from .llm import default_llm
+from .robustyaml import cleaning_parse
 
 
 def tomlkit_to_popo(d):
@@ -55,11 +55,11 @@ def tomlkit_to_popo(d):
     return result
 
 
-@cache
-def default_llm() -> ChatOllama:
-    return ChatOllama(
-        model="openhermes:7b-mistral-v2-q5_0", base_url="http://192.168.40.9:11434"
-    )
+# @cache
+# def default_llm() -> ChatOllama:
+#     return ChatOllama(
+#         model="openhermes:7b-mistral-v2-q5_0", base_url="http://192.168.40.9:11434"
+#     )
 
 
 @dataclass
@@ -139,11 +139,13 @@ pattern: re.Pattern = re.compile(
 
 
 class RawYmlParser(BaseOutputParser):
+    expected_keys: list[str] | None
+
     def parse(self, text: str) -> Any:
         if "```" in text:
             text = pattern.search(text).group("yaml")
         try:
-            return clean_yaml(text.replace("\\_", "_"))
+            return cleaning_parse(text.replace("\\_", "_"), self.expected_keys)
         except yaml.YAMLError as e:
             msg = f"Failed to parse YAML from completion {text}. Got: {e}"
             raise OutputParserException(msg, llm_output=text) from e
@@ -155,14 +157,22 @@ class RawYmlParser(BaseOutputParser):
         return "Please return in YAML."
 
 
-def ask_for_yaml(prompt: str) -> Any:
+def ask_for_yaml(prompt: str, expected_keys: list[str] | None = None) -> Any:
     template = ChatPromptTemplate.from_template(prompt)
     llm = default_llm()
-    chain = template | llm | RawYmlParser()
+    chain = template | llm | RawYmlParser(expected_keys=expected_keys)
     return chain.invoke({})
 
 
 T = TypeVar("T")
+
+
+def clean_null_values(d: dict) -> None:
+    for k, v in d.items():
+        if isinstance(v, dict):
+            clean_null_values(v)
+        elif v is None:
+            del d[k]
 
 
 def instantiate_instance(cls: Type[T], data: dict) -> T:
@@ -175,11 +185,10 @@ def instantiate_instance(cls: Type[T], data: dict) -> T:
         for arg in args:
             buf.append(f"# {arg.name}: {arg.description}")
             if arg.name in data:
-                buf.append(f"{arg.name}: {data[arg.name]}")
+                buf.append(yamlize({arg.name: data[arg.name]}).strip())
             else:
                 buf.append(f"{arg.name}: UNSET # Please fill in")
         buf_joined = "\n".join(buf)
-        breakpoint()
         prompt = (
             f"There is a YAML with some fields UNSET. Please fill out the YAML:\n"
             f"```\n"
@@ -187,7 +196,7 @@ def instantiate_instance(cls: Type[T], data: dict) -> T:
             f"```\n"
             "Please return in YAML.\n"
         )
-        yml = ask_for_yaml(prompt)
+        yml = ask_for_yaml(prompt, [arg.name for arg in args])
         return cls(**yml)
 
 
@@ -199,7 +208,7 @@ class YamlParser(BaseOutputParser):
         if "```" in text:
             text = pattern.search(text).group("yaml")
         try:
-            data = clean_yaml(text.replace("\\_", "_"))
+            data = cleaning_parse(text.replace("\\_", "_"))
             if isinstance(data, dict):
                 data = {k.replace(" ", "_"): v for k, v in data.items()}
                 data = {k.lower(): v for k, v in data.items()}
@@ -259,13 +268,13 @@ def inst_for_struct(klass):
     docstrings = get_docstrings(klass)
     prompt = ""
     prompt += "Fill out the following YAML fields:\n"
+    prompt += "```yml\n"
     for arg in docstrings.args:
         prompt += (
-            f"- {arg.name}: {arg.description}\n"
-            if arg.description
-            else f"- {arg.name}\n"
+            f"{arg.name}: # {arg.description}\n" if arg.description else f"{arg.name}\n"
         )
-    prompt += "Please return in YAML."
+    prompt += "```\n"
+    prompt += "Please return a YAML dict."
     return prompt
 
 
@@ -274,8 +283,8 @@ def make_str_of_value(value):
         return value
     if isinstance(value, list):
         return yaml.dump(value)
-    if hasattr(value, "make_context"):
-        return value.make_context()
+    if hasattr(value, "make_context") and "{" not in (ctxt := value.make_context()):
+        return ctxt
     if is_dataclass(value):
         return yaml.dump(asdict(value))
 
@@ -406,3 +415,9 @@ class AgentLike(Protocol):
 
     def local_time(self) -> int:
         ...
+
+
+def yamlize(item: object) -> str:
+    if is_dataclass(item):
+        return yaml.dump(item.__dict__)
+    return yaml.dump(item)

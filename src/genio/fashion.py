@@ -8,7 +8,8 @@ from icecream import ic
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
-from .base import Mythical, default_llm, generate_using_docstring, sparkle
+from .base import Mythical, generate_using_docstring, sparkle
+from .llm import default_llm
 
 
 def generate_inspiration_keywords():
@@ -109,7 +110,9 @@ class Designer(Mythical):
 
 @dataclass
 class BrandConcept(Mythical):
-    """A line name with the core line idea, based on the brand: \n```\n{description}\n```\n. The brand name should be chic. This brand should distinguish itself from its competitors. Your writing will be a concept used for a light novel, but no need to lean towards stereotypical Japanese concepts."""
+    """A line name with the core line idea, based on the brand: \n```\n{description}\n```\n. The brand name should be
+    chic. This brand should distinguish itself from its competitors. Your writing will be a concept used for a light
+    novel, but no need to lean towards stereotypical Japanese concepts."""
 
     brand_name: str
     design_principle: Annotated[
@@ -142,7 +145,10 @@ class ResumeRatingResult:
 
 @dataclass
 class CandidateResume:
-    """A resume in the {industry} industry of a non-stereotypical candidate. Your writing will be unique, quirky, and creative, like a concept used for a light novel. This person's motivation and personality is deeply motivated by this secret: {one_line_bio}. This person might have just entered the industry and might not be an industry vet."""
+    """A resume in the {industry} industry of a non-stereotypical candidate. Your writing will be unique, quirky,
+    and creative, like a concept used for a light novel. This person's motivation and personality is deeply motivated
+    by this secret: {one_line_bio}. This person might have just entered the industry and might not be an industry
+    vet."""
 
     name: str
     age: float

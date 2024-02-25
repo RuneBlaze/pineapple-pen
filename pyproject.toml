@@ -17,6 +17,9 @@ faker = "^23.2.1"
 jupyter = "^1.0.0"
 sentence-transformers = "^2.3.1"
 structlog = "^24.1.0"
+langchain-google-genai = "^0.0.9"
+openai = "^1.12.0"
+langchain-openai = "^0.0.7"
 
 
 [tool.poetry.group.dev.dependencies]
