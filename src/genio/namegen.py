@@ -1,8 +1,10 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Literal
-from random import choice
 from functools import cache
+from random import choice
+from typing import Literal
+
 import pandas as pd
 
 

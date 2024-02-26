@@ -1,5 +1,5 @@
-from genio.student import Archetype, StudentProfile, MemoryBank
 import pytest
+from genio.student import Archetype, MemoryBank, StudentProfile
 
 
 @pytest.mark.skip("takes too long")

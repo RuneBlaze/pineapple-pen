@@ -1,4 +1,5 @@
 from functools import cache
+
 from sentence_transformers import SentenceTransformer
 
 

@@ -1,6 +1,7 @@
-from .base import raw_sparkle
 from dataclasses import dataclass
 from typing import Annotated
+
+from .base import raw_sparkle
 
 
 @dataclass

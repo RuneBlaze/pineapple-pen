@@ -1,28 +1,51 @@
 from __future__ import annotations
 
+import pickle as pkl
+from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import cache
-from random import gauss, choice, random
+from random import choice, gauss, random
 from typing import Annotated
+import datetime as dt
+import humanize
+from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 
-from .namegen import NameGenerator
-from .height_chart import HeightChart
-
-from .utils import embed_single_sentence
 from numpy.typing import NDArray
 from sentence_transformers.util import cos_sim
-from .base import cmd_sparkle, levenshtein_distance
-import pickle as pkl
 
 from .base import (
+    AgentLike,
     Mythical,
     WriterArchetype,
+    cmd_sparkle,
     generate_using_docstring,
-    slurp_toml,
+    levenshtein_distance,
     raw_sparkle,
-    AgentLike,
+    slurp_toml,
     yamlize,
 )
+from .height_chart import HeightChart
+from .namegen import NameGenerator
+from .utils import embed_single_sentence
+
+
+class Clock:
+    def __init__(self, time: dt.datetime) -> None:
+        self.state = time
+
+    def add_seconds(self, seconds: float) -> None:
+        self.state += dt.timedelta(seconds=seconds)
+
+    def add_minutes(self, minutes: float) -> None:
+        self.state += dt.timedelta(minutes=minutes)
+
+    @staticmethod
+    def default() -> Clock:
+        return Clock(dt.datetime(2002, 11, 6, 9))
+
+
+global_clock = Clock.default()
 
 
 @cache
@@ -160,6 +183,8 @@ class MemoryEntry:
     significance: int
     embedding: NDArray[float]
 
+    timestamp: dt.datetime
+
 
 @raw_sparkle
 def witness_event(agent: AgentLike, related_events: list[str], event: str) -> Thought:
@@ -233,19 +258,39 @@ def compact_memories(agent: AgentLike, memories: list[str]) -> CompactedMemories
     """
 
 
+@dataclass
+class ShortTermMemoryEntry:
+    log: str
+    timestamp: dt.datetime
+
+
+def humanize_time_delta(delta: dt.timedelta) -> str:
+    if delta.seconds <= 10:
+        return "just now"
+    return humanize.naturaltime(delta) + " ago"
+
+
 class MemoryBank:
     def __init__(self, agent: AgentLike, max_memories: int = 30) -> None:
         self.agent = agent
         self.max_memories = max_memories
         self.memories = []
         self.short_term_memories = []
-        self.short_term_memories_watermark = 0
+        self.short_term_memories_watermark = global_clock.state
 
     def add_short_term_memory(self, log: str) -> None:
-        self.short_term_memories.append(log)
+        self.short_term_memories.append(ShortTermMemoryEntry(log, global_clock.state))
 
     def catch_up_short_term_memories(self) -> None:
+        # TODO: implement this.
         self.short_term_memories_watermark = len(self.short_term_memories)
+
+    def short_term_memories_repr(self) -> list[str]:
+        to_concat = [
+            (humanize_time_delta(global_clock.state - x.timestamp), x.log)
+            for x in self.short_term_memories
+        ]
+        return [f"{(x[0])} {x[1]}" for x in to_concat]
 
     def witness_event(self, log: str) -> None:
         related_events = self.recall(log, max_recall=5)
@@ -258,6 +303,7 @@ class MemoryBank:
                     t.thought,
                     t.significance,
                     embed_single_sentence(t.thought),
+                    global_clock.state,
                 )
             )
         if len(self.memories) > self.max_memories:
@@ -268,7 +314,9 @@ class MemoryBank:
         compacted = compact_memories(self.agent, memories)
         for log, significance in zip(compacted.memories, compacted.significances):
             self.memories.append(
-                MemoryEntry(log, significance, embed_single_sentence(log))
+                MemoryEntry(
+                    log, significance, embed_single_sentence(log), global_clock.state
+                )
             )
         self.memories = sorted(
             self.memories, key=lambda x: x.significance, reverse=True
@@ -291,11 +339,6 @@ class MemoryBank:
 
     def __repr__(self):
         return super().__repr__()
-
-
-@dataclass
-class World:
-    elapsed_minutes: int = 0
 
 
 def age_from_grade(grade: int) -> float:
@@ -331,8 +374,19 @@ class Student:
         brief_thought = brief_thought.brief_thought
         self.memories.add_short_term_memory(f"{name} thought: {brief_thought}")
 
-    def __str__(self) -> str:
-        return
+
+def estimate_speaking_time(sentence, words_per_minute=135):
+    """
+    Estimate the speaking time for a given sentence.
+
+    :param sentence: The sentence to estimate speaking time for.
+    :param words_per_minute: Average speaking rate (default is 135 WPM).
+    :return: Estimated time in seconds to speak the sentence.
+    """
+    words = len(sentence.split())
+    minutes = words / words_per_minute
+    seconds = minutes * 60
+    return round(seconds, 2)
 
 
 @dataclass
@@ -346,10 +400,7 @@ class AppearanceOf:
     ]
 
 
-from collections.abc import Mapping
-
-
-class Convo:
+class Scenario:
     def __init__(
         self,
         students: list[Student],
@@ -360,11 +411,21 @@ class Convo:
         self.appearance_matrix = appearance_matrix
         self.location_description = location_description
 
+        # Expensive executor is used for Google Gemini
+        # self.expensive_executor = ThreadPoolExecutor(max_workers=2)
+        # Cheap executor is used for Mistral 7B
+        # self.cheap_executor = ThreadPoolExecutor(max_workers=1)
+
     def start_round(self) -> None:
-        for student in self.students:
-            brief_thought = elicit_brief_thought(
-                student, self.extra_context_for_student(student)
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            brief_thoughts = executor.map(
+                lambda student: elicit_brief_thought(
+                    student, self.extra_context_for_student(student)
+                ),
+                self.students,
             )
+
+        for student, brief_thought in zip(self.students, brief_thoughts):
             student.inject_brief_thought(brief_thought)
 
     def elicit_conversation(self, student: Student) -> list[str]:
@@ -399,6 +460,8 @@ class Convo:
                         closest_distance = distance
                         closest_match = other
                 log = f"{student.profile.name} said to {closest_match.profile.name}: {what_said}"
+                elapsed = estimate_speaking_time(what_said)
+                global_clock.add_seconds(elapsed)
                 print(log)
                 for stu in self.students:
                     stu.memories.add_short_term_memory(log)
@@ -411,6 +474,8 @@ class Convo:
                     student = choice(available_students)
             elif cmd[0] == "say":
                 what_said = cmd[1]
+                elapsed = estimate_speaking_time(what_said)
+                global_clock.add_seconds(elapsed)
                 log = f"{student.profile.name} said: {what_said}"
                 print(log)
                 for stu in self.students:
@@ -463,7 +528,7 @@ def _create_appearance_of(
 
 def create_appearance_of(agent: Student, target: Student) -> AppearanceOf:
     memories = agent.memories.recall(target.profile.bio)
-    short_term = agent.memories.short_term_memories
+    short_term = agent.memories.short_term_memories_repr()
     return _create_appearance_of(
         agent.profile.agent_context(),
         memories,
@@ -505,7 +570,7 @@ def _elicit_brief_thought(
 
 def elicit_brief_thought(student: Student, extra_observation: str) -> BriefThought:
     memories = student.memories.recall("conversation")
-    short_term = student.memories.short_term_memories
+    short_term = student.memories.short_term_memories_repr()
     return _elicit_brief_thought(
         student.profile.agent_context(), memories, short_term, extra_observation
     )
@@ -553,7 +618,7 @@ def _elicit_conversation(
 
 def elicit_conversation(student: Student, extra_observation: str) -> list[str]:
     memories = student.memories.recall("conversation")
-    short_term = student.memories.short_term_memories
+    short_term = student.memories.short_term_memories_repr()
     return _elicit_conversation(
         student.profile.agent_context(), memories, short_term, extra_observation
     )
@@ -571,7 +636,7 @@ if __name__ == "__main__":
     #         if i != j:
     #             d[i][j] = create_appearance_of(three_students[i], three_students[j])
     #
-    # convo = Convo(three_students, d, """As you step inside the Principal's Office, a sense of
+    # convo = Scenario(three_students, d, """As you step inside the Principal's Office, a sense of
     #       reverence washes over you. Durable stone flooring, adorned with geometric
     #       patterns, complements the warm wooden walls, creating an atmosphere of timeless
     #       elegance. Recessed LED lighting provides a modern touch, while traditional
@@ -583,8 +648,13 @@ if __name__ == "__main__":
     #       room.""")
     # convo.start_round()
 
+    # with open("assets/convo.pkl", "wb") as f:
+    #     pkl.dump(convo, f)
+
     with open("assets/convo.pkl", "rb") as f:
         convo = pkl.load(f)
+    #     convo.__dict__["expensive_executor"] = ThreadPoolExecutor(max_workers=2)
+    #     convo.__dict__["cheap_executor"] = ThreadPoolExecutor(max_workers=1)
     first_student = choice(convo.students)
     convo.conversation_loop(first_student)
     #

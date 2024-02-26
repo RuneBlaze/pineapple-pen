@@ -4,38 +4,32 @@ import inspect
 import random
 import re
 from abc import ABC
-from dataclasses import dataclass, fields
+from dataclasses import asdict, dataclass, fields, is_dataclass
 from functools import cache, wraps
-from dataclasses import asdict, is_dataclass
 from typing import (
     Annotated,
     Any,
+    Protocol,
     Type,
     TypeVar,
     get_args,
     get_origin,
     get_type_hints,
-    Protocol,
 )
-
-from .cmd import parse_command
-from .llm import LangFuseCallbackHandler
 
 import tomlkit
 import tomlkit as tomllib
 import yaml
 from icecream import ic
+from langchain_community.callbacks import wandb_tracing_enabled
 from langchain.output_parsers import OutputFixingParser
 from langchain_core.exceptions import OutputParserException
 from langchain_core.output_parsers import BaseOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
-from .llm import default_llm
+from .cmd import parse_command
+from .llm import LangFuseCallbackHandler, default_llm
 from .robustyaml import cleaning_parse
-
-langfuse_handler = LangFuseCallbackHandler()
-
-langfuse_handler.auth_check()
 
 
 def tomlkit_to_popo(d):
@@ -181,7 +175,7 @@ def ask_for_yaml(prompt: str, expected_keys: list[str] | None = None) -> Any:
     template = ChatPromptTemplate.from_template(prompt)
     llm = default_llm()
     chain = template | llm | RawYamlParser(expected_keys=expected_keys)
-    return chain.invoke({}, config={"callbacks": [langfuse_handler]})
+    return chain.invoke({})
 
 
 T = TypeVar("T")
@@ -281,7 +275,7 @@ def generate_using_docstring(klass: Type[T], args: dict) -> T:
         | llm
         | OutputFixingParser.from_llm(parser=YamlParser(cls=klass), llm=llm)
     )
-    return chain.with_retry().invoke(args, config={"callbacks": [langfuse_handler]})
+    return chain.with_retry().invoke(args)
 
 
 def inst_for_struct(klass):
@@ -359,8 +353,7 @@ def raw_sparkle(f):
                 "input_yaml": input_str,
                 "formatting_instructions": formatting_instructions,
                 **{k: make_str_of_value(v) for k, v in args.items()},
-            },
-            config={"callbacks": [langfuse_handler]},
+            }
         )
 
     return wrapper
@@ -398,8 +391,7 @@ def cmd_sparkle(allowed_commands: list[str]):
                 {
                     "input_yaml": input_str,
                     **{k: make_str_of_value(v) for k, v in args.items()},
-                },
-                config={"callbacks": [langfuse_handler]},
+                }
             )
 
         return wrapper
@@ -442,7 +434,7 @@ def sparkle(f):
         prompt = ChatPromptTemplate.from_template("\n".join(ctxt))
         chain = prompt | llm | YamlParser(cls=return_type)
         ic(prompt)
-        return chain.invoke({}, config={"callbacks": [langfuse_handler]})
+        return chain.invoke({})
 
     return wrapper
 

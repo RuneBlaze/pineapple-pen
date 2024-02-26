@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from functools import cache
-from typing import Optional, Any
+from typing import Any, Optional
 from uuid import UUID
 
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
-from langchain_core.outputs import LLMResult, ChatGeneration
+from google.generativeai.types import HarmBlockThreshold, HarmCategory
+from langchain_core.outputs import ChatGeneration, LLMResult
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langfuse.callback import CallbackHandler
-from langfuse.callback.langchain import LangchainCallbackHandler, _extract_raw_esponse
+from langfuse.callback.langchain import _extract_raw_esponse
 
 
 @cache
@@ -29,6 +29,7 @@ def default_llm() -> ChatGoogleGenerativeAI:
 #         model="openhermes:7b-mistral-v2-q5_0", base_url="http://192.168.40.9:11434"
 #     )
 
+
 # @cache
 # def default_llm() -> ChatOpenAI:
 #     return ChatOpenAI(model="gpt-3.5-turbo-0125")
@@ -37,6 +38,7 @@ class LangFuseCallbackHandler(CallbackHandler):
     A monkey-patched version of the LangFuseCallbackHandler that
     works for LangChain Google Generative AI.
     """
+
     def on_llm_end(
         self,
         response: LLMResult,

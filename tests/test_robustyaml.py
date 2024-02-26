@@ -1,5 +1,6 @@
-from genio.robustyaml import cleaning_parse
 import os
+
+from genio.robustyaml import cleaning_parse
 
 
 def test_robust_yaml_can_parse_erronous_yaml():

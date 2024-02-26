@@ -1,6 +1,6 @@
-from typing import Any
 import ast
 import re
+from typing import Any
 
 pattern: re.Pattern = re.compile(
     r"^```(?:python)?(?P<python>[^`]*)", re.MULTILINE | re.DOTALL

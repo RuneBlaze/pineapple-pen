@@ -1,8 +1,7 @@
 from dataclasses import dataclass
 
-from genio.base import Mythical, generate_using_docstring
-
 import pytest
+from genio.base import Mythical, generate_using_docstring
 
 
 @dataclass

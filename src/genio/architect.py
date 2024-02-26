@@ -1,27 +1,25 @@
 from __future__ import annotations
 
+import pickle as pkl
+import re
+import shelve
 from dataclasses import dataclass
 from functools import cache
-from random import choice
+from random import choice, sample
 from typing import Annotated
 
-from .family import Backdrop
-from random import sample
-import shelve
-from .base import raw_sparkle, yamlize
-import re
-import pickle as pkl
 from structlog import get_logger
-
 from tqdm import tqdm
-from .base import slurp_toml
-
 
 from .base import (
     Mythical,
     generate_using_docstring,
+    raw_sparkle,
+    slurp_toml,
     sparkle,
+    yamlize,
 )
+from .family import Backdrop
 
 logger = get_logger()
 

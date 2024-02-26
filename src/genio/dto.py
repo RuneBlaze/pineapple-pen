@@ -1,15 +1,18 @@
 from __future__ import annotations
+
+import pickle as pkl
+
 from pydantic.dataclasses import dataclass
+
 from .architect import (
-    InteriorDesignGuidelines,
     ArchitecturalGuidelines,
-    SchoolConcept,
     ClassRef,
-    SingleFloorConcept,
     ConceptPacket,
+    InteriorDesignGuidelines,
+    SchoolConcept,
+    SingleFloorConcept,
     TriConcept,
 )
-import pickle as pkl
 
 
 @dataclass

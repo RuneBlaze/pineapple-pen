@@ -1,14 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, is_dataclass
-from functools import cache
-from random import gauss
-from typing import Annotated, Literal
-from random import sample
-from dataclasses import field
 import random
-
-from .namegen import NameGenerator
+from dataclasses import dataclass, field, is_dataclass
+from functools import cache
+from random import gauss, sample
+from typing import Annotated, Literal
 
 import faker
 import yaml
@@ -21,6 +17,7 @@ from .base import (
     slurp_toml,
     sparkle,
 )
+from .namegen import NameGenerator
 
 fake = faker.Faker()
 

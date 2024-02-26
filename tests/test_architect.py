@@ -1,5 +1,5 @@
-from genio.architect import sample_literature, sample_architectural_keywords
 import pytest
+from genio.architect import sample_architectural_keywords, sample_literature
 
 
 @pytest.mark.skip("takes too long")
