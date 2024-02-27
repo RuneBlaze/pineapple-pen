@@ -21,14 +21,13 @@ import tomlkit
 import tomlkit as tomllib
 import yaml
 from icecream import ic
-from langchain_community.callbacks import wandb_tracing_enabled
 from langchain.output_parsers import OutputFixingParser
 from langchain_core.exceptions import OutputParserException
 from langchain_core.output_parsers import BaseOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
 from .cmd import parse_command
-from .llm import LangFuseCallbackHandler, default_llm
+from .llm import LangFuseCallbackHandler, aux_llm
 from .robustyaml import cleaning_parse
 
 
@@ -173,7 +172,7 @@ class CmdParser(BaseOutputParser):
 
 def ask_for_yaml(prompt: str, expected_keys: list[str] | None = None) -> Any:
     template = ChatPromptTemplate.from_template(prompt)
-    llm = default_llm()
+    llm = aux_llm()
     chain = template | llm | RawYamlParser(expected_keys=expected_keys)
     return chain.invoke({})
 
@@ -259,7 +258,7 @@ T = TypeVar("T", bound=Mythical)
 
 
 def generate_using_docstring(klass: Type[T], args: dict) -> T:
-    llm = default_llm()
+    llm = aux_llm()
     docstrings = get_docstrings(klass)
     prompt = "Generate me a "
     desc = list(" ".join(docstrings.main_description.split("\n")))
@@ -326,7 +325,7 @@ def raw_sparkle(f):
         )
 
     sig = inspect.signature(f)
-    llm = default_llm()
+    llm = aux_llm()
 
     @wraps(f)
     def wrapper(*args, **kwargs):
@@ -366,7 +365,7 @@ def cmd_sparkle(allowed_commands: list[str]):
             raise ValueError(f"Function {f} has no docstring.")
 
         sig = inspect.signature(f)
-        llm = default_llm()
+        llm = aux_llm()
 
         @wraps(f)
         def wrapper(*args, **kwargs):
@@ -406,7 +405,7 @@ def sparkle(f):
         raise ValueError(f"Function {f} has no docstring.")
 
     sig = inspect.signature(f)
-    llm = default_llm()
+    llm = aux_llm()
 
     @wraps(f)
     def wrapper(self, *args, **kwargs):

@@ -4,7 +4,7 @@ from yaml import safe_load
 from yaml.parser import ParserError
 from yaml.scanner import ScannerError
 
-from .llm import default_llm
+from .llm import aux_llm
 
 
 def is_nested_dict(d):
@@ -89,7 +89,7 @@ def fix_invalid_yaml_string(s: str) -> str:
             raise ParserError("Not a YAML dictionary: got " + str(type(x)))
         return s
     except (ParserError, ScannerError) as e:
-        llm = default_llm()
+        llm = aux_llm()
         result = llm.invoke(
             f"""The following was rejected because it is not a valid YAML dictionary.
         

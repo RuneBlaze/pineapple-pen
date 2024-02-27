@@ -9,7 +9,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
 from .base import Mythical, generate_using_docstring, sparkle
-from .llm import default_llm
+from .llm import aux_llm
 
 
 def generate_inspiration_keywords():
@@ -160,7 +160,7 @@ class CandidateResume:
 
     @staticmethod
     def generate(industry: str, one_line_bio: str | None = None) -> CandidateResume:
-        llm = default_llm()
+        llm = aux_llm()
         if not one_line_bio:
             chain = (
                 ChatPromptTemplate.from_template(
