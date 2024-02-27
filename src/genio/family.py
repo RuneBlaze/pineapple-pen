@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass, field, is_dataclass
 from functools import cache
-from random import gauss, sample
+from random import gauss, sample, choice
 from typing import Annotated, Literal
 
 import faker
@@ -330,8 +330,6 @@ def generate_expanded_life_story(score: int):
 
 
 CULTURE_POOL = ["JP", "CN", "US", "GB"]
-
-from random import choice
 
 
 @dataclass

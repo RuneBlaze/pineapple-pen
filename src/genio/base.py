@@ -25,10 +25,22 @@ from langchain.output_parsers import OutputFixingParser
 from langchain_core.exceptions import OutputParserException
 from langchain_core.output_parsers import BaseOutputParser
 from langchain_core.prompts import ChatPromptTemplate
+from jinja2 import Environment
 
 from .cmd import parse_command
-from .llm import LangFuseCallbackHandler, aux_llm
+from .llm import aux_llm
 from .robustyaml import cleaning_parse
+
+jinja_env = Environment(
+    block_start_string="{%",
+    block_end_string="%}",
+    variable_start_string="{",
+    variable_end_string="}",
+)
+
+
+def render_template(template: str, context: dict[str, Any]) -> str:
+    return jinja_env.from_string(template).render(context)
 
 
 def tomlkit_to_popo(d):
@@ -267,14 +279,14 @@ def generate_using_docstring(klass: Type[T], args: dict) -> T:
 
     prompt += "\n"
     prompt += inst_for_struct(klass)
-    template = ChatPromptTemplate.from_template(prompt)
+    template = ChatPromptTemplate.from_template(render_template(prompt, args))
 
     chain = (
         template
         | llm
         | OutputFixingParser.from_llm(parser=YamlParser(cls=klass), llm=llm)
     )
-    return chain.with_retry().invoke(args)
+    return chain.with_retry().invoke({})
 
 
 def inst_for_struct(klass):
@@ -345,15 +357,18 @@ def raw_sparkle(f):
             ctxt.append("```")
         input_str = "\n".join(ctxt)
         formatting_instructions = inst_for_struct(return_type)
-        prompt = ChatPromptTemplate.from_template(doc)
-        chain = prompt | llm | YamlParser(cls=return_type)
-        return chain.invoke(
-            {
-                "input_yaml": input_str,
-                "formatting_instructions": formatting_instructions,
-                **{k: make_str_of_value(v) for k, v in args.items()},
-            }
+        prompt = ChatPromptTemplate.from_template(
+            render_template(
+                doc,
+                {
+                    "input_yaml": input_str,
+                    "formatting_instructions": formatting_instructions,
+                    **{k: make_str_of_value(v) for k, v in args.items()},
+                },
+            )
         )
+        chain = prompt | llm | YamlParser(cls=return_type)
+        return chain.invoke({})
 
     return wrapper
 
@@ -384,14 +399,17 @@ def cmd_sparkle(allowed_commands: list[str]):
                 ctxt.append(yaml.dump(args))
                 ctxt.append("```")
             input_str = "\n".join(ctxt)
-            prompt = ChatPromptTemplate.from_template(doc)
-            chain = prompt | llm | CmdParser(allowed_commands=allowed_commands)
-            return chain.invoke(
-                {
-                    "input_yaml": input_str,
-                    **{k: make_str_of_value(v) for k, v in args.items()},
-                }
+            prompt = ChatPromptTemplate.from_template(
+                render_template(
+                    doc,
+                    {
+                        "input_yaml": input_str,
+                        **{k: make_str_of_value(v) for k, v in args.items()},
+                    },
+                )
             )
+            chain = prompt | llm | CmdParser(allowed_commands=allowed_commands)
+            return chain.invoke({})
 
         return wrapper
 

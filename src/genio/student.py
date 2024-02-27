@@ -8,7 +8,6 @@ from random import choice, gauss, random
 from typing import Annotated
 import datetime as dt
 import humanize
-from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
 from numpy.typing import NDArray
@@ -411,11 +410,6 @@ class Scenario:
         self.appearance_matrix = appearance_matrix
         self.location_description = location_description
 
-        # Expensive executor is used for Google Gemini
-        # self.expensive_executor = ThreadPoolExecutor(max_workers=2)
-        # Cheap executor is used for Mistral 7B
-        # self.cheap_executor = ThreadPoolExecutor(max_workers=1)
-
     def start_round(self) -> None:
         with ThreadPoolExecutor(max_workers=2) as executor:
             brief_thoughts = executor.map(
@@ -581,9 +575,7 @@ def _elicit_conversation(
     agent: str, memories: list[str], short_term: list[str], extra_context: str
 ) -> list[str]:
     """
-
     You are the following person:
-
     ```
     {agent}
     ```
@@ -593,7 +585,7 @@ def _elicit_conversation(
     {memories}
     ```
 
-    Here are some context:
+    Some extra context:
     {extra_context}
 
     The most recent things that happened, in your **very fresh mind**, in log form, including the conversation:
@@ -611,13 +603,15 @@ def _elicit_conversation(
     2. `say(what_to_say: str) -> None` - Say something to everyone/anyone in the conversation.
 
     Either give Python code directly, or surround your function call with triple backticks.
-    Remember to always quote the strings, especially when referring to the target person.
+    Remember to always quote the strings, especially when referring to a target person.
     """
     ...
 
 
 def elicit_conversation(student: Student, extra_observation: str) -> list[str]:
-    memories = student.memories.recall("conversation")
+    memories = student.memories.recall(
+        "conversation"
+    )  # FIXME: should not try to recall conversation.
     short_term = student.memories.short_term_memories_repr()
     return _elicit_conversation(
         student.profile.agent_context(), memories, short_term, extra_observation
