@@ -422,26 +422,27 @@ class Scenario:
         for student, brief_thought in zip(self.students, brief_thoughts):
             student.inject_brief_thought(brief_thought)
 
-    def elicit_conversation(self, student: Student) -> list[str]:
+    def elicit_conversation(self, student: Student) -> ConversationResponse:
         return elicit_conversation(student, self.extra_context_for_student(student))
 
-    # def extra_context_for_student(self, student: Student) -> str:
-    #     which_student = self.students.index(student)
-    #     other_student_descriptions = [
-    #         other.appearance for other in self.appearance_matrix[which_student].values()
-    #     ]
-    #     return (
-    #         "You are in the middle of a conversation with some others. "
-    #         "## Context:\n"
-    #         f"{self.location_description}\n"
-    #         f"## The others in the conversation:\n"
-    #         f"{yamlize(other_student_descriptions)}"
-    #     )
+    def extra_context_for_student(self, student: Student) -> Surroundings:
+        which_student = self.students.index(student)
+        other_student_descriptions = [
+            (self.students[i], other) for i, other in self.appearance_matrix[which_student].items()
+        ]
+        return Surroundings(
+            [stu.profile for stu, app in other_student_descriptions],
+            [app for stu, app in other_student_descriptions],
+        )
 
     def conversation_loop(self, student: Student) -> None:
         cnt = 0
         while True:
-            cmd = self.elicit_conversation(student)
+            raw = self.elicit_conversation(student)
+            # if raw.target_person is not None:
+            #     cmd = ["sayto", raw.target_person, raw.response]
+            # else:
+            cmd = ["say", raw.response]
             if cmd[0] == "sayto":
                 what_said = cmd.pop()
                 cmd.pop(0)
@@ -530,29 +531,39 @@ def create_appearance_of(agent: Student, target: Student) -> AppearanceOf:
         target.profile.agent_context(),
     )
 
+@dataclass
+class Surroundings:
+    people: list[StudentProfile]
+    appearances: list[AppearanceOf]
+    
+    def people_names(self) -> list[str]:
+        return [p.name for p in self.people]
+
 
 @raw_sparkle
 def _elicit_brief_thought(
-    agent: str, memories: list[str], short_term: list[str], extra_context: str
+    agent: str, memories: list[str], short_term: list[str], surroundings: Surroundings
 ) -> BriefThought:
     """
-    {extra_context}
+    You are {_agent.name}. Here is your profile:
 
-    You are the following person:
+    > {_agent.agent_context()}. {'. '.join(_memories)}
 
-    ```
-    {agent}
-    ```
+    You ({_agent.name}) are having a conversation with {', '.join(_surroundings.people_names())}. They are
+    in the room with you. You recalled your recent impression of them, still fresh in your mind:
 
-    Here are the things that this person (you) remember:
-    ```
-    {memories}
-    ```
+    {% for person, appearance in zip(_surroundings.people, _surroundings.appearances) %}
+    - **{person.name}**: [{person.age}-year-old, {person.height} CM tall] {appearance.appearance}
+    {% endfor %}
 
-    The most recent things that happened, in your **very fresh mind**, in log form:
-    ```
-    {short_term}
-    ```
+    ----
+
+    Here is your recent memories of the conversation, your thoughts, what your conversation
+    with {', '.join(_surroundings.people_names())} was like:
+
+    {% for s in _short_term %}
+    - { s }
+    {% endfor %}
 
     What do you think in the current moment? Write down a brief thought, a reaction to the moment fitting for you,
     in third person, a single phrase. Also think what happened on the subconscious level that made the person had the brief thought.
@@ -562,64 +573,58 @@ def _elicit_brief_thought(
     ...
 
 
-def elicit_brief_thought(student: Student, extra_observation: str) -> BriefThought:
+def elicit_brief_thought(student: Student, surroundings: Surroundings) -> BriefThought:
     memories = student.memories.recall("conversation")
     short_term = student.memories.short_term_memories_repr()
     return _elicit_brief_thought(
-        student.profile.agent_context(), memories, short_term, extra_observation
+        student.profile, memories, short_term, surroundings
     )
 
+
 @dataclass
-class Surroundings:
-    people: list[StudentProfile]
-    appearances: list[AppearanceOf]
+class ConversationResponse:
+    response: Annotated[str, "What you would say in this context. (Required)"]
+    # target_person: Annotated[str | None, "The person you are directly talking to. (Optional, can be null)"]
 
-
-@cmd_sparkle(["sayto", "say"])
+@raw_sparkle
 def _elicit_conversation(
     agent: StudentProfile, memories: list[str], short_term: list[str], surroundings: Surroundings
-) -> list[str]:
+) -> ConversationResponse:
     """
     You are {_agent.name}. Here is your profile:
 
     > {_agent.agent_context()}. {'. '.join(_memories)}
 
-    You ({_agent.name}) are having a conversation with {', '.join(surroundings.people)}. They are
+    You ({_agent.name}) are having a conversation with {', '.join(_surroundings.people_names())}. They are
     in the room with you. You recalled your recent impression of them, still fresh in your mind:
 
-    {% for person, appearance in zip(surroundings.people, surroundings.appearances) %}
+    {% for person, appearance in zip(_surroundings.people, _surroundings.appearances) %}
     - **{person.name}**: [{person.age}-year-old, {person.height} CM tall] {appearance.appearance}
     {% endfor %}
 
     ----
 
     Here is your recent memories of the conversation, your thoughts, what your conversation
-    with {', '.join(surroundings.people)} was like:
+    with {', '.join(_surroundings.people_names())} was like:
 
-    {% for s in short_term %}
-    - {{ s }}
+    {% for s in _short_term %}
+    - { s }
     {% endfor %}
 
     What would you ({_agent.name}) say? What would you do? Remember that your MBTI type is {_agent.mbti_type}
     and you are in grade {_agent.grade}, age {_agent.age}. If no conversation is happening, you can
     initiate one. If you are in the middle of a conversation, please continue it. Be engaging,
-    be almost like a novelist of your own life. Act your age, your grade, your MBTI type.
+    writer your own story. Act your age but be mature. Act in character.
     Act in character.
 
     ----
 
-    Return a **call** to one of two Python functions, in ``python`` code blocks,
-    only an expression, e.g., `sayto("alice", "bar")` or `say("foo")`.
-
-    ```
-    sayto(target_person: str, what_to_say: str) # Say something to a specific person.
-    say(what_to_say: str) # Say something to anyone in the conversation.
-    ```
+    {formatting_instructions}
     """
     ...
 
 
-def elicit_conversation(student: Student, surroundings: Surroundings) -> list[str]:
+def elicit_conversation(student: Student, surroundings: Surroundings) -> ConversationResponse:
     memories = student.memories.recall(
         "conversation"
     )  # FIXME: should not try to recall conversation.

@@ -37,6 +37,8 @@ jinja_env = Environment(
     variable_start_string="{",
     variable_end_string="}",
 )
+jinja_env.globals.update(zip=zip)
+
 
 
 def render_template(template: str, context: dict[str, Any]) -> str:
