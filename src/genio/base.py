@@ -364,6 +364,7 @@ def raw_sparkle(f):
                     "input_yaml": input_str,
                     "formatting_instructions": formatting_instructions,
                     **{k: make_str_of_value(v) for k, v in args.items()},
+                    **{f"_{k}": v for k, v in args.items()},
                 },
             )
         )
@@ -405,6 +406,7 @@ def cmd_sparkle(allowed_commands: list[str]):
                     {
                         "input_yaml": input_str,
                         **{k: make_str_of_value(v) for k, v in args.items()},
+                        **{f"_{k}": v for k, v in args.items()},
                     },
                 )
             )

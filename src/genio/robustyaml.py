@@ -3,6 +3,7 @@ import re
 from yaml import safe_load
 from yaml.parser import ParserError
 from yaml.scanner import ScannerError
+from collections.abc import Mapping
 
 from .llm import aux_llm
 
@@ -78,8 +79,6 @@ def cleaning_parse(text, expected_keys: list[str] | None = None):
 pattern: re.Pattern = re.compile(
     r"^```(?:ya?ml)?(?P<yaml>[^`]*)", re.MULTILINE | re.DOTALL
 )
-
-from collections.abc import Mapping
 
 
 def fix_invalid_yaml_string(s: str) -> str:

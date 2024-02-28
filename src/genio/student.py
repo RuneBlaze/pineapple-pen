@@ -289,7 +289,7 @@ class MemoryBank:
             (humanize_time_delta(global_clock.state - x.timestamp), x.log)
             for x in self.short_term_memories
         ]
-        return [f"{(x[0])} {x[1]}" for x in to_concat]
+        return [f"({x[0]}) {x[1]}" for x in to_concat]
 
     def witness_event(self, log: str) -> None:
         related_events = self.recall(log, max_recall=5)
@@ -425,18 +425,18 @@ class Scenario:
     def elicit_conversation(self, student: Student) -> list[str]:
         return elicit_conversation(student, self.extra_context_for_student(student))
 
-    def extra_context_for_student(self, student: Student) -> str:
-        which_student = self.students.index(student)
-        other_student_descriptions = [
-            other.appearance for other in self.appearance_matrix[which_student].values()
-        ]
-        return (
-            "You are in the middle of a conversation with some others. "
-            "## Context:\n"
-            f"{self.location_description}\n"
-            f"## The others in the conversation:\n"
-            f"{yamlize(other_student_descriptions)}"
-        )
+    # def extra_context_for_student(self, student: Student) -> str:
+    #     which_student = self.students.index(student)
+    #     other_student_descriptions = [
+    #         other.appearance for other in self.appearance_matrix[which_student].values()
+    #     ]
+    #     return (
+    #         "You are in the middle of a conversation with some others. "
+    #         "## Context:\n"
+    #         f"{self.location_description}\n"
+    #         f"## The others in the conversation:\n"
+    #         f"{yamlize(other_student_descriptions)}"
+    #     )
 
     def conversation_loop(self, student: Student) -> None:
         cnt = 0
@@ -569,52 +569,63 @@ def elicit_brief_thought(student: Student, extra_observation: str) -> BriefThoug
         student.profile.agent_context(), memories, short_term, extra_observation
     )
 
+@dataclass
+class Surroundings:
+    people: list[StudentProfile]
+    appearances: list[AppearanceOf]
+
 
 @cmd_sparkle(["sayto", "say"])
 def _elicit_conversation(
-    agent: str, memories: list[str], short_term: list[str], extra_context: str
+    agent: StudentProfile, memories: list[str], short_term: list[str], surroundings: Surroundings
 ) -> list[str]:
     """
-    You are the following person:
+    You are {_agent.name}. Here is your profile:
+
+    > {_agent.agent_context()}. {'. '.join(_memories)}
+
+    You ({_agent.name}) are having a conversation with {', '.join(surroundings.people)}. They are
+    in the room with you. You recalled your recent impression of them, still fresh in your mind:
+
+    {% for person, appearance in zip(surroundings.people, surroundings.appearances) %}
+    - **{person.name}**: [{person.age}-year-old, {person.height} CM tall] {appearance.appearance}
+    {% endfor %}
+
+    ----
+
+    Here is your recent memories of the conversation, your thoughts, what your conversation
+    with {', '.join(surroundings.people)} was like:
+
+    {% for s in short_term %}
+    - {{ s }}
+    {% endfor %}
+
+    What would you ({_agent.name}) say? What would you do? Remember that your MBTI type is {_agent.mbti_type}
+    and you are in grade {_agent.grade}, age {_agent.age}. If no conversation is happening, you can
+    initiate one. If you are in the middle of a conversation, please continue it. Be engaging,
+    be almost like a novelist of your own life. Act your age, your grade, your MBTI type.
+    Act in character.
+
+    ----
+
+    Return a **call** to one of two Python functions, in ``python`` code blocks,
+    only an expression, e.g., `sayto("alice", "bar")` or `say("foo")`.
+
     ```
-    {agent}
+    sayto(target_person: str, what_to_say: str) # Say something to a specific person.
+    say(what_to_say: str) # Say something to anyone in the conversation.
     ```
-
-    Here are the things that this person (you) remember:
-    ```
-    {memories}
-    ```
-
-    Some extra context:
-    {extra_context}
-
-    The most recent things that happened, in your **very fresh mind**, in log form, including the conversation:
-    ```
-    {short_term}
-    ```
-
-    How would you contribute something new to the conversation? Act almost as a novelist
-    trying to create an interesting conversation in a novel, and act as the person you are to push
-    the conversation to that direction.
-
-    Return your call on one of two Python functions, in ``python`` code blocks.
-
-    1. `sayto(target_person: str, what_to_say: str) -> None` - Say something to a specific person.
-    2. `say(what_to_say: str) -> None` - Say something to everyone/anyone in the conversation.
-
-    Either give Python code directly, or surround your function call with triple backticks.
-    Remember to always quote the strings, especially when referring to a target person.
     """
     ...
 
 
-def elicit_conversation(student: Student, extra_observation: str) -> list[str]:
+def elicit_conversation(student: Student, surroundings: Surroundings) -> list[str]:
     memories = student.memories.recall(
         "conversation"
     )  # FIXME: should not try to recall conversation.
     short_term = student.memories.short_term_memories_repr()
     return _elicit_conversation(
-        student.profile.agent_context(), memories, short_term, extra_observation
+        student.profile, memories, short_term, surroundings
     )
 
 

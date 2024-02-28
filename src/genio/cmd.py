@@ -17,7 +17,14 @@ def grab_python_code(response: str) -> str:
 
 def parse_command(cmd: str) -> list[Any]:
     pycode = grab_python_code(cmd)
-    expr = ast.parse(pycode, mode="eval").body
+    pycode = pycode.strip()
+    try:
+        expr = ast.parse(pycode, mode="eval").body
+    except SyntaxError:
+        toks = pycode.split(":")
+        toks.pop(0)
+        pycode = ":".join(toks)
+        expr = ast.parse(pycode, mode="eval").body
     fn_name = expr.func.id
     fn_args = [arg.s if hasattr(arg, "s") else arg.id for arg in expr.args]
     return [fn_name] + fn_args

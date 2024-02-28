@@ -1,5 +1,4 @@
 import ahocorasick
-from rich import print
 
 PASTEL_COLORS = """
 #f0c297
@@ -81,9 +80,9 @@ class NameHighlighter:
         return text
 
 
-if __name__ == "__main__":
-    names = ["Alice Ayi", "Bob Shuhui", "Charlie BB", "David DDD", "Eve EEE"]
-    highlighter = NameHighlighter(names)
-    text = "Alice Ayi and Bob Shuhui and Charlie & Eve and DDD & DDD & EEE."
-    hi, mentions = highlighter.label_text(text)
-    print(hi, mentions)
+# if __name__ == "__main__":
+#     names = ["Alice Ayi", "Bob Shuhui", "Charlie BB", "David DDD", "Eve EEE"]
+#     highlighter = NameHighlighter(names)
+#     text = "Alice Ayi and Bob Shuhui and Charlie & Eve and DDD & DDD & EEE."
+#     hi, mentions = highlighter.label_text(text)
+#     print(hi, mentions)
