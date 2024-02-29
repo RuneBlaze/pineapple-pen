@@ -110,7 +110,8 @@ class Parent(Mythical):
         """Modify the person's bio. This person has moved to a new city. Add only **one or two** sentences
         to the bio to reflect the move. Be creative, always modify, without changing the person's core personality.
 
-        Also, fix the company name to reflect the move. They might have changed jobs due to relocation."""
+        Also, fix the company name to reflect the move. They might have changed jobs due to relocation.
+        """
         ...
 
     def make_context(self) -> str:

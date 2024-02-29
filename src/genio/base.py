@@ -25,24 +25,70 @@ from langchain.output_parsers import OutputFixingParser
 from langchain_core.exceptions import OutputParserException
 from langchain_core.output_parsers import BaseOutputParser
 from langchain_core.prompts import ChatPromptTemplate
+from functools import partial
 from jinja2 import Environment
 
 from .cmd import parse_command
 from .llm import aux_llm
 from .robustyaml import cleaning_parse
+from jinja2 import BaseLoader, TemplateNotFound
+from textwrap import dedent
+
+TEMPLATE_REGISTRY = {}
+
+
+def paragraph_consolidate(text: str) -> str:
+    text = dedent(text).strip()
+    buf = []
+    flushed_paragraphs = []
+
+    for line in text.splitlines():
+        if re.match(r"^[^\w\d]", line.strip()):
+            # If the line starts with a non-alphanumeric character,
+            # flush current buffer and then flush this line
+            if buf:
+                flushed_paragraphs.append(" ".join(buf).strip())
+                buf = []
+            flushed_paragraphs.append(line)
+        else:
+            if not line.strip() and buf:
+                # Flush the buffer if the line is empty and buffer is not
+                flushed_paragraphs.append(" ".join(buf).strip())
+                buf = []
+            elif line.strip():
+                # Add non-empty lines to the buffer
+                buf.append(line.strip())
+
+    # Flush remaining buffer
+    if buf:
+        flushed_paragraphs.append(" ".join(buf))
+
+    return "\n\n".join(flushed_paragraphs).strip()
+
+
+
+class TemplateRegistryLoader(BaseLoader):
+    def get_source(self, environment, template):
+        if template in TEMPLATE_REGISTRY:
+            return TEMPLATE_REGISTRY[template], template, lambda: True
+        raise TemplateNotFound(template)
+
 
 jinja_env = Environment(
     block_start_string="{%",
     block_end_string="%}",
     variable_start_string="{",
     variable_end_string="}",
+    loader=TemplateRegistryLoader(),
 )
 jinja_env.globals.update(zip=zip)
 
 
-
-def render_template(template: str, context: dict[str, Any]) -> str:
-    return jinja_env.from_string(template).render(context)
+def render_template(template: str, context: dict[str, Any]) -> ChatPromptTemplate:
+    template = jinja_env.from_string(template).render(context)
+    template = template.replace("{", "")
+    template = template.replace("}", "")
+    return ChatPromptTemplate.from_template(paragraph_consolidate(template))
 
 
 def tomlkit_to_popo(d):
@@ -281,7 +327,7 @@ def generate_using_docstring(klass: Type[T], args: dict) -> T:
 
     prompt += "\n"
     prompt += inst_for_struct(klass)
-    template = ChatPromptTemplate.from_template(render_template(prompt, args))
+    template = render_template(prompt, args)
 
     chain = (
         template
@@ -318,7 +364,7 @@ def make_str_of_value(value):
         return yaml.dump(asdict(value))
 
 
-def raw_sparkle(f):
+def raw_sparkle(f=None, demangle: bool = False):
     """Decorate a function to make it use LLM to generate responses.
 
     The docstring should contain the following:
@@ -330,6 +376,9 @@ def raw_sparkle(f):
     {formatting_instructions}
     ```
     """
+    if f is None:
+        return partial(raw_sparkle, demangle=demangle)
+
     doc = inspect.getdoc(f)
     if doc is None:
         raise ValueError(f"Function {f} has no docstring.")
@@ -359,17 +408,24 @@ def raw_sparkle(f):
             ctxt.append("```")
         input_str = "\n".join(ctxt)
         formatting_instructions = inst_for_struct(return_type)
-        prompt = ChatPromptTemplate.from_template(
-            render_template(
+        rest = (
+            dict(
+                **{k: make_str_of_value(v) for k, v in args.items()},
+                **{f"_{k}": v for k, v in args.items()},
+            )
+            if not demangle
+            else {
+                **{k: v for k, v in args.items()},
+            }
+        )
+        prompt = render_template(
                 doc,
                 {
                     "input_yaml": input_str,
                     "formatting_instructions": formatting_instructions,
-                    **{k: make_str_of_value(v) for k, v in args.items()},
-                    **{f"_{k}": v for k, v in args.items()},
+                    **rest,
                 },
             )
-        )
         chain = prompt | llm | YamlParser(cls=return_type)
         return chain.invoke({})
 
@@ -402,8 +458,7 @@ def cmd_sparkle(allowed_commands: list[str]):
                 ctxt.append(yaml.dump(args))
                 ctxt.append("```")
             input_str = "\n".join(ctxt)
-            prompt = ChatPromptTemplate.from_template(
-                render_template(
+            prompt = render_template(
                     doc,
                     {
                         "input_yaml": input_str,
@@ -411,7 +466,6 @@ def cmd_sparkle(allowed_commands: list[str]):
                         **{f"_{k}": v for k, v in args.items()},
                     },
                 )
-            )
             chain = prompt | llm | CmdParser(allowed_commands=allowed_commands)
             return chain.invoke({})
 

@@ -9,6 +9,8 @@ from typing import Annotated
 import datetime as dt
 import humanize
 from concurrent.futures import ThreadPoolExecutor
+from collections import defaultdict
+import textwrap
 
 from numpy.typing import NDArray
 from sentence_transformers.util import cos_sim
@@ -17,12 +19,12 @@ from .base import (
     AgentLike,
     Mythical,
     WriterArchetype,
-    cmd_sparkle,
     generate_using_docstring,
     levenshtein_distance,
     raw_sparkle,
     slurp_toml,
     yamlize,
+    TEMPLATE_REGISTRY,
 )
 from .height_chart import HeightChart
 from .namegen import NameGenerator
@@ -373,15 +375,12 @@ class Student:
         brief_thought = brief_thought.brief_thought
         self.memories.add_short_term_memory(f"{name} thought: {brief_thought}")
 
+    @property
+    def name(self) -> str:
+        return self.profile.name
+
 
 def estimate_speaking_time(sentence, words_per_minute=135):
-    """
-    Estimate the speaking time for a given sentence.
-
-    :param sentence: The sentence to estimate speaking time for.
-    :param words_per_minute: Average speaking rate (default is 135 WPM).
-    :return: Estimated time in seconds to speak the sentence.
-    """
     words = len(sentence.split())
     minutes = words / words_per_minute
     seconds = minutes * 60
@@ -399,7 +398,69 @@ class AppearanceOf:
     ]
 
 
+@dataclass
+class Narrator:
+    def writing_mantra(self) -> str:
+        return (
+            "Focus on creating vivid, imaginative scenes that captivate readers through"
+            "detailed descriptions and fast-paced action. Prioritize character development"
+            "and emotional depth, allowing the personalities and interactions of your characters"
+            "to drive the plot and engage your audience. If you see cute moments between"
+            "physical heights of the characters, write them down. Encourage cute moments."
+        )
+
+
+@dataclass
+class NarratorAddition:
+    additional_paragraph: Annotated[
+        str,
+        (
+            "A short one or two sentence of narration to add to the logs, written in third person."
+        ),
+    ]
+
+
+@raw_sparkle(demangle=True)
+def add_narration(
+    narrator: Narrator, students: list[Student], logs: list[str]
+) -> NarratorAddition:
+    """\
+    Act as an omniscient narrator and add a short paragraph of narration to the logs.
+    Write as if you are a light-novel writer adept at writing stories for a Gakuen Toshi
+    setting. Write in the third person.
+
+    Here is a profile of the scene: [The Principal's Office]. The Principal's Office is a space where tradition
+    and modernity coalesce, defined by its stone flooring with geometric patterns and warm wooden
+    walls adorned with intricate carvings. Recessed LED lights and traditional paper lanterns provide
+    a blend of lighting, while large windows open to the natural world outside. Central to the room is
+    an imposing desk, flanked by an antique globe and a framed photograph of the school's founders, creating
+    an atmosphere of solemn history and quiet authority.
+
+    Act almost like the "spirit" of the scene, and narrate like the best light novelist you can be.
+
+    The characters in the scene are: { students|join(', ', attribute='name') }.
+    Here is a profile of each of them:
+    {% for stu in students %}
+    - **{ stu.profile.name }**: [{ stu.profile.age }-year-old, { stu.profile.height } CM tall, Grade { stu.profile.grade }] { stu.profile.bio }
+    {% endfor %}
+
+    Add a short paragraph of narration to the conversation of the students. {narrator.writing_mantra()}
+
+    The logs, what had transpired so far:
+    > {% for log in logs %}
+    { log }
+    {% endfor %}
+
+    Prioritize on breezy pace and describe how the students are interacting with each other
+    (standing together, head-patting, etc., be light-novelly). Encourage cute moments.
+
+    {formatting_instructions}
+    """
+
+
 class Scenario:
+    logs: list[str]
+
     def __init__(
         self,
         students: list[Student],
@@ -409,26 +470,45 @@ class Scenario:
         self.students = students
         self.appearance_matrix = appearance_matrix
         self.location_description = location_description
+        self.logs = []
 
-    def start_round(self) -> None:
+    def elicit_thoughts(self) -> None:
         with ThreadPoolExecutor(max_workers=2) as executor:
+
+            def deal_with_student(student: Student):
+                memories = student.memories.recall("conversation")
+                short_term = student.memories.short_term_memories_repr()
+                return _elicit_brief_thought(
+                    student.profile,
+                    memories,
+                    short_term,
+                    self.extra_context_for_student(student),
+                )
+
             brief_thoughts = executor.map(
-                lambda student: elicit_brief_thought(
-                    student, self.extra_context_for_student(student)
-                ),
+                deal_with_student,
                 self.students,
             )
-
         for student, brief_thought in zip(self.students, brief_thoughts):
             student.inject_brief_thought(brief_thought)
 
     def elicit_conversation(self, student: Student) -> ConversationResponse:
-        return elicit_conversation(student, self.extra_context_for_student(student))
+        memories = student.memories.recall(
+            "conversation"
+        )  # FIXME: should not try to recall conversation.
+        short_term = student.memories.short_term_memories_repr()
+        return _elicit_conversation(
+            student.profile,
+            memories,
+            short_term,
+            self.extra_context_for_student(student),
+        )
 
     def extra_context_for_student(self, student: Student) -> Surroundings:
         which_student = self.students.index(student)
         other_student_descriptions = [
-            (self.students[i], other) for i, other in self.appearance_matrix[which_student].items()
+            (self.students[i], other)
+            for i, other in self.appearance_matrix[which_student].items()
         ]
         return Surroundings(
             [stu.profile for stu, app in other_student_descriptions],
@@ -439,69 +519,42 @@ class Scenario:
         cnt = 0
         while True:
             raw = self.elicit_conversation(student)
-            # if raw.target_person is not None:
-            #     cmd = ["sayto", raw.target_person, raw.response]
-            # else:
             cmd = ["say", raw.response]
-            if cmd[0] == "sayto":
-                what_said = cmd.pop()
-                cmd.pop(0)
-                who_said = " ".join(cmd)
-                closest_match = None
-                closest_distance = float("inf")
-                for i, other in enumerate(self.students):
-                    distance = levenshtein_distance(who_said, other.profile.name)
-                    if distance < closest_distance:
-                        closest_distance = distance
-                        closest_match = other
-                log = f"{student.profile.name} said to {closest_match.profile.name}: {what_said}"
-                elapsed = estimate_speaking_time(what_said)
-                global_clock.add_seconds(elapsed)
-                print(log)
-                for stu in self.students:
-                    stu.memories.add_short_term_memory(log)
-                if random() < 0.5:
-                    student = closest_match
-                else:
-                    available_students = [
-                        stu for stu in self.students if stu != student
-                    ]
-                    student = choice(available_students)
-            elif cmd[0] == "say":
-                what_said = cmd[1]
-                elapsed = estimate_speaking_time(what_said)
-                global_clock.add_seconds(elapsed)
-                log = f"{student.profile.name} said: {what_said}"
-                print(log)
-                for stu in self.students:
-                    stu.memories.add_short_term_memory(
-                        f"{student.profile.name} said: {what_said}"
-                    )
-                available_students = [stu for stu in self.students if stu != student]
-                student = choice(available_students)
-
-            else:
-                raise ValueError(f"Unknown command: {cmd}")
+            what_said = cmd[1]
+            elapsed = estimate_speaking_time(what_said)
+            global_clock.add_seconds(elapsed)
+            log = f"{student.profile.name} said: {what_said}"
+            print(log)
+            self.logs.append(log)
+            for stu in self.students:
+                stu.memories.add_short_term_memory(
+                    f"{student.profile.name} said: {what_said}"
+                )
+            available_students = [stu for stu in self.students if stu != student]
+            student = choice(available_students)
             cnt += 1
             if cnt % 2 == 0:
-                self.start_round()
+                self.elicit_thoughts()
+                narrator = add_narration(Narrator(), self.students, self.logs)
+                print("Narrator: " + narrator.additional_paragraph)
+                self.logs.append(narrator.additional_paragraph)
+                for stu in self.students:
+                    stu.memories.add_short_term_memory(
+                        "Narrator: " + narrator.additional_paragraph
+                    )
 
 
 @raw_sparkle
 def _create_appearance_of(
-    agent: str, memories: list[str], short_term: list[str], target_agent_profile: str
+    agent: StudentProfile,
+    memories: list[str],
+    short_term: list[str],
+    target_agent_profile: str,
 ) -> AppearanceOf:
     """
-    You are the following person:
+    You are {_agent.name}. Here is your profile:
 
-    ```
-    {agent}
-    ```
-
-    Here are the things that this person (you) remember:
-    ```
-    {memories}
-    ```
+    > {_agent.agent_context()}. {'. '.join(_memories)}
 
     The most recent things that happened, in your **very fresh mind**, in log form:
     ```
@@ -525,27 +578,25 @@ def create_appearance_of(agent: Student, target: Student) -> AppearanceOf:
     memories = agent.memories.recall(target.profile.bio)
     short_term = agent.memories.short_term_memories_repr()
     return _create_appearance_of(
-        agent.profile.agent_context(),
+        agent.profile,
         memories,
         short_term,
         target.profile.agent_context(),
     )
 
+
 @dataclass
 class Surroundings:
     people: list[StudentProfile]
     appearances: list[AppearanceOf]
-    
+
     def people_names(self) -> list[str]:
         return [p.name for p in self.people]
 
 
-@raw_sparkle
-def _elicit_brief_thought(
-    agent: str, memories: list[str], short_term: list[str], surroundings: Surroundings
-) -> BriefThought:
-    """
-    You are {_agent.name}. Here is your profile:
+TEMPLATE_REGISTRY[
+    "student_agent_thought_convo"
+] = """You are {_agent.name}. Here is your profile:
 
     > {_agent.agent_context()}. {'. '.join(_memories)}
 
@@ -563,59 +614,47 @@ def _elicit_brief_thought(
 
     {% for s in _short_term %}
     - { s }
-    {% endfor %}
+    {% endfor %}"""
+
+
+@raw_sparkle
+def _elicit_brief_thought(
+    agent: StudentProfile,
+    memories: list[str],
+    short_term: list[str],
+    surroundings: Surroundings,
+) -> BriefThought:
+    """
+    {% include "student_agent_thought_convo" %}
 
     What do you think in the current moment? Write down a brief thought, a reaction to the moment fitting for you,
-    in third person, a single phrase. Also think what happened on the subconscious level that made the person had the brief thought.
+    or a brief goal that you hope to achieve in the very near short term, in third person, a single phrase.
+    Also think what happened on the subconscious level that made the person had the brief thought.
 
     {formatting_instructions}
     """
     ...
-
-
-def elicit_brief_thought(student: Student, surroundings: Surroundings) -> BriefThought:
-    memories = student.memories.recall("conversation")
-    short_term = student.memories.short_term_memories_repr()
-    return _elicit_brief_thought(
-        student.profile, memories, short_term, surroundings
-    )
 
 
 @dataclass
 class ConversationResponse:
     response: Annotated[str, "What you would say in this context. (Required)"]
-    # target_person: Annotated[str | None, "The person you are directly talking to. (Optional, can be null)"]
+
 
 @raw_sparkle
 def _elicit_conversation(
-    agent: StudentProfile, memories: list[str], short_term: list[str], surroundings: Surroundings
+    agent: StudentProfile,
+    memories: list[str],
+    short_term: list[str],
+    surroundings: Surroundings,
 ) -> ConversationResponse:
     """
-    You are {_agent.name}. Here is your profile:
-
-    > {_agent.agent_context()}. {'. '.join(_memories)}
-
-    You ({_agent.name}) are having a conversation with {', '.join(_surroundings.people_names())}. They are
-    in the room with you. You recalled your recent impression of them, still fresh in your mind:
-
-    {% for person, appearance in zip(_surroundings.people, _surroundings.appearances) %}
-    - **{person.name}**: [{person.age}-year-old, {person.height} CM tall] {appearance.appearance}
-    {% endfor %}
-
-    ----
-
-    Here is your recent memories of the conversation, your thoughts, what your conversation
-    with {', '.join(_surroundings.people_names())} was like:
-
-    {% for s in _short_term %}
-    - { s }
-    {% endfor %}
+    {% include "student_agent_thought_convo" %}
 
     What would you ({_agent.name}) say? What would you do? Remember that your MBTI type is {_agent.mbti_type}
     and you are in grade {_agent.grade}, age {_agent.age}. If no conversation is happening, you can
     initiate one. If you are in the middle of a conversation, please continue it. Be engaging,
-    writer your own story. Act your age but be mature. Act in character.
-    Act in character.
+    writer your own story. Act your age and in character. Be casual and breezy.
 
     ----
 
@@ -624,14 +663,10 @@ def _elicit_conversation(
     ...
 
 
-def elicit_conversation(student: Student, surroundings: Surroundings) -> ConversationResponse:
-    memories = student.memories.recall(
-        "conversation"
-    )  # FIXME: should not try to recall conversation.
-    short_term = student.memories.short_term_memories_repr()
-    return _elicit_conversation(
-        student.profile, memories, short_term, surroundings
-    )
+def elicit_conversation(
+    student: Student, surroundings: Surroundings
+) -> ConversationResponse:
+    ...
 
 
 def generate_student(grade: int) -> Student:
@@ -646,25 +681,26 @@ if __name__ == "__main__":
     #         if i != j:
     #             d[i][j] = create_appearance_of(three_students[i], three_students[j])
     #
-    # convo = Scenario(three_students, d, """As you step inside the Principal's Office, a sense of
-    #       reverence washes over you. Durable stone flooring, adorned with geometric
-    #       patterns, complements the warm wooden walls, creating an atmosphere of timeless
-    #       elegance. Recessed LED lighting provides a modern touch, while traditional
-    #       paper lanterns add a touch of cultural charm. Earthy tones and intricate
-    #       carvings adorn the wooden walls, while large glass windows let in natural
-    #       light and provide a view of the surrounding nature. An antique globe sits
-    #       on a shelf, whispering tales of distant lands. A framed photo of the school's
-    #       founders hangs above the desk, their stern expressions watching over the
-    #       room.""")
-    # convo.start_round()
-
+    # convo = Scenario(three_students, d, textwrap.dedent("""
+    # As you step inside the Principal's Office, a sense of
+    # reverence washes over you. Durable stone flooring, adorned with geometric
+    # patterns, complements the warm wooden walls, creating an atmosphere of timeless
+    # elegance. Recessed LED lighting provides a modern touch, while traditional
+    # paper lanterns add a touch of cultural charm. Earthy tones and intricate
+    # carvings adorn the wooden walls, while large glass windows let in natural
+    # light and provide a view of the surrounding nature. An antique globe sits
+    # on a shelf, whispering tales of distant lands. A framed photo of the school's
+    # founders hangs above the desk, their stern expressions watching over the
+    # room."""))
+    # convo.elicit_thoughts()
+    #
     # with open("assets/convo.pkl", "wb") as f:
     #     pkl.dump(convo, f)
 
     with open("assets/convo.pkl", "rb") as f:
         convo = pkl.load(f)
-    #     convo.__dict__["expensive_executor"] = ThreadPoolExecutor(max_workers=2)
-    #     convo.__dict__["cheap_executor"] = ThreadPoolExecutor(max_workers=1)
+    from icecream import ic
+
     first_student = choice(convo.students)
     convo.conversation_loop(first_student)
     #
