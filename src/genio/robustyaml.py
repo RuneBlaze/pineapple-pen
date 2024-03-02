@@ -15,6 +15,8 @@ def is_nested_dict(d):
 
 
 def cleaning_parse(text, expected_keys: list[str] | None = None):
+    if "{" not in text and "}" not in text:
+        return json.loads("{\n" + text + "\n}")
     # lines = text.split("\n")
     # processed = []
     #

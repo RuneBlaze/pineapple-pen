@@ -140,7 +140,7 @@ def get_docstrings(cls: type) -> DocStrings:
             typ, metadata = get_args(typ)
         else:
             metadata = None
-        args.append(DocStringArg(field.name, field.type, metadata))
+        args.append(DocStringArg(field.name, typ, metadata))
     return DocStrings(main_description, args)
 
 
@@ -288,7 +288,7 @@ class JsonParser(BaseOutputParser):
             text = pattern.search(text).group("json")
         try:
             logger.info(f"JsonParser: {text}")
-            data = json.loads(text)
+            data = cleaning_parse(text)
             if isinstance(data, dict):
                 data = {k.replace(" ", "_"): v for k, v in data.items()}
                 data = {k.lower(): v for k, v in data.items()}
@@ -344,17 +344,45 @@ def generate_using_docstring(klass: Type[T], args: dict) -> T:
     return chain.with_retry().invoke({})
 
 
+def typescriptize_type(typ: str) -> str:
+    if typ == str:
+        return "string"
+    if typ == int:
+        return "number"
+    if typ == float:
+        return "number"
+    if typ == bool:
+        return "boolean"
+    if not isinstance(typ, str) and get_origin(typ) is list:
+        return f"{typescriptize_type(get_args(typ)[0])}[]"
+    typ = typ.replace(" ", "").replace("'","").replace('"', "")
+    if typ.startswith("list"):
+        return f"{typescriptize_type(typ[5:-1])}[]"
+    if typ == "str":
+        return "string"
+    if typ == "int":
+        return "number"
+    if typ == "float":
+        return "number"
+    if typ == "bool":
+        return "boolean"
+    return typ
+
+
 def inst_for_struct(klass):
     docstrings = get_docstrings(klass)
     prompt = ""
     prompt += "Fill out the following JSON object:\n"
     prompt += "```json\n"
+    prompt += "{\n"
     for arg in docstrings.args:
         prompt += (
-            f"\"{arg.name}\": // {arg.description}\n" if arg.description else f"{arg.name}\n"
+            f"\"{arg.name}\": // {typescriptize_type(arg.type)}, {arg.description}\n" if arg.description else f"{arg.name}\n"
         )
+    prompt += "}\n"
     prompt += "```\n"
     prompt += "Please return a JSON object."
+    logger.info(f"Prompt: {prompt}")
     return prompt
 
 

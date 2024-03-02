@@ -33,8 +33,8 @@ def default_klasses() -> list[Klass]:
 @dataclass
 class DailySchedule:
     entries: Annotated[
-        str,
-        "A YAML list of strings, each representing a schedule entry. In the format, 'HH:MM - HH:MM; Title; Class Location'",
+        list[str],
+        "A list of strings, each representing a schedule entry. In the format, 'HH:MM - HH:MM; Title; Class Location'",
     ]
 
 
@@ -142,7 +142,7 @@ def plan_broad_strokes(
 @dataclass
 class DetailedPlans:
     goal: Annotated[str, "The focus of the detailed plans. A single sentence."]
-    plans: Annotated[list[str], "Detailed steps to achieve the focus. Three or four steps, a YAML list."]
+    plans: Annotated[list[str], "Detailed steps to achieve the focus. Three or four steps, a list."]
 
 
 @raw_sparkle(demangle=True)
