@@ -27,6 +27,7 @@ from .base import (
     slurp_toml,
     yamlize,
     TEMPLATE_REGISTRY,
+OUTPUT_FORMAT,
 )
 from .height_chart import HeightChart
 from .namegen import NameGenerator
@@ -225,10 +226,10 @@ def witness_event(agent: AgentLike, related_events: list[str], event: str) -> Th
 
 @dataclass
 class CompactedMemories:
-    memories: Annotated[list[str], "A YAML list of strings, the compacted memories."]
+    memories: Annotated[list[str], f"A {OUTPUT_FORMAT} list of strings, the compacted memories."]
     significances: Annotated[
         list[int],
-        "A YAML list of integers, the significances. A parallel array to memories.",
+        f"A {OUTPUT_FORMAT} list of integers, the significances. A parallel array to memories.",
     ]
 
     def __post_init__(self):

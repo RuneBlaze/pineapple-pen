@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+import json
 import random
 import re
 from abc import ABC
@@ -189,28 +190,28 @@ def auto_fix_typos(
 
 
 pattern: re.Pattern = re.compile(
-    r"^```(?:ya?ml)?(?P<yaml>[^`]*)", re.MULTILINE | re.DOTALL
+    r"^```(?:json)?(?P<json>[^`]*)", re.MULTILINE | re.DOTALL
 )
 
 
-class RawYamlParser(BaseOutputParser):
+class RawJsonParser(BaseOutputParser):
     expected_keys: list[str] | None
 
     def parse(self, text: str) -> Any:
         if "```" in text:
-            text = pattern.search(text).group("yaml")
+            text = pattern.search(text).group("json")
         try:
-            logger.info(f"Raw YAML: {text}")
+            logger.info(f"Raw JSON: {text}")
             return cleaning_parse(text.replace("\\_", "_"), self.expected_keys)
         except yaml.YAMLError as e:
-            msg = f"Failed to parse YAML from completion {text}. Got: {e}"
+            msg = f"Failed to parse JSON from completion {text}. Got: {e}"
             raise OutputParserException(msg, llm_output=text) from e
         except Exception as e:
-            msg = f"Failed to parse YAML from completion {text}. Got: {e}"
+            msg = f"Failed to parse JSON from completion {text}. Got: {e}"
             raise OutputParserException(msg, llm_output=text) from e
 
     def get_format_instructions(self) -> str:
-        return "Please return in YAML."
+        return "Please return in JSON."
 
 
 class CmdParser(BaseOutputParser):
@@ -233,10 +234,10 @@ class CmdParser(BaseOutputParser):
         return parsed
 
 
-def ask_for_yaml(prompt: str, expected_keys: list[str] | None = None) -> Any:
+def ask_for_json(prompt: str, expected_keys: list[str] | None = None) -> Any:
     template = ChatPromptTemplate.from_template(prompt)
     llm = aux_llm()
-    chain = template | llm | RawYamlParser(expected_keys=expected_keys)
+    chain = template | llm | RawJsonParser(expected_keys=expected_keys)
     return chain.invoke({})
 
 
@@ -273,21 +274,21 @@ def instantiate_instance(cls: Type[T], data: dict) -> T:
             f"```\n"
             "Please return in YAML.\n"
         )
-        yml = ask_for_yaml(prompt, [arg.name for arg in args])
+        yml = ask_for_json(prompt, [arg.name for arg in args])
         logger.info(f"Retried; Got {yml}")
         return cls(**yml)
 
 
-class YamlParser(BaseOutputParser):
+class JsonParser(BaseOutputParser):
     cls: Type
 
     def parse(self, text: str) -> Any:
         flds = fields(self.cls)
         if "```" in text:
-            text = pattern.search(text).group("yaml")
+            text = pattern.search(text).group("json")
         try:
-            logger.info(f"YamlParser: {text}")
-            data = cleaning_parse(text.replace("\\_", "_"))
+            logger.info(f"JsonParser: {text}")
+            data = json.loads(text)
             if isinstance(data, dict):
                 data = {k.replace(" ", "_"): v for k, v in data.items()}
                 data = {k.lower(): v for k, v in data.items()}
@@ -299,8 +300,8 @@ class YamlParser(BaseOutputParser):
                 except TypeError:
                     if isinstance(data, list):
                         return [instantiate_instance(self.cls, x) for x in data]
-        except yaml.YAMLError as e:
-            msg = f"Failed to parse YAML from completion {text}. Got: {e}"
+        except json.JSONDecodeError as e:
+            msg = f"Failed to parse JSON from completion {text}. Got: {e}"
             raise OutputParserException(msg, llm_output=text) from e
         except Exception as e:
             msg = f"Failed to parse {self.cls} from completion {text}. Got: {e}"
@@ -338,7 +339,7 @@ def generate_using_docstring(klass: Type[T], args: dict) -> T:
     chain = (
         template
         | llm
-        | OutputFixingParser.from_llm(parser=YamlParser(cls=klass), llm=llm)
+        | OutputFixingParser.from_llm(parser=JsonParser(cls=klass), llm=llm)
     )
     return chain.with_retry().invoke({})
 
@@ -346,14 +347,14 @@ def generate_using_docstring(klass: Type[T], args: dict) -> T:
 def inst_for_struct(klass):
     docstrings = get_docstrings(klass)
     prompt = ""
-    prompt += "Fill out the following YAML fields:\n"
-    prompt += "```yml\n"
+    prompt += "Fill out the following JSON object:\n"
+    prompt += "```json\n"
     for arg in docstrings.args:
         prompt += (
-            f"{arg.name}: # {arg.description}\n" if arg.description else f"{arg.name}\n"
+            f"\"{arg.name}\": // {arg.description}\n" if arg.description else f"{arg.name}\n"
         )
     prompt += "```\n"
-    prompt += "Please return a YAML dict."
+    prompt += "Please return a JSON object."
     return prompt
 
 
@@ -432,7 +433,7 @@ def raw_sparkle(f=None, demangle: bool = False):
                 **rest,
             },
         )
-        chain = prompt | llm | YamlParser(cls=return_type)
+        chain = prompt | llm | JsonParser(cls=return_type)
         return chain.invoke({})
     return wrapper
 
@@ -512,7 +513,7 @@ def sparkle(f):
         ctxt.append(f"You job is to {doc}.")
         ctxt.append(inst_for_struct(return_type))
         prompt = ChatPromptTemplate.from_template("\n".join(ctxt))
-        chain = prompt | llm | YamlParser(cls=return_type)
+        chain = prompt | llm | JsonParser(cls=return_type)
         ic(prompt)
         return chain.invoke({})
 
@@ -552,3 +553,5 @@ def yamlize(item: object) -> str:
     if is_dataclass(item):
         return yaml.dump(item.__dict__)
     return yaml.dump(item)
+
+OUTPUT_FORMAT = 'JSON'
