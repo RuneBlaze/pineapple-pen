@@ -1,0 +1,173 @@
+students:
+- &id001 !!python/object:genio.student.Student
+  appearance_view:
+    ? &id002 !!python/object:genio.student.Student
+      appearance_view:
+        *id001: !!python/object:genio.student.AppearanceOf
+          appearance: Ren Matsui appears to be slightly shorter than Himari at 125
+            cm tall. He has an easy-going and laid-back demeanor that seems approachable
+            and friendly.
+        ? &id003 !!python/object:genio.student.Student
+          appearance_view:
+            *id001: !!python/object:genio.student.AppearanceOf
+              appearance: Ren Matsui appears to be a friendly and approachable young
+                boy with a casual, laid-back demeanor. Standing at 125 cm tall, he
+                may seem slightly shorter than Haruma Sugiyama, but his presence is
+                still notable among the students in their grade.
+            *id002: !!python/object:genio.student.AppearanceOf
+              appearance: Himari Ishikawa appears to be a petite girl with a gentle
+                demeanor. At 133 cm tall, she stands slightly taller than Haruma and
+                has an air of quiet confidence about her. Her hair is a vibrant shade
+                of pink, which contrasts nicely with her soft-looking eyes that seem
+                to sparkle when she's genuinely interested in something.
+            ? &id007 !!python/object:genio.student.Student
+              appearance_view:
+                *id001: !!python/object:genio.student.AppearanceOf
+                  appearance: "Ren Matsui appears to be slightly shorter than Y\u016B\
+                    ma with a more relaxed posture and a friendly expression on his\
+                    \ face. He seems approachable and easygoing."
+                *id002: !!python/object:genio.student.Friendship
+                  appearance: "Himari is a petite girl with a height of 133 CM, standing\
+                    \ slightly taller than Y\u016Bma at 129 CM. She has long, dark\
+                    \ hair that often falls in front of her face, and her eyes seem\
+                    \ to be filled with curiosity as they scan the environment."
+                  friendship_reason: I am friends with Himari because she is always
+                    curious and eager to learn new things, and our shared love for
+                    learning brings us closer together.
+                *id003: !!python/object:genio.student.Friendship
+                  appearance: "Haruma has bright, piercing eyes that sparkle with\
+                    \ excitement and curiosity. His hair is styled in a way that gives\
+                    \ off an air of youthful energy, making him easy to spot among\
+                    \ his peers. He stands tall at 129 cm, just like Y\u016Bma, but\
+                    \ his infectious enthusiasm seems to make him appear even taller."
+                  friendship_reason: "Y\u016Bma and Haruma became friends because\
+                    \ they share a love for extracurricular activities and a desire\
+                    \ to bring joy and energy to their school community. They often\
+                    \ work together on projects and events, inspiring others with\
+                    \ their teamwork and unwavering dedication."
+              memories: !!python/object:genio.student.MemoryBank
+                agent: &id004 !!python/object:genio.student.StudentProfile
+                  age: 9
+                  bio: "A passionate and energetic 9-year-old who takes great pride\
+                    \ in their school. Always eager to participate in school events\
+                    \ and lead cheers, Y\u016Bma is known for their infectious enthusiasm.\
+                    \ They have an excellent memory and are skilled at remembering\
+                    \ the lyrics of cheer songs. Their favorite subjects are music\
+                    \ and art, where they can express themselves creatively."
+                  gender: male
+                  grade: 4
+                  height: 129
+                  long_term_goal: To become a well-known figure in their school community,
+                    inspiring others to love and support their school as much as they
+                    do.
+                  mbti_type: ENFP
+                  name: "Y\u016Bma Kaneko"
+                max_memories: 8
+                memories: []
+                short_term_memories: []
+                short_term_memories_watermark: &id005 2002-11-06 09:00:00
+              profile: *id004
+              relationships: {}
+            : !!python/object:genio.student.AppearanceOf
+              appearance: "Y\u016Bma Kaneko is a small but energetic 9-year-old boy\
+                \ who stands at around 129 cm tall. His bright eyes and infectious\
+                \ smile make him easily approachable, while his short hair frames\
+                \ his youthful face."
+          memories: !!python/object:genio.student.MemoryBank
+            agent: &id006 !!python/object:genio.student.StudentProfile
+              age: 9
+              bio: Haruma is a bright and energetic student who loves engaging in
+                various extracurricular activities. He has a natural ability to bring
+                people together and inspire them to work towards common goals, making
+                him a valuable member of any club he joins.
+              gender: male
+              grade: 4
+              height: 129
+              long_term_goal: Haruma's long-term goal is to become a leader who can
+                inspire and motivate others through their love for extracurricular
+                activities. He envisions creating a community where people come together,
+                share their passions, and work towards a common goal, fostering growth
+                and personal development in the process.
+              mbti_type: ENFP
+              name: Haruma Sugiyama is a 9-year-old student who stands at 129 cm tall
+                and currently attends grade 4. He is known for being an enthusiastic
+                club member, actively participating in various extracurricular activities.
+                His unbridled passion for his interests often leaves others in awe,
+                as he approaches each activity with an infectious energy that brings
+                life to the clubs.
+            max_memories: 8
+            memories: []
+            short_term_memories: []
+            short_term_memories_watermark: *id005
+          profile: *id006
+          relationships: {}
+        : !!python/object:genio.student.AppearanceOf
+          appearance: Haruma Sugiyama is a bright and energetic student who loves
+            engaging in various extracurricular activities. He has a natural ability
+            to bring people together and inspire them to work towards common goals,
+            making him a valuable member of any club he joins.
+        *id007: !!python/object:genio.student.AppearanceOf
+          appearance: "Y\u016Bma Kaneko has a small yet energetic build, standing\
+            \ at 129 CM tall. Their bright and enthusiastic demeanor is reflected\
+            \ in their cheerful smile and sparkling eyes."
+      memories: !!python/object:genio.student.MemoryBank
+        agent: &id008 !!python/object:genio.student.StudentProfile
+          age: 9
+          bio: Himari is known for her quiet nature and keen observational skills.
+            She prefers to listen rather than speak, and often asks thoughtful questions
+            when she does contribute to discussions. Despite her introverted demeanor,
+            Himari has a deep sense of curiosity and is always eager to learn new
+            things. Her knowledge in various subjects may not be vast, but she possesses
+            an analytical mind that enables her to grasp complex concepts with ease.
+          gender: female
+          grade: 4
+          height: 133
+          long_term_goal: Himari's long-term goal is to become a successful inventor,
+            creating groundbreaking innovations that can improve the lives of others.
+            She believes in using technology for good and aims to make the world a
+            better place through her creations.
+          mbti_type: INTJ
+          name: Himari Ishikawa
+        max_memories: 8
+        memories: []
+        short_term_memories: []
+        short_term_memories_watermark: *id005
+      profile: *id008
+      relationships: {}
+    : !!python/object:genio.student.AppearanceOf
+      appearance: '"Himari Ishikawa appears to be a quiet and introspective young
+        girl with keen observational skills. Her height of 133 CM places her slightly
+        above Ren, giving her an air of composed presence."'
+    *id003: !!python/object:genio.student.AppearanceOf
+      appearance: Ren Matsui observes Haruma Sugiyama as an enthusiastic 9-year-old
+        student who stands slightly taller than him at 129 cm. Haruma's energetic
+        demeanor is evident in his posture and overall appearance, making him stand
+        out among his peers.
+    *id007: !!python/object:genio.student.AppearanceOf
+      appearance: "Y\u016Bma Kaneko is a lively and energetic 9-year-old boy with\
+        \ a contagious enthusiasm for school activities and cheerleading. At 129 CM\
+        \ tall, he stands slightly taller than Ren Matsui."
+  memories: !!python/object:genio.student.MemoryBank
+    agent: &id009 !!python/object:genio.student.StudentProfile
+      age: 9
+      bio: '"Ren Matsui is known as ''The Laid-back Senior'' among his peers. He has
+        an approachable and relaxed demeanor, which makes him easy to talk to. Many
+        younger students seek his advice on various matters because of his wisdom
+        beyond his years."'
+      gender: male
+      grade: 4
+      height: 125
+      long_term_goal: '"Ren aspires to become a respected mentor and guide for future
+        generations, using his experiences to help others navigate the challenges
+        of life."'
+      mbti_type: '"INTJ"'
+      name: Ren Matsui
+    max_memories: 8
+    memories: []
+    short_term_memories: []
+    short_term_memories_watermark: *id005
+  profile: *id009
+  relationships: {}
+- *id002
+- *id003
+- *id007

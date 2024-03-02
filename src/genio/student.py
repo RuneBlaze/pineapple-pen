@@ -8,9 +8,11 @@ from random import choice, gauss, random
 from typing import Annotated
 import datetime as dt
 import humanize
+from typing import Protocol
 from concurrent.futures import ThreadPoolExecutor
 from collections import defaultdict
 import textwrap
+import humanize
 
 from numpy.typing import NDArray
 from sentence_transformers.util import cos_sim
@@ -45,6 +47,11 @@ class Clock:
     def default() -> Clock:
         return Clock(dt.datetime(2002, 11, 6, 9))
 
+    def natural_repr(self) -> str:
+        d = humanize.naturaldate(self.state)
+        t = self.state.strftime("%I:%M %p")
+        return f"{d} at {t}"
+
 
 global_clock = Clock.default()
 
@@ -66,7 +73,8 @@ class Archetype:
 
 @dataclass
 class StudentProfile(Mythical, AgentLike):
-    """A student in a school, the hero in their life.
+    """\
+    A student in a school, the hero in their life.
 
     This student fits under the following archetype:
     ```
@@ -150,13 +158,6 @@ class MemoryCell:
 
 @dataclass
 class Thought:
-    thought: Annotated[
-        str,
-        (
-            "The reaction of the person to the event, in third person, "
-            "their thoughts, their reflections, in one to four sentences."
-        ),
-    ]
     significance: Annotated[
         int,
         (
@@ -165,6 +166,13 @@ class Thought:
             "one dies, etc.. 5 are relatively big events, e.g., getting a"
             "new job, moving to a new city. 1 are everyday events, e.g.,"
             "eating breakfast, going to work."
+        ),
+    ]
+    thought: Annotated[
+        str,
+        (
+            "The reaction of the person to the event, in third person, "
+            "their thoughts, their reflections, in one to four sentences."
         ),
     ]
 
@@ -189,7 +197,8 @@ class MemoryEntry:
 
 @raw_sparkle
 def witness_event(agent: AgentLike, related_events: list[str], event: str) -> Thought:
-    """You are the following person:
+    """\
+    You are the following person:
 
     ```
     {agent}
@@ -231,7 +240,8 @@ class CompactedMemories:
 
 @raw_sparkle
 def compact_memories(agent: AgentLike, memories: list[str]) -> CompactedMemories:
-    """You are the following person:
+    """\
+    You are the following person:
 
     ```
     {agent}
@@ -365,19 +375,58 @@ class BriefThought:
     ]
 
 
+@dataclass
+class RelationshipTag:
+    relationship: str
+    reason: str
+
+
 class Student:
+    appearance_view: dict[Student, AppearanceLike]
+    memories: MemoryBank
+
     def __init__(self, profile: StudentProfile, max_memories: int = 8) -> None:
         self.profile = profile
         self.memories = MemoryBank(self.profile, max_memories)
+        self.relationships = {}
+        self.appearance_view = {}
 
     def inject_brief_thought(self, brief_thought: BriefThought) -> None:
         name = self.profile.name
         brief_thought = brief_thought.brief_thought
         self.memories.add_short_term_memory(f"{name} thought: {brief_thought}")
 
+    def etch_into_memory(self, event: str) -> None:
+        thoughts = embellish_event(self, event)
+        if not isinstance(thoughts, list):
+            thoughts = [thoughts]
+        for t in thoughts:
+            self.memories.memories.append(
+                MemoryEntry(
+                    t.thought,
+                    t.significance,
+                    embed_single_sentence(t.thought),
+                    global_clock.state,
+                )
+            )
+
     @property
     def name(self) -> str:
         return self.profile.name
+
+    @property
+    def clock(self) -> Clock:
+        return global_clock
+
+
+def populate_appearances_matrix(students: list[Student]) -> None:
+    n = len(students)
+    for i in range(n):
+        for j in range(n):
+            if i != j:
+                students[i].appearance_view[students[j]] = create_appearance_of(
+                    students[i], students[j]
+                )
 
 
 def estimate_speaking_time(sentence, words_per_minute=135):
@@ -387,13 +436,35 @@ def estimate_speaking_time(sentence, words_per_minute=135):
     return round(seconds, 2)
 
 
+class AppearanceLike(Protocol):
+    appearance: str
+
+
 @dataclass
-class AppearanceOf:
+class AppearanceOf(AppearanceLike):
     appearance: Annotated[
         str,
         (
             "A brief description of the target person from the perspective of the observer. Write one descriptive sentence"
-            "in third person: how does the target person look like to you?"
+            "in third person: how does the target person physically look like to you? Height differences, etc."
+        ),
+    ]
+
+
+@dataclass
+class Friendship(AppearanceLike):
+    appearance: Annotated[
+        str,
+        (
+            "A brief description of the target person from the perspective of the observer. Write one descriptive sentence"
+            "in third person: how does the target person physically look like to you? Height differences, etc. (Might"
+            "you look at them differently now that you are friends?)"
+        ),
+    ]
+    friendship_reason: Annotated[
+        str,
+        (
+            "Brief memo on why the observer is friends with the target person. Write one descriptive sentence."
         ),
     ]
 
@@ -493,9 +564,7 @@ class Scenario:
             student.inject_brief_thought(brief_thought)
 
     def elicit_conversation(self, student: Student) -> ConversationResponse:
-        memories = student.memories.recall(
-            "conversation"
-        )  # FIXME: should not try to recall conversation.
+        memories = student.memories.recall("conversation")
         short_term = student.memories.short_term_memories_repr()
         return _elicit_conversation(
             student.profile,
@@ -551,7 +620,7 @@ def _create_appearance_of(
     short_term: list[str],
     target_agent_profile: str,
 ) -> AppearanceOf:
-    """
+    """\
     You are {_agent.name}. Here is your profile:
 
     > {_agent.agent_context()}. {'. '.join(_memories)}
@@ -594,9 +663,8 @@ class Surroundings:
         return [p.name for p in self.people]
 
 
-TEMPLATE_REGISTRY[
-    "student_agent_thought_convo"
-] = """You are {_agent.name}. Here is your profile:
+TEMPLATE_REGISTRY["student_agent_thought_convo"] = """\
+    You are {_agent.name}. Here is your profile:
 
     > {_agent.agent_context()}. {'. '.join(_memories)}
 
@@ -624,7 +692,7 @@ def _elicit_brief_thought(
     short_term: list[str],
     surroundings: Surroundings,
 ) -> BriefThought:
-    """
+    """\
     {% include "student_agent_thought_convo" %}
 
     What do you think in the current moment? Write down a brief thought, a reaction to the moment fitting for you,
@@ -648,7 +716,7 @@ def _elicit_conversation(
     short_term: list[str],
     surroundings: Surroundings,
 ) -> ConversationResponse:
-    """
+    """\
     {% include "student_agent_thought_convo" %}
 
     What would you ({_agent.name}) say? What would you do? Remember that your MBTI type is {_agent.mbti_type}
@@ -669,18 +737,69 @@ def elicit_conversation(
     ...
 
 
+@raw_sparkle(demangle=True)
+def upgrade_to_friendship(student: Student, other: Student) -> Friendship:
+    """\
+    You are {student.profile.name}. Here is your profile:
+
+    > {student.profile.agent_context()}. {student.memories.recall(other.profile.bio)|join(', ')}.
+
+    The most recent things that happened, in your **very fresh mind**, in log form:
+
+    > {student.memories.short_term_memories_repr()}
+
+    Now, you are thinking about the following person, and you are thinking about your friendship with them:
+
+    > {other.profile.agent_context()}
+
+    Your original thoughts about them:
+
+    > {student.appearance_view[other].appearance}
+
+    Why are you friends with them?
+
+    ----
+
+    How would you say this person looks like, mostly physically, from your physical perspective?
+    Write a brief description of the person and your friendship with them.
+
+    {formatting_instructions}
+    """
+
+
+@raw_sparkle(demangle=True)
+def embellish_event(student: Student, event: str) -> Thought:
+    """\
+    You are {student.profile.name}. Here is your profile:
+
+    > {student.profile.agent_context()}. {student.memories.recall(event)|join(', ')}.
+
+    You just suddenly recalled from your memory. It popped up in your thoughts
+    again:
+    > {event}
+
+    Help them rate the significance on a scale of 1 to 10:
+
+    In addition, how would they rephrase this fact in their own words,
+    to be etched again in their memory? Write down one direct rephrased
+    thought, in third person.
+
+    {formatting_instructions}
+    """
+    ...
+
+
 def generate_student(grade: int) -> Student:
     return Student(StudentProfile.generate_from_grade(grade))
 
 
 if __name__ == "__main__":
-    # three_students = [generate_student(4) for _ in range(3)]
-    # d = defaultdict(dict)
-    # for i in range(3):
-    #     for j in range(3):
-    #         if i != j:
-    #             d[i][j] = create_appearance_of(three_students[i], three_students[j])
-    #
+    three_students = [generate_student(4) for _ in range(3)]
+    d = defaultdict(dict)
+    for i in range(3):
+        for j in range(3):
+            if i != j:
+                d[i][j] = create_appearance_of(three_students[i], three_students[j])
     # convo = Scenario(three_students, d, textwrap.dedent("""
     # As you step inside the Principal's Office, a sense of
     # reverence washes over you. Durable stone flooring, adorned with geometric
@@ -699,13 +818,11 @@ if __name__ == "__main__":
 
     with open("assets/convo.pkl", "rb") as f:
         convo = pkl.load(f)
-    from icecream import ic
 
     first_student = choice(convo.students)
     convo.conversation_loop(first_student)
     #
     # convo = convo.elicit_conversation(first_student)
-
     # breakpoint()
 
     # breakpoint()

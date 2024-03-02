@@ -1,0 +1,103 @@
+[[locations]]
+name = "The Dormitory Room - Quartet's Quarters"
+description = """
+This cozy dormitory room, designed for four children, is a warm blend of comfort and functionality. Each corner of the room is occupied by a personal space, marked by a sturdy bunk bed with a privacy curtain, a compact but ample study desk, and a personal storage area. The walls are adorned with a magical mural that can change scenes based on the residents' preferences, ranging from serene landscapes to vibrant cityscapes. In the center of the room, a circular, cushioned seating area serves as a communal space for the roommates to socialize, play games, or collaborate on school projects.
+"""
+
+[[locations]]
+name = "The Dormitory Bathroom - The Aquatic Chamber"
+description = """
+This spacious bathroom, located on each floor of the dormitory, resembles an underwater kingdom. The walls are tiled in shades of blue and green, with holographic aquatic creatures playfully swimming across them. Each shower stall is equipped with temperature-controlled water and a small bench. The large mirrors are enchanted to offer gentle, encouraging affirmations to the students as they prepare for their day. A faint, soothing melody can be heard, reminiscent of a serene ocean, enhancing the calming atmosphere.
+"""
+
+[[locations]]
+name = "The Classroom - Cradle of Knowledge"
+description = """
+Bright and airy, the classroom is a large, rectangular room with floor-to-ceiling windows that offer a view of the lush school grounds. Desks are arranged in a semi-circle facing the interactive holographic blackboard. The walls are lined with bookshelves filled with texts on various subjects, both mundane and mystical. A corner of the room is dedicated to a cozy reading nook, complete with bean bags and soft lighting, where students can study in comfort.
+"""
+
+[[locations]]
+name = "The Gym - Arena of Vitality"
+description = """
+This expansive gymnasium is equipped with state-of-the-art facilities for both physical and magical training. The walls are fitted with climbing ropes and magical barriers for defensive practice. One side of the gym opens to an outdoor field, allowing for a seamless transition between indoor and outdoor activities. High above, enchanted skylights adjust their brightness based on the time of day, ensuring perfect lighting conditions. The room echoes with the sounds of energetic students and the occasional whistle of a coach.
+"""
+
+[[locations]]
+name = "The Science Room - Alchemy Lab"
+description = """
+A blend of the modern and the mystical, the science room is filled with advanced equipment and alchemical tools. Shelves lined with colorful potions, herbs, and minerals sit next to digital microscopes and 3D models of various organisms. The center of the room features a large, circular table with built-in magical reactors for safe experimentation. The walls are embedded with interactive screens that display scientific data and magical formulas, providing an immersive learning experience.
+"""
+
+[[locations]]
+name = "The Rooftop Garden - Sanctuary in the Sky"
+description = """
+Accessible via a spiral staircase, the rooftop garden is a tranquil oasis high above the school grounds. Lush greenery, flowering plants, and small, tinkling fountains create a peaceful ambiance. Wooden benches and stone pathways allow for leisurely walks or quiet reflection. The garden is encircled by a protective barrier that keeps it safe while offering a panoramic view of the cityscape beyond. It's a popular spot for students seeking a moment of solace or inspiration.
+"""
+
+[[locations]]
+name = "The Playground - Field of Wonders"
+description = """
+The playground is a vibrant and energetic space, filled with colorful, enchanted play equipment. Swings that soar to magical heights, slides that change their shape, and climbing frames that gently challenge the climbers are scattered around. The ground is cushioned with soft, impact-absorbing material, ensuring safety. Laughter and joyful shouts fill the air as students engage in imaginative play, fostering both physical fitness and creative thinking.
+"""
+
+[[locations]]
+name = "The School Bathroom - The Refreshing Retreat"
+description = """
+Located at various points in the school, these bathrooms are designed for efficiency and comfort. The interior is sleek and modern, with touchless faucets and self-cleaning facilities. Each stall is private and sound-proof, providing a personal space for students. Soft, ambient music plays in the background, and the lighting adjusts to a calming hue, making it a refreshing escape from the bustling school environment.
+"""
+
+[[locations]]
+name = "The School Cafeteria - Gastronomic Galaxy"
+description = """
+The school cafeteria is a bustling, vibrant hub where culinary magic comes to life. Its vast, open space is dotted with tables of various sizes, accommodating groups large and small. The ceiling is enchanted to mimic a softly glowing sky, complete with drifting clouds during the day and twinkling stars at night. The serving area resembles a marketplace, from a fantasy novel, with stalls offering a diverse array of dishes from around the world
+"""
+
+[[locations]]
+name = "The Library - Whispering Realms"
+description = """
+The library, known as the Whispering Realms, is a serene sanctuary of knowledge. Compact yet comprehensive, it houses rows of bookshelves brimming with books, scrolls, and digital archives. The room is bathed in a warm, golden light that creates a welcoming ambiance. Comfortable reading nooks with plush seating are scattered throughout, providing cozy corners for students to lose themselves in their studies or literary adventures. The walls are enchanted to softly whisper book titles and summaries to students as they walk by, guiding them to their next great read or research topic.
+"""
+
+[[classes]]
+name = "Mathematics"
+description = "Covers a wide range of mathematical concepts, emphasizing real-world applications and problem-solving skills."
+
+[[classes]]
+name = "Art"
+description = "Encourages creativity through various mediums, focusing on personal expression and artistic techniques."
+
+[[classes]]
+name = "Science"
+description = "Explores fundamental principles of biology, chemistry, physics, and earth science, fostering curiosity about natural phenomena."
+
+[[classes]]
+name = "History"
+description = "Examines significant historical events and figures, promoting critical thinking and understanding of past influences."
+
+[[classes]]
+name = "Literature"
+description = "Analyzes classic and contemporary works, enhancing literary appreciation and critical reading skills."
+
+[[classes]]
+name = "Music"
+description = "Teaches musical theory, genres, and instruments, fostering appreciation and practical musical skills."
+
+[[classes]]
+name = "Physical Education"
+description = "Promotes physical fitness and teamwork through various sports and wellness activities."
+
+[[classes]]
+name = "Computer Science"
+description = "Introduces programming, digital literacy, and the impact of technology, preparing students for the digital age."
+
+[[classes]]
+name = "Foreign Language"
+description = "Teaches languages like Spanish, French, Japanese, focusing on communication skills and cultural awareness."
+
+[[classes]]
+name = "Environmental Studies"
+description = "Focuses on environmental issues and sustainability, encouraging eco-friendly practices and responsibility."
+
+[[classes]]
+name = "Arcane Arts"
+description = "Delves into magical theory, spellcasting, and mystical history, enhancing magical skills and arcane knowledge."

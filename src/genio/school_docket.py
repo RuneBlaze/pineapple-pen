@@ -3,6 +3,7 @@ from __future__ import annotations
 import pickle as pkl
 
 from pydantic.dataclasses import dataclass
+from icecream import ic
 
 from .architect import (
     ArchitecturalGuidelines,
@@ -12,7 +13,16 @@ from .architect import (
     SchoolConcept,
     SingleFloorConcept,
     TriConcept,
+    FloorPlan,
+    RoomCatalogue,
+    HardwareConcept,
+    FurnitureConcept,
 )
+
+assert FloorPlan is not None
+assert RoomCatalogue is not None
+assert HardwareConcept is not None
+assert FurnitureConcept is not None
 
 
 @dataclass
@@ -70,3 +80,4 @@ if __name__ == "__main__":
     with open("assets/test.pkl", "rb") as f:
         concept_packet = pkl.load(f)
     docket = SchoolDocket.from_concept_packet(concept_packet)
+    ic(docket)

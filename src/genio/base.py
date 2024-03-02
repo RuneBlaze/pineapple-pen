@@ -33,6 +33,9 @@ from .llm import aux_llm
 from .robustyaml import cleaning_parse
 from jinja2 import BaseLoader, TemplateNotFound
 from textwrap import dedent
+from structlog import get_logger
+
+logger = get_logger()
 
 TEMPLATE_REGISTRY = {}
 
@@ -64,7 +67,6 @@ def paragraph_consolidate(text: str) -> str:
         flushed_paragraphs.append(" ".join(buf))
 
     return "\n\n".join(flushed_paragraphs).strip()
-
 
 
 class TemplateRegistryLoader(BaseLoader):
@@ -198,6 +200,7 @@ class RawYamlParser(BaseOutputParser):
         if "```" in text:
             text = pattern.search(text).group("yaml")
         try:
+            logger.info(f"Raw YAML: {text}")
             return cleaning_parse(text.replace("\\_", "_"), self.expected_keys)
         except yaml.YAMLError as e:
             msg = f"Failed to parse YAML from completion {text}. Got: {e}"
@@ -251,7 +254,8 @@ def clean_null_values(d: dict) -> None:
 def instantiate_instance(cls: Type[T], data: dict) -> T:
     try:
         return cls(**data)
-    except TypeError:
+    except TypeError as e:
+        logger.error(f"Failed to instantiate {cls} with {data}. Got: {e}")
         docstring = get_docstrings(cls)
         buf = []
         args = docstring.args
@@ -270,6 +274,7 @@ def instantiate_instance(cls: Type[T], data: dict) -> T:
             "Please return in YAML.\n"
         )
         yml = ask_for_yaml(prompt, [arg.name for arg in args])
+        logger.info(f"Retried; Got {yml}")
         return cls(**yml)
 
 
@@ -281,6 +286,7 @@ class YamlParser(BaseOutputParser):
         if "```" in text:
             text = pattern.search(text).group("yaml")
         try:
+            logger.info(f"YamlParser: {text}")
             data = cleaning_parse(text.replace("\\_", "_"))
             if isinstance(data, dict):
                 data = {k.replace(" ", "_"): v for k, v in data.items()}
@@ -419,16 +425,15 @@ def raw_sparkle(f=None, demangle: bool = False):
             }
         )
         prompt = render_template(
-                doc,
-                {
-                    "input_yaml": input_str,
-                    "formatting_instructions": formatting_instructions,
-                    **rest,
-                },
-            )
+            doc,
+            {
+                "input_yaml": input_str,
+                "formatting_instructions": formatting_instructions,
+                **rest,
+            },
+        )
         chain = prompt | llm | YamlParser(cls=return_type)
         return chain.invoke({})
-
     return wrapper
 
 
@@ -459,13 +464,13 @@ def cmd_sparkle(allowed_commands: list[str]):
                 ctxt.append("```")
             input_str = "\n".join(ctxt)
             prompt = render_template(
-                    doc,
-                    {
-                        "input_yaml": input_str,
-                        **{k: make_str_of_value(v) for k, v in args.items()},
-                        **{f"_{k}": v for k, v in args.items()},
-                    },
-                )
+                doc,
+                {
+                    "input_yaml": input_str,
+                    **{k: make_str_of_value(v) for k, v in args.items()},
+                    **{f"_{k}": v for k, v in args.items()},
+                },
+            )
             chain = prompt | llm | CmdParser(allowed_commands=allowed_commands)
             return chain.invoke({})
 
@@ -540,9 +545,6 @@ def slurp_toml(path):
 
 class AgentLike(Protocol):
     def agent_context(self) -> str:
-        ...
-
-    def local_time(self) -> int:
         ...
 
 

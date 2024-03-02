@@ -72,8 +72,25 @@ def cleaning_parse(text, expected_keys: list[str] | None = None):
     cleaned_text = cleaned_text.replace("\\_", "_")
     cleaned_text = fix_invalid_yaml_string(cleaned_text)
     if expected_keys:
-        return fix_yaml_for_keys(cleaned_text, expected_keys)
-    return safe_load(cleaned_text)
+        res = fix_yaml_for_keys(cleaned_text, expected_keys)
+    else:
+        res = safe_load(cleaned_text)
+    return recursive_remove_comments_in_dict(res)
+
+
+def recursive_remove_comments_in_dict(d: dict) -> dict:
+    # some strings have '#' in them, so we need to be careful
+    # with the replacement
+    res = {}
+    for k, v in d.items():
+        if isinstance(v, dict):
+            res[k] = recursive_remove_comments_in_dict(v)
+        else:
+            if isinstance(v, str) and "#" in v:
+                res[k] = v.split("#")[0]
+            else:
+                res[k] = v
+    return res
 
 
 pattern: re.Pattern = re.compile(
