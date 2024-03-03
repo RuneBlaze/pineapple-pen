@@ -1,15 +1,16 @@
 from dataclasses import dataclass
-from .base import slurp_toml, raw_sparkle
 from functools import cache
 from typing import Annotated
+
+import yaml
+from icecream import ic
+
+from .base import raw_sparkle, slurp_toml
 from .student import (
-    Student,
     Friendship,
-    embellish_event,
-    global_clock,
+    Student,
     global_factual_storage,
 )
-import yaml
 
 
 @dataclass
@@ -100,7 +101,8 @@ class BroadStrokesPlan:
         list[str],
         (
             "Plans for the day, slightly vague but allowing more detailed planning further along;"
-            "in broad strokes."
+            "in broad strokes. In the format, 'HH:MM - HH:MM; Topic; Location'. No need to be very"
+            "specific on the topic, or location if you don't know yet, but plan with your best effort."
         ),
     ]
 
@@ -132,7 +134,7 @@ def plan_broad_strokes(
 
     ----
 
-    Today is a school day. Here is the schedule for today:
+    Today is a school day. Here is the class schedule for the day.
 
     {% for entry in today_schedule.entries %}
     - {{ entry }}
@@ -140,11 +142,14 @@ def plan_broad_strokes(
 
     > Note: usually there is homework and other activities after school, so plan accordingly.
 
-    Now, you have to plan your day. Please plan in broad strokes.
+    Now, plan your day in a **personal way** incorporating the class schedule,
+    but do include personal notes. One must always get up in the morning,
+    start the day, and one usually have plans after class and how to end their day.
+
+    Please plan in broad strokes.
     Your list of plans should be slightly vague but allowing more detailed planning further along.
 
-    Reminder: your plans should include your personal care, daily life, and schedule
-    after school as well. Study, having fun, and taking care of yourself is all important.
+    Now, plan from 8AM to 8PM, incorporating the class schedule.
 
     {{formatting_instructions}}
     """
@@ -212,8 +217,8 @@ if __name__ == "__main__":
     for student in students:
         remind_recurrent_memories(student)
     location_tracker = LocationTracker(locs, students)
-
     for student in students:
         plan = plan_broad_strokes(student, location_tracker, schedule)
+        ic(plan)
         for entry in schedule.entries:
             detailed = plan_details(student, location_tracker, plan, entry)

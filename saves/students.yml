@@ -4,64 +4,60 @@ students:
     ? &id002 !!python/object:genio.student.Student
       appearance_view:
         *id001: !!python/object:genio.student.AppearanceOf
-          appearance: Ren Matsui appears to be slightly shorter than Himari at 125
-            cm tall. He has an easy-going and laid-back demeanor that seems approachable
-            and friendly.
+          appearance: Dan Watanabe is an 8-year-old boy with a passion for gardening.
+            Standing at 124 cm tall, he has a slender build and a friendly demeanor.
         ? &id003 !!python/object:genio.student.Student
           appearance_view:
             *id001: !!python/object:genio.student.AppearanceOf
-              appearance: Ren Matsui appears to be a friendly and approachable young
-                boy with a casual, laid-back demeanor. Standing at 125 cm tall, he
-                may seem slightly shorter than Haruma Sugiyama, but his presence is
-                still notable among the students in their grade.
-            *id002: !!python/object:genio.student.AppearanceOf
-              appearance: Himari Ishikawa appears to be a petite girl with a gentle
-                demeanor. At 133 cm tall, she stands slightly taller than Haruma and
-                has an air of quiet confidence about her. Her hair is a vibrant shade
-                of pink, which contrasts nicely with her soft-looking eyes that seem
-                to sparkle when she's genuinely interested in something.
+              appearance: Dan is a young and slightly shorter boy with a passion for
+                gardening. Standing at 124 cm tall, he has a youthful and energetic
+                aura about him.
+            *id002: !!python/object:genio.student.Friendship
+              appearance: Ren Nomura is a quiet and introspective student with a sharp
+                intellect, standing at a height of 138cm. He often wears glasses that
+                frame his curious eyes.
+              friendship_reason: I am friends with Ren because his insightful mind
+                and factual approach to problem-solving have helped me in many situations.
             ? &id007 !!python/object:genio.student.Student
               appearance_view:
                 *id001: !!python/object:genio.student.AppearanceOf
-                  appearance: "Ren Matsui appears to be slightly shorter than Y\u016B\
-                    ma with a more relaxed posture and a friendly expression on his\
-                    \ face. He seems approachable and easygoing."
-                *id002: !!python/object:genio.student.Friendship
-                  appearance: "Himari is a petite girl with a height of 133 CM, standing\
-                    \ slightly taller than Y\u016Bma at 129 CM. She has long, dark\
-                    \ hair that often falls in front of her face, and her eyes seem\
-                    \ to be filled with curiosity as they scan the environment."
-                  friendship_reason: I am friends with Himari because she is always
-                    curious and eager to learn new things, and our shared love for
-                    learning brings us closer together.
+                  appearance: Dan Watanabe is an 8-year-old student in grade 4 who
+                    stands at 124 cm tall. He has a youthful and energetic appearance,
+                    with a passion for gardening evident in his attire and demeanor.
+                *id002: !!python/object:genio.student.AppearanceOf
+                  appearance: Ren Nomura is a quiet young boy with a contemplative
+                    demeanor. Standing at 138 cm tall, he has an air of intelligence
+                    and thoughtfulness that sets him apart from his peers.
                 *id003: !!python/object:genio.student.Friendship
-                  appearance: "Haruma has bright, piercing eyes that sparkle with\
-                    \ excitement and curiosity. His hair is styled in a way that gives\
-                    \ off an air of youthful energy, making him easy to spot among\
-                    \ his peers. He stands tall at 129 cm, just like Y\u016Bma, but\
-                    \ his infectious enthusiasm seems to make him appear even taller."
-                  friendship_reason: "Y\u016Bma and Haruma became friends because\
-                    \ they share a love for extracurricular activities and a desire\
-                    \ to bring joy and energy to their school community. They often\
-                    \ work together on projects and events, inspiring others with\
-                    \ their teamwork and unwavering dedication."
+                  appearance: Ao Sugiyama is a petite yet lively girl who stands at
+                    135cm tall, with sparkling eyes that reveal her energetic spirit
+                    and infectious enthusiasm.
+                  friendship_reason: I'm friends with Ao because she inspires me to
+                    be my best self through her unwavering school spirit and determination.
+                    Her positive energy is contagious, and I appreciate how she cheers
+                    on everyone around her.
               memories: !!python/object:genio.student.MemoryBank
                 agent: &id004 !!python/object:genio.student.StudentProfile
-                  age: 9
-                  bio: "A passionate and energetic 9-year-old who takes great pride\
-                    \ in their school. Always eager to participate in school events\
-                    \ and lead cheers, Y\u016Bma is known for their infectious enthusiasm.\
-                    \ They have an excellent memory and are skilled at remembering\
-                    \ the lyrics of cheer songs. Their favorite subjects are music\
-                    \ and art, where they can express themselves creatively."
+                  age: 10
+                  bio: Ao is an enthusiastic and intelligent 10-year-old student in
+                    grade 4. He stands at 132 cm tall and has an insatiable love for
+                    science fiction, often discussing the latest theories or inventions
+                    with anyone who will listen. Despite his young age, he possesses
+                    a vast knowledge of the genre and is constantly trying to improve
+                    his skills.
                   gender: male
                   grade: 4
-                  height: 129
-                  long_term_goal: To become a well-known figure in their school community,
-                    inspiring others to love and support their school as much as they
-                    do.
-                  mbti_type: ENFP
-                  name: "Y\u016Bma Kaneko"
+                  height: 132
+                  long_term_goal: Ao's long-term goal is to become a renowned scientist,
+                    contributing groundbreaking discoveries to humanity's understanding
+                    of the universe and beyond. He believes that one day, he will
+                    help create the technology needed for humans to explore space
+                    and thrive among the stars.
+                  mbti_type: INTP
+                  name: "Ao And\u014D"
+                factual_store: !!python/object/apply:genio.student.from_documents
+                - []
+                - false
                 max_memories: 8
                 memories: []
                 short_term_memories: []
@@ -69,32 +65,31 @@ students:
               profile: *id004
               relationships: {}
             : !!python/object:genio.student.AppearanceOf
-              appearance: "Y\u016Bma Kaneko is a small but energetic 9-year-old boy\
-                \ who stands at around 129 cm tall. His bright eyes and infectious\
-                \ smile make him easily approachable, while his short hair frames\
-                \ his youthful face."
+              appearance: "Ao And\u014D is a young and eager-looking student with\
+                \ a height of 132 cm, standing slightly shorter than the observer\
+                \ Ao Sugiyama at 135 cm. He has an energetic demeanor, likely reflecting\
+                \ his shared interest in science fiction."
           memories: !!python/object:genio.student.MemoryBank
             agent: &id006 !!python/object:genio.student.StudentProfile
               age: 9
-              bio: Haruma is a bright and energetic student who loves engaging in
-                various extracurricular activities. He has a natural ability to bring
-                people together and inspire them to work towards common goals, making
-                him a valuable member of any club he joins.
-              gender: male
+              bio: Ao is a vibrant and energetic fourth-grader who stands at a height
+                of 135cm. She is full of school spirit, always leading cheers at school
+                events with her infectious enthusiasm. Ao has a deep love for her
+                school and the friends she has made there. Despite her small stature,
+                Ao's spirit and determination are unmatched, often inspiring others
+                around her to be their best selves.
+              gender: female
               grade: 4
-              height: 129
-              long_term_goal: Haruma's long-term goal is to become a leader who can
-                inspire and motivate others through their love for extracurricular
-                activities. He envisions creating a community where people come together,
-                share their passions, and work towards a common goal, fostering growth
-                and personal development in the process.
-              mbti_type: ENFP
-              name: Haruma Sugiyama is a 9-year-old student who stands at 129 cm tall
-                and currently attends grade 4. He is known for being an enthusiastic
-                club member, actively participating in various extracurricular activities.
-                His unbridled passion for his interests often leaves others in awe,
-                as he approaches each activity with an infectious energy that brings
-                life to the clubs.
+              height: 135
+              long_term_goal: Ao aspires to become a teacher who can inspire and guide
+                young students, just like the teachers who have influenced her life.
+                She dreams of creating an environment where every student feels valued,
+                supported, and encouraged to chase their dreams.
+              mbti_type: ESTP
+              name: Ao Sugiyama
+            factual_store: !!python/object/apply:genio.student.from_documents
+            - []
+            - false
             max_memories: 8
             memories: []
             short_term_memories: []
@@ -102,32 +97,32 @@ students:
           profile: *id006
           relationships: {}
         : !!python/object:genio.student.AppearanceOf
-          appearance: Haruma Sugiyama is a bright and energetic student who loves
-            engaging in various extracurricular activities. He has a natural ability
-            to bring people together and inspire them to work towards common goals,
-            making him a valuable member of any club he joins.
+          appearance: Ao is a small and energetic fourth-grader who stands at 135cm
+            tall. Despite her petite stature, she carries herself with confidence
+            and enthusiasm.
         *id007: !!python/object:genio.student.AppearanceOf
-          appearance: "Y\u016Bma Kaneko has a small yet energetic build, standing\
-            \ at 129 CM tall. Their bright and enthusiastic demeanor is reflected\
-            \ in their cheerful smile and sparkling eyes."
+          appearance: Ao is a lively and enthusiastic young boy with an insatiable
+            love for science fiction, standing at a height of 132 cm.
       memories: !!python/object:genio.student.MemoryBank
         agent: &id008 !!python/object:genio.student.StudentProfile
           age: 9
-          bio: Himari is known for her quiet nature and keen observational skills.
-            She prefers to listen rather than speak, and often asks thoughtful questions
-            when she does contribute to discussions. Despite her introverted demeanor,
-            Himari has a deep sense of curiosity and is always eager to learn new
-            things. Her knowledge in various subjects may not be vast, but she possesses
-            an analytical mind that enables her to grasp complex concepts with ease.
-          gender: female
+          bio: The Quiet Observer is a 9-year-old student with an insightful mind.
+            Despite being not very talkative, he always watches and listens to his
+            surroundings, gathering knowledge and understanding human behavior better
+            than most of his peers. His quiet demeanor belies a sharp intellect, and
+            he has a natural curiosity that drives him to explore the mysteries of
+            life. Ren is known for his factual approach to problem-solving and is
+            often sought out by classmates when they need help with their schoolwork.
+          gender: male
           grade: 4
-          height: 133
-          long_term_goal: Himari's long-term goal is to become a successful inventor,
-            creating groundbreaking innovations that can improve the lives of others.
-            She believes in using technology for good and aims to make the world a
-            better place through her creations.
+          height: 138
+          long_term_goal: To become an exceptional detective and uncover the hidden
+            truths in society.
           mbti_type: INTJ
-          name: Himari Ishikawa
+          name: Ren Nomura
+        factual_store: !!python/object/apply:genio.student.from_documents
+        - []
+        - false
         max_memories: 8
         memories: []
         short_term_memories: []
@@ -135,33 +130,35 @@ students:
       profile: *id008
       relationships: {}
     : !!python/object:genio.student.AppearanceOf
-      appearance: '"Himari Ishikawa appears to be a quiet and introspective young
-        girl with keen observational skills. Her height of 133 CM places her slightly
-        above Ren, giving her an air of composed presence."'
+      appearance: Ren Nomura is a tall and quiet student with an insightful mind.
     *id003: !!python/object:genio.student.AppearanceOf
-      appearance: Ren Matsui observes Haruma Sugiyama as an enthusiastic 9-year-old
-        student who stands slightly taller than him at 129 cm. Haruma's energetic
-        demeanor is evident in his posture and overall appearance, making him stand
-        out among his peers.
+      appearance: Ao is a vibrant and energetic fourth-grader who stands at a height
+        of 135cm, despite her small stature. Her spirit and determination are unmatched.
     *id007: !!python/object:genio.student.AppearanceOf
-      appearance: "Y\u016Bma Kaneko is a lively and energetic 9-year-old boy with\
-        \ a contagious enthusiasm for school activities and cheerleading. At 129 CM\
-        \ tall, he stands slightly taller than Ren Matsui."
+      appearance: "Ao And\u014D is a tall and lanky 10-year-old with an energetic\
+        \ demeanor. His love for science fiction is evident in his enthusiastic discussions\
+        \ and desire to learn more about the genre."
   memories: !!python/object:genio.student.MemoryBank
     agent: &id009 !!python/object:genio.student.StudentProfile
-      age: 9
-      bio: '"Ren Matsui is known as ''The Laid-back Senior'' among his peers. He has
-        an approachable and relaxed demeanor, which makes him easy to talk to. Many
-        younger students seek his advice on various matters because of his wisdom
-        beyond his years."'
+      age: 8
+      bio: The Gardening Club Member is an 8-year-old who stands at 124cm tall. He
+        is passionate about plants and can often be found tending to the school garden
+        or greenhouse. His love for nature stems from his childhood, where he would
+        spend hours playing in the backyard with his grandfather, who taught him the
+        importance of nurturing life. Dan's extensive knowledge on various plant species
+        has earned him a reputation among his peers as the go-to person for gardening
+        advice.
       gender: male
       grade: 4
-      height: 125
-      long_term_goal: '"Ren aspires to become a respected mentor and guide for future
-        generations, using his experiences to help others navigate the challenges
-        of life."'
-      mbti_type: '"INTJ"'
-      name: Ren Matsui
+      height: 124
+      long_term_goal: Dan dreams of one day becoming a botanist and discovering new
+        plant species that could benefit humanity. He wants to make a difference in
+        the world by working towards preserving and promoting environmental conservation.
+      mbti_type: ISTJ
+      name: Dan Watanabe
+    factual_store: !!python/object/apply:genio.student.from_documents
+    - []
+    - false
     max_memories: 8
     memories: []
     short_term_memories: []

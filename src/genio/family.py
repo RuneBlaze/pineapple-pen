@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass, field, is_dataclass
 from functools import cache
-from random import gauss, sample, choice
+from random import choice, gauss, sample
 from typing import Annotated, Literal
 
 import faker

@@ -2,21 +2,21 @@ from __future__ import annotations
 
 import pickle as pkl
 
-from pydantic.dataclasses import dataclass
 from icecream import ic
+from pydantic.dataclasses import dataclass
 
 from .architect import (
     ArchitecturalGuidelines,
     ClassRef,
     ConceptPacket,
+    FloorPlan,
+    FurnitureConcept,
+    HardwareConcept,
     InteriorDesignGuidelines,
+    RoomCatalogue,
     SchoolConcept,
     SingleFloorConcept,
     TriConcept,
-    FloorPlan,
-    RoomCatalogue,
-    HardwareConcept,
-    FurnitureConcept,
 )
 
 assert FloorPlan is not None

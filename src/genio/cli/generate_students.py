@@ -1,12 +1,13 @@
+import random
+
 import typer
+import yaml
 from genio.student import (
+    Student,
     generate_student,
     populate_appearances_matrix,
     upgrade_to_friendship,
-    Student,
 )
-import random
-import yaml
 
 
 def non_diagonal_entries(n: int) -> list[tuple[int, int]]:

@@ -5,10 +5,10 @@ from typing import Any, Optional
 from uuid import UUID
 
 from google.generativeai.types import HarmBlockThreshold, HarmCategory
+from langchain_community.chat_models import ChatOllama
 from langchain_core.outputs import ChatGeneration, LLMResult
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langfuse.callback import CallbackHandler
-from langchain_community.chat_models import ChatOllama
 from langfuse.callback.langchain import _extract_raw_esponse
 
 

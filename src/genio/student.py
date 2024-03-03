@@ -1,23 +1,23 @@
 from __future__ import annotations
 
+import datetime as dt
 import pickle as pkl
+from collections import defaultdict
 from collections.abc import Mapping
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from functools import cache
 from random import choice, gauss
-from typing import Annotated
-import datetime as dt
-from typing import Protocol
-from concurrent.futures import ThreadPoolExecutor
-from collections import defaultdict
+from typing import Annotated, Protocol
+
 import humanize
-
 import tantivy
-
 from numpy.typing import NDArray
 from sentence_transformers.util import cos_sim
 
 from .base import (
+    OUTPUT_FORMAT,
+    TEMPLATE_REGISTRY,
     AgentLike,
     Mythical,
     WriterArchetype,
@@ -25,8 +25,6 @@ from .base import (
     raw_sparkle,
     slurp_toml,
     yamlize,
-    TEMPLATE_REGISTRY,
-    OUTPUT_FORMAT,
 )
 from .height_chart import HeightChart
 from .namegen import NameGenerator
@@ -268,6 +266,9 @@ def humanize_time_delta(delta: dt.timedelta) -> str:
     return humanize.naturaltime(delta) + " ago"
 
 
+import re
+
+
 @dataclass
 class FactualEntry:
     title: str | None
@@ -279,7 +280,7 @@ class FactualEntry:
 
     def to_context(self) -> str:
         if self.title:
-            return f"about {self.title}: {self.body}"
+            return f"""about "{self.title}": {self.body}"""
         return self.body
 
 
@@ -312,19 +313,27 @@ class TantivyStore:
         if is_global_store:
             store = global_factual_storage()
         else:
-            store = TantivyStore()
+            store = TantivyStore(global_factual_storage())
         for doc in docs:
             store.insert(doc["title"], doc["body"], doc["keywords"])
         return store
 
-    def recall(self, query: str, top_k: int = 1) -> list[FactualEntry]:
+    def recall(self, topic: str, top_k: int = 1) -> list[FactualEntry]:
         self.index.reload()
-        query = self.index.parse_query(query, ["title", "body", "keywords"])
-        hits = self.index.searcher().search(query, top_k).hits
+        try:
+            query = self.index.parse_query(topic, ["title", "body", "keywords"])
+        except ValueError:
+            topic = re.sub("[^0-9a-zA-Z]+", " ", topic)
+            query = self.index.parse_query(topic, ["title", "body", "keywords"])
+        searcher = self.index.searcher()
+        hits = searcher.search(query, top_k).hits
         res = []
         if self.parent:
-            res += self.parent.recall(query, top_k)
-        res += [FactualEntry(hit["title"], hit["body"]) for hit in hits]
+            res += self.parent.recall(topic, top_k)
+        for hit in hits:
+            score, doc_address = hit
+            doc = searcher.doc(doc_address)
+            res.append(FactualEntry(doc["title"][0], doc["body"][0]))
         return res
 
     def insert(self, title: str | None, body: str, keywords: str | None = None) -> None:
@@ -335,6 +344,10 @@ class TantivyStore:
         )
         self.entries.append({"title": title, "body": body, "keywords": keywords})
         self.writer.commit()
+
+
+def from_documents(*args, **kwargs) -> TantivyStore:
+    return TantivyStore.from_documents(*args, **kwargs)
 
 
 class MemoryBank:
@@ -697,9 +710,7 @@ def _create_appearance_of(
 
     Now, you are observing the following person:
 
-    ```
-    {{target_agent_profile}}
-    ```
+    > {{target_agent_profile}}
 
     How would you say this person looks like, mostly physically, from your perspective? Write a brief description of the person.
 

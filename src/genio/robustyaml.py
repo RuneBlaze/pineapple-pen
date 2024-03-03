@@ -1,12 +1,12 @@
 import re
+from collections.abc import Mapping
 
+import json5 as json
 from yaml import safe_load
 from yaml.parser import ParserError
 from yaml.scanner import ScannerError
-from collections.abc import Mapping
 
 from .llm import aux_llm
-import json5 as json
 
 
 def is_nested_dict(d):

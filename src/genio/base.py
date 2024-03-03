@@ -6,7 +6,8 @@ import random
 import re
 from abc import ABC
 from dataclasses import asdict, dataclass, fields, is_dataclass
-from functools import cache, wraps
+from functools import cache, partial, wraps
+from textwrap import dedent
 from typing import (
     Annotated,
     Any,
@@ -22,19 +23,16 @@ import tomlkit
 import tomlkit as tomllib
 import yaml
 from icecream import ic
+from jinja2 import BaseLoader, Environment, TemplateNotFound
 from langchain.output_parsers import OutputFixingParser
 from langchain_core.exceptions import OutputParserException
 from langchain_core.output_parsers import BaseOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from functools import partial
-from jinja2 import Environment
+from structlog import get_logger
 
 from .cmd import parse_command
 from .llm import aux_llm
 from .robustyaml import cleaning_parse
-from jinja2 import BaseLoader, TemplateNotFound
-from textwrap import dedent
-from structlog import get_logger
 
 logger = get_logger()
 
