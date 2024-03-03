@@ -6,7 +6,8 @@ from yaml.scanner import ScannerError
 from collections.abc import Mapping
 
 from .llm import aux_llm
-import json
+import json5 as json
+
 
 def is_nested_dict(d):
     if not isinstance(d, dict):
@@ -17,61 +18,7 @@ def is_nested_dict(d):
 def cleaning_parse(text, expected_keys: list[str] | None = None):
     if "{" not in text and "}" not in text:
         return json.loads("{\n" + text + "\n}")
-    # lines = text.split("\n")
-    # processed = []
-    #
-    # # First Pass: Append isolated strings to the previous line
-    # for i in range(len(lines)):
-    #     if not lines[i].strip():
-    #         continue
-    #     if (
-    #         lines[i].strip()
-    #         and ":" not in lines[i]
-    #         and not lines[i].strip().startswith(("*", "-"))
-    #     ):
-    #         if processed:
-    #             # Append to previous line
-    #             processed[-1] = processed[-1] + " " + lines[i].strip()
-    #     else:
-    #         processed.append(lines[i])
-    #
-    # # Second Pass: Convert '*' to '-' in list items
-    # processed = [
-    #     l.replace("*", "-") if l.strip().startswith("*") else l for l in processed
-    # ]
-    #
-    # # Third Pass: Further clean up and format adjustments
-    # cleaned = []
-    # for l in processed:
-    #     stripped_line = l.strip()
-    #
-    #     # Skip YAML document separators
-    #     if stripped_line == "---":
-    #         continue
-    #
-    #     # Handle colon followed by newline
-    #     if ":" in stripped_line:
-    #         key, value = stripped_line.split(":", 1)
-    #         if not value.strip():
-    #             cleaned.append(f"{key.strip()}:")
-    #             continue
-    #         escaped = value.strip().replace("'", "''")
-    #         cleaned.append(f"{key.strip()}: '{escaped}'")
-    #     else:
-    #         cleaned.append(stripped_line)
-    #
-    # # Final processing
-    # cleaned_text = "\n".join(cleaned)
-    # cleaned_text = cleaned_text.replace(":\n", ": ")
-    # cleaned_text = cleaned_text.replace(": -", ":\n-")
-    # cleaned_text = cleaned_text.replace("\\_", "_")
-    # cleaned_text = fix_invalid_yaml_string(cleaned_text)
-    # if expected_keys:
-    #     res = fix_yaml_for_keys(cleaned_text, expected_keys)
-    # else:
-    #     res = safe_load(cleaned_text)
     return json.loads(text)
-    # return recursive_remove_comments_in_dict(res)
 
 
 def recursive_remove_comments_in_dict(d: dict) -> dict:
@@ -134,10 +81,10 @@ def fix_invalid_yaml_string(s: str) -> str:
 #     # Iterate over the keys and replace incorrect format
 #     for k in ks:
 #         # Create a pattern that matches '- k:' with any leading spaces
-#         pattern = re.compile(rf"^\s*-\s+{k}:", re.MULTILINE)
+#         pattern = re.compile(rf"^\s*-\s+{{k}}:", re.MULTILINE)
 #
 #         # Replace the incorrect format with the correct one
-#         s = re.sub(pattern, rf"{k}:", s)
+#         s = re.sub(pattern, rf"{{k}}:", s)
 #
 #     # Parse and return the corrected YAML
 #     return safe_load(s)

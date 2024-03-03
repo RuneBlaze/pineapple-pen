@@ -2,7 +2,13 @@ from dataclasses import dataclass
 from .base import slurp_toml, raw_sparkle
 from functools import cache
 from typing import Annotated
-from .student import Student, Friendship, embellish_event, global_clock
+from .student import (
+    Student,
+    Friendship,
+    embellish_event,
+    global_clock,
+    global_factual_storage,
+)
 import yaml
 
 
@@ -58,7 +64,7 @@ def design_generic_schedule(
     Here are the locations in this school. Most classes take place in the classroom:
 
     {% for loc in locations %}
-    - {loc.name}
+    - {{loc.name}}
     {% endfor %}
 
     ----
@@ -66,7 +72,7 @@ def design_generic_schedule(
     Here are the potential classes in your mind, but feel free to be creative:
 
     {% for klass in klasses %}
-    - {klass.name}
+    - {{klass.name}}
     {% endfor %}
 
     ----
@@ -74,7 +80,7 @@ def design_generic_schedule(
     Now, design the schedule for the day. The setting is under a Gakuen Toshi
     light novel.
 
-    {formatting_instructions}
+    {{formatting_instructions}}
     """
 
 
@@ -113,36 +119,43 @@ def plan_broad_strokes(
     student: Student, location_tracker: LocationTracker, today_schedule: DailySchedule
 ) -> BroadStrokesPlan:
     """\
-    You are {student.profile.name}. Here is your profile:
+    You are {{student.profile.name}}. Here is your profile:
 
-    > {student.profile.agent_context()}. {student.memories.recall("plan")|join(', ')}.
+    > {{student.profile.agent_context()}}. {{student.memories.recall("plan")|join(', ')}}.
 
-    You are currently at {location_tracker.student_positions[student].name}.
+    You are currently at {{location_tracker.student_positions[student].name}}.
 
     ----
 
-    You looked at the calendar and the watch -- {student.clock.natural_repr()}.
-    You are at {location_tracker.student_positions[student].name}.
+    You looked at the calendar and the watch -- {{student.clock.natural_repr()}}.
+    You are at {{location_tracker.student_positions[student].name}}.
 
     ----
 
     Today is a school day. Here is the schedule for today:
 
     {% for entry in today_schedule.entries %}
-    - { entry }
+    - {{ entry }}
     {% endfor %}
+
+    > Note: usually there is homework and other activities after school, so plan accordingly.
 
     Now, you have to plan your day. Please plan in broad strokes.
     Your list of plans should be slightly vague but allowing more detailed planning further along.
 
-    {formatting_instructions}
+    Reminder: your plans should include your personal care, daily life, and schedule
+    after school as well. Study, having fun, and taking care of yourself is all important.
+
+    {{formatting_instructions}}
     """
 
 
 @dataclass
 class DetailedPlans:
     goal: Annotated[str, "The focus of the detailed plans. A single sentence."]
-    plans: Annotated[list[str], "Detailed steps to achieve the focus. Three or four steps, a list."]
+    plans: Annotated[
+        list[str], "Detailed steps to achieve the focus. Three or four steps, a list."
+    ]
 
 
 @raw_sparkle(demangle=True)
@@ -153,21 +166,21 @@ def plan_details(
     focus: str,
 ) -> DetailedPlans:
     """\
-    You are {student.profile.name}. Here is your profile:
+    You are {{student.profile.name}}. Here is your profile:
 
-    > {student.profile.agent_context()}. {student.memories.recall(focus)|join(', ')}.
+    > {{student.profile.agent_context()}}. {{student.memories.recall(focus)|join(', ')}}.
 
     ----
 
-    You looked at the calendar and the watch -- {student.clock.natural_repr()}.
-    You are at {location_tracker.student_positions[student].name}.
+    You looked at the calendar and the watch -- {{student.clock.natural_repr()}}.
+    You are at {{location_tracker.student_positions[student].name}}.
 
     ----
 
     You are planning for the day. Here is the broad-stroke plan you made earlier:
 
     {% for plan in broad_stroke_plans.plans %}
-    - { plan }
+    - {{ plan }}
     {% endfor %}
 
     ----
@@ -175,13 +188,13 @@ def plan_details(
     Now, focus on the plan you made earlier. As you think about it, you can make more detailed plans.
 
     Focus on this specific entry of your plan and expand on it:
-    > {focus}
+    > {{focus}}
 
     Make detailed actionable goals of this focus. What might be your goals for this specific part of your plan?
     What might be the concrete sub-steps to achieve them? List three or four detailed actions
     that you can take to achieve the focus.
 
-    {formatting_instructions}
+    {{formatting_instructions}}
     """
     ...
 
@@ -189,6 +202,9 @@ def plan_details(
 if __name__ == "__main__":
     locs = default_locations()
     klasses = default_klasses()
+    global_facts = global_factual_storage()
+    for loc in locs:
+        global_facts.insert("Location: " + loc.name, loc.description)
     schedule = design_generic_schedule(locs, klasses)
     with open("saves/students.yml", "r") as f:
         students = yaml.load(f, yaml.Loader)["students"]
@@ -199,8 +215,5 @@ if __name__ == "__main__":
 
     for student in students:
         plan = plan_broad_strokes(student, location_tracker, schedule)
-        print(plan)
         for entry in schedule.entries:
             detailed = plan_details(student, location_tracker, plan, entry)
-            print(detailed)
-        break

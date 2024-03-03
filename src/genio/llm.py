@@ -50,7 +50,7 @@ def aux_llm() -> ChatOllama:
 #     ) -> Any:
 #         try:
 #             self.log.debug(
-#                 f"on llm end: run_id: {run_id} parent_run_id: {parent_run_id} response: {response} kwargs: {kwargs}"
+#                 f"on llm end: run_id: {{run_id}} parent_run_id: {{parent_run_id}} response: {{response}} kwargs: {{kwargs}}"
 #             )
 #             if run_id not in self.runs:
 #                 raise Exception("Run not found, see docs what to do in this case.")

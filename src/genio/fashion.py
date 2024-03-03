@@ -53,17 +53,17 @@ class SeasonConcept(Mythical):
 
     The executive designer is
     ```
-    {designer}
+    {{designer}}
     ```
 
     The brand concept is
     ```
-    {brand}
+    {{brand}}
     ```
 
     The designer has taken inspiration by the following keywords for this season:
     ```
-    {keywords}
+    {{keywords}}
     ```
     """
 
@@ -95,7 +95,7 @@ class SeasonConcept(Mythical):
 
 @dataclass
 class Designer(Mythical):
-    """Designer profile of a business person specialized for {speciality} as if appearing in Vogue.
+    """Designer profile of a business person specialized for {{speciality}} as if appearing in Vogue.
     Your writing will be a concept used for a light novel, but not using stereotypical Japanese words.
     """
 
@@ -110,7 +110,7 @@ class Designer(Mythical):
 
 @dataclass
 class BrandConcept(Mythical):
-    """A line name with the core line idea, based on the brand: \n```\n{description}\n```\n. The brand name should be
+    """A line name with the core line idea, based on the brand: \n```\n{{description}}\n```\n. The brand name should be
     chic. This brand should distinguish itself from its competitors. Your writing will be a concept used for a light
     novel, but no need to lean towards stereotypical Japanese concepts."""
 
@@ -145,9 +145,9 @@ class ResumeRatingResult:
 
 @dataclass
 class CandidateResume:
-    """A resume in the {industry} industry of a non-stereotypical candidate. Your writing will be unique, quirky,
+    """A resume in the {{industry}} industry of a non-stereotypical candidate. Your writing will be unique, quirky,
     and creative, like a concept used for a light novel. This person's motivation and personality is deeply motivated
-    by this secret: {one_line_bio}. This person might have just entered the industry and might not be an industry
+    by this secret: {{one_line_bio}}. This person might have just entered the industry and might not be an industry
     vet."""
 
     name: str
@@ -177,7 +177,7 @@ class CandidateResume:
 
 @dataclass
 class Recruiter(Mythical):
-    """A recruiter hired for the brand \n```\n{description}\n```\n, based on all walks of life but highly motivated to become a recruiter. The concept is {concept}. Your writing will be creative, quirky, like a concept used for a light novel, but no need to lean towards stereotypical Japanese concepts."""
+    """A recruiter hired for the brand \n```\n{{description}}\n```\n, based on all walks of life but highly motivated to become a recruiter. The concept is {{concept}}. Your writing will be creative, quirky, like a concept used for a light novel, but no need to lean towards stereotypical Japanese concepts."""
 
     name: str
     age: float

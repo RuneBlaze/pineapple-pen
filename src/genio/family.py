@@ -43,24 +43,24 @@ class Backdrop:
 
 @dataclass
 class Parent(Mythical):
-    """An adult, named {name}, with a life story to be written by you.
+    """An adult, named {{name}}, with a life story to be written by you.
 
     You should write in this style:
     ```
-    {writing_style}
+    {{writing_style}}
     ```
 
     Remember. You are to design a life story for this person as the writer above. Some brief sketches about this person:
     ```
-    {sketches}
+    {{sketches}}
     ```
 
-    This person, {name}, has wealth score of {wealth} (from 1-10).
-    This person's gender is {gender}.
+    This person, {{name}}, has wealth score of {{wealth}} (from 1-10).
+    This person's gender is {{gender}}.
 
     This person is married to, and is different from the following person:
     ```
-    {marital}
+    {{marital}}
     ```
     If you know who this person married, to, consider how they met and how their differences and similarities have shaped their lives.
     """
@@ -166,12 +166,12 @@ class FamilySecret(Mythical):
 
     The household description:
     ```
-    {household}
+    {{household}}
     ```
 
     Their secret, in vague sketches that your job is to expand and tie together as a thorough lore:
     ```
-    {sketch}
+    {{sketch}}
     ```
     """
 
@@ -343,7 +343,7 @@ class HouseholdSummary(Mythical):
 
     What you should summarize as a journalist:
     ```
-    {household_profile}
+    {{household_profile}}
     ```
     """
 

@@ -36,8 +36,8 @@ def generate_height_descript(
     """Act as an excellent light novel writer for a Gakuen Toshi story.
     Gauge how height will be described in a light novel, and generate a description.
 
-    Your height is {your_height} CM, and the target person's height is {person_height} CM.
-    Target person's gender is {person_gender}
+    Your height is {{your_height}} CM, and the target person's height is {{person_height}} CM.
+    Target person's gender is {{person_gender}}
 
     Refer to yourself as <YOU> and the target person as <PERSON> in the description. Write in the third person.
 
@@ -45,7 +45,7 @@ def generate_height_descript(
     the perspective of <YOU> looking at <PERSON> in a light novel setting. Height difference
     can be cute. Your writing will be used for templates in a light novel setting.
 
-    {formatting_instructions}
+    {{formatting_instructions}}
     """
     ...
 

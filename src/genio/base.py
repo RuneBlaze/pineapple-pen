@@ -39,6 +39,7 @@ from structlog import get_logger
 logger = get_logger()
 
 TEMPLATE_REGISTRY = {}
+OUTPUT_FORMAT = "JSON"
 
 
 def paragraph_consolidate(text: str) -> str:
@@ -78,16 +79,17 @@ class TemplateRegistryLoader(BaseLoader):
 
 
 jinja_env = Environment(
-    block_start_string="{%",
-    block_end_string="%}",
-    variable_start_string="{",
-    variable_end_string="}",
+    # block_start_string="{%",
+    # block_end_string="%}",
+    # variable_start_string="{{",
+    # variable_end_string="}}",
     loader=TemplateRegistryLoader(),
 )
 jinja_env.globals.update(zip=zip)
 
 
 def render_template(template: str, context: dict[str, Any]) -> ChatPromptTemplate:
+    logger.info(f"Rendering template: {template}")
     template = jinja_env.from_string(template).render(context)
     template = template.replace("{", "")
     template = template.replace("}", "")
@@ -355,7 +357,7 @@ def typescriptize_type(typ: str) -> str:
         return "boolean"
     if not isinstance(typ, str) and get_origin(typ) is list:
         return f"{typescriptize_type(get_args(typ)[0])}[]"
-    typ = typ.replace(" ", "").replace("'","").replace('"', "")
+    typ = typ.replace(" ", "").replace("'", "").replace('"', "")
     if typ.startswith("list"):
         return f"{typescriptize_type(typ[5:-1])}[]"
     if typ == "str":
@@ -377,7 +379,9 @@ def inst_for_struct(klass):
     prompt += "{\n"
     for arg in docstrings.args:
         prompt += (
-            f"\"{arg.name}\": // {typescriptize_type(arg.type)}, {arg.description}\n" if arg.description else f"{arg.name}\n"
+            f'"{arg.name}": // {typescriptize_type(arg.type)}, {arg.description}\n'
+            if arg.description
+            else f'"{arg.name}": // {typescriptize_type(arg.type)}\n'
         )
     prompt += "}\n"
     prompt += "```\n"
@@ -404,11 +408,11 @@ def raw_sparkle(f=None, demangle: bool = False):
 
     The docstring should contain the following:
     ```
-    {input_yaml}
+    {{input_yaml}}
     ```
     and
     ```
-    {formatting_instructions}
+    {{formatting_instructions}}
     ```
     """
     if f is None:
@@ -417,7 +421,7 @@ def raw_sparkle(f=None, demangle: bool = False):
     doc = inspect.getdoc(f)
     if doc is None:
         raise ValueError(f"Function {f} has no docstring.")
-    if "{formatting_instructions}" not in doc:
+    if "{{formatting_instructions}}" not in doc:
         raise ValueError(
             f"Function {f} docstring {doc} does not contain {{formatting_instructions}}"
         )
@@ -463,6 +467,7 @@ def raw_sparkle(f=None, demangle: bool = False):
         )
         chain = prompt | llm | JsonParser(cls=return_type)
         return chain.invoke({})
+
     return wrapper
 
 
@@ -581,5 +586,3 @@ def yamlize(item: object) -> str:
     if is_dataclass(item):
         return yaml.dump(item.__dict__)
     return yaml.dump(item)
-
-OUTPUT_FORMAT = 'JSON'

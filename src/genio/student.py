@@ -4,15 +4,15 @@ import pickle as pkl
 from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import cache
-from random import choice, gauss, random
+from random import choice, gauss
 from typing import Annotated
 import datetime as dt
-import humanize
 from typing import Protocol
 from concurrent.futures import ThreadPoolExecutor
 from collections import defaultdict
-import textwrap
 import humanize
+
+import tantivy
 
 from numpy.typing import NDArray
 from sentence_transformers.util import cos_sim
@@ -22,12 +22,11 @@ from .base import (
     Mythical,
     WriterArchetype,
     generate_using_docstring,
-    levenshtein_distance,
     raw_sparkle,
     slurp_toml,
     yamlize,
     TEMPLATE_REGISTRY,
-OUTPUT_FORMAT,
+    OUTPUT_FORMAT,
 )
 from .height_chart import HeightChart
 from .namegen import NameGenerator
@@ -78,12 +77,11 @@ class StudentProfile(Mythical, AgentLike):
     A student in a school, the hero in their life.
 
     This student fits under the following archetype:
-    ```
-    {archetype}
-    ```
 
-    The student is a {age} year old {height} CM tall {name}.
-    They are currently in grade {grade}. You should write in this style: {style}.
+    > {{archetype}}
+
+    The student is a {{age}} year old {{height}} CM tall {{name}}.
+    They are currently in grade {{grade}}. Be a light novel writer; write in this style: {{style}}.
     """
 
     name: str
@@ -200,33 +198,28 @@ class MemoryEntry:
 def witness_event(agent: AgentLike, related_events: list[str], event: str) -> Thought:
     """\
     You are the following person:
+    > {{agent}}
 
-    ```
-    {agent}
-    ```
-
-    Some of the recent events that transpired:
-    ```
-    {related_events}
-    ```
+    For context, some of the recent events that you recall:
+    > {{related_events}}
 
     Help them rate the significance of the following event, on a scale of 1 to 10:
-    ```
-    {event}
-    ```
+    > {{event}}
 
     In addition, how did they react? Write down one thought, reflection, given
     who they are. Step yourself in their shoes.
     **Write in the third person.**
 
-    {formatting_instructions}
+    {{formatting_instructions}}
     """
     ...
 
 
 @dataclass
 class CompactedMemories:
-    memories: Annotated[list[str], f"A {OUTPUT_FORMAT} list of strings, the compacted memories."]
+    memories: Annotated[
+        list[str], f"A {OUTPUT_FORMAT} list of strings, the compacted memories."
+    ]
     significances: Annotated[
         list[int],
         f"A {OUTPUT_FORMAT} list of integers, the significances. A parallel array to memories.",
@@ -242,18 +235,11 @@ class CompactedMemories:
 @raw_sparkle
 def compact_memories(agent: AgentLike, memories: list[str]) -> CompactedMemories:
     """\
-    You are the following person:
+    Act as the following person:
+    > {{agent}}
 
-    ```
-    {agent}
-    ```
-
-    Here are the things that this person (you) remember:
-
-    **The memories**:
-    ```
-    {memories}
-    ```
+    For context, some relevant things that this person (you) remember:
+    {{memories}}
 
     Help them think about some high-level thoughts about these memories,
     and reflect on how these memories have impacted, influenced, and
@@ -266,7 +252,7 @@ def compact_memories(agent: AgentLike, memories: list[str]) -> CompactedMemories
     thinking about a promotion, and 8, 9 are life-changing thoughts such as
     thinking about a loved one who has passed away.
 
-    {formatting_instructions}
+    {{formatting_instructions}}
     """
 
 
@@ -282,11 +268,81 @@ def humanize_time_delta(delta: dt.timedelta) -> str:
     return humanize.naturaltime(delta) + " ago"
 
 
+@dataclass
+class FactualEntry:
+    title: str | None
+    body: str
+
+    def __post_init__(self):
+        if not self.title:
+            self.title = None
+
+    def to_context(self) -> str:
+        if self.title:
+            return f"about {self.title}: {self.body}"
+        return self.body
+
+
+@cache
+def global_factual_storage():
+    return TantivyStore()
+
+
+class TantivyStore:
+    @staticmethod
+    @cache
+    def schema():
+        schema_builder = tantivy.SchemaBuilder()
+        schema_builder.add_text_field("title", stored=True, tokenizer_name="en_stem")
+        schema_builder.add_text_field("body", stored=True, tokenizer_name="en_stem")
+        schema_builder.add_text_field("keywords", stored=True, tokenizer_name="en_stem")
+        return schema_builder.build()
+
+    def __init__(self, parent: TantivyStore | None = None) -> None:
+        self.index = tantivy.Index(self.schema())
+        self.writer = self.index.writer()
+        self.parent = parent
+        self.entries = []
+
+    def __reduce__(self):
+        return TantivyStore.from_documents, (self.entries, self.parent is None)
+
+    @staticmethod
+    def from_documents(docs: list[dict], is_global_store: bool) -> TantivyStore:
+        if is_global_store:
+            store = global_factual_storage()
+        else:
+            store = TantivyStore()
+        for doc in docs:
+            store.insert(doc["title"], doc["body"], doc["keywords"])
+        return store
+
+    def recall(self, query: str, top_k: int = 1) -> list[FactualEntry]:
+        self.index.reload()
+        query = self.index.parse_query(query, ["title", "body", "keywords"])
+        hits = self.index.searcher().search(query, top_k).hits
+        res = []
+        if self.parent:
+            res += self.parent.recall(query, top_k)
+        res += [FactualEntry(hit["title"], hit["body"]) for hit in hits]
+        return res
+
+    def insert(self, title: str | None, body: str, keywords: str | None = None) -> None:
+        title = title or ""
+        keywords = keywords or ""
+        self.writer.add_document(
+            tantivy.Document(body=[body], title=[title], keywords=[keywords])
+        )
+        self.entries.append({"title": title, "body": body, "keywords": keywords})
+        self.writer.commit()
+
+
 class MemoryBank:
     def __init__(self, agent: AgentLike, max_memories: int = 30) -> None:
         self.agent = agent
         self.max_memories = max_memories
         self.memories = []
+        self.factual_store = TantivyStore(global_factual_storage())
         self.short_term_memories = []
         self.short_term_memories_watermark = global_clock.state
 
@@ -334,7 +390,14 @@ class MemoryBank:
             self.memories, key=lambda x: x.significance, reverse=True
         )[: self.max_memories]
 
-    def recall(self, topic: str, max_recall: int = 5) -> list[str]:
+    def recall(self, topic: str, max_recall: int = 3) -> list[str]:
+        semantic_results = self.recall_semantic(topic, max_recall)
+        factual_results = self.factual_store.recall(topic, 1)
+        if factual_results:
+            factual_results = [factual_results[0].to_context()]
+        return semantic_results + factual_results
+
+    def recall_semantic(self, topic: str, max_recall: int = 5) -> list[str]:
         topic_embedding = embed_single_sentence(topic)
         similarities = []
         for memory in self.memories:
@@ -510,23 +573,23 @@ def add_narration(
 
     Act almost like the "spirit" of the scene, and narrate like the best light novelist you can be.
 
-    The characters in the scene are: { students|join(', ', attribute='name') }.
+    The characters in the scene are: {{students|join(', ', attribute='name')}}.
     Here is a profile of each of them:
     {% for stu in students %}
-    - **{ stu.profile.name }**: [{ stu.profile.age }-year-old, { stu.profile.height } CM tall, Grade { stu.profile.grade }] { stu.profile.bio }
+    - **{{stu.profile.name}}**: [{{stu.profile.age}}-year-old, {{stu.profile.height}} CM tall, Grade {{stu.profile.grade}}] {{stu.profile.bio}}
     {% endfor %}
 
-    Add a short paragraph of narration to the conversation of the students. {narrator.writing_mantra()}
+    Add a short paragraph of narration to the conversation of the students. {{narrator.writing_mantra()}}
 
     The logs, what had transpired so far:
     > {% for log in logs %}
-    { log }
+    {{log}}
     {% endfor %}
 
     Prioritize on breezy pace and describe how the students are interacting with each other
     (standing together, head-patting, etc., be light-novelly). Encourage cute moments.
 
-    {formatting_instructions}
+    {{formatting_instructions}}
     """
 
 
@@ -614,7 +677,7 @@ class Scenario:
                     )
 
 
-@raw_sparkle
+@raw_sparkle(demangle=True)
 def _create_appearance_of(
     agent: StudentProfile,
     memories: list[str],
@@ -622,24 +685,25 @@ def _create_appearance_of(
     target_agent_profile: str,
 ) -> AppearanceOf:
     """\
-    You are {_agent.name}. Here is your profile:
+    You are {{agent.name}}. Here is your profile:
 
-    > {_agent.agent_context()}. {'. '.join(_memories)}
+    > {{agent.agent_context()}}. {{'. '.join(memories)}}
 
     The most recent things that happened, in your **very fresh mind**, in log form:
-    ```
-    {short_term}
-    ```
+
+    {% for s in short_term %}
+    - {{ s }}
+    {% endfor %}
 
     Now, you are observing the following person:
 
     ```
-    {target_agent_profile}
+    {{target_agent_profile}}
     ```
 
     How would you say this person looks like, mostly physically, from your perspective? Write a brief description of the person.
 
-    {formatting_instructions}
+    {{formatting_instructions}}
     """
     ...
 
@@ -665,24 +729,24 @@ class Surroundings:
 
 
 TEMPLATE_REGISTRY["student_agent_thought_convo"] = """\
-    You are {_agent.name}. Here is your profile:
+    You are {{_agent.name}}. Here is your profile:
 
-    > {_agent.agent_context()}. {'. '.join(_memories)}
+    > {{_agent.agent_context()}}. {{'. '.join(_memories)}}
 
-    You ({_agent.name}) are having a conversation with {', '.join(_surroundings.people_names())}. They are
+    You ({{_agent.name}}) are having a conversation with {{', '.join(_surroundings.people_names())}}. They are
     in the room with you. You recalled your recent impression of them, still fresh in your mind:
 
     {% for person, appearance in zip(_surroundings.people, _surroundings.appearances) %}
-    - **{person.name}**: [{person.age}-year-old, {person.height} CM tall] {appearance.appearance}
+    - **{{person.name}}**: [{{person.age}}-year-old, {{person.height}} CM tall] {{appearance.appearance}}
     {% endfor %}
 
     ----
 
     Here is your recent memories of the conversation, your thoughts, what your conversation
-    with {', '.join(_surroundings.people_names())} was like:
+    with {{', '.join(_surroundings.people_names())}} was like:
 
     {% for s in _short_term %}
-    - { s }
+    - {{ s }}
     {% endfor %}"""
 
 
@@ -700,7 +764,7 @@ def _elicit_brief_thought(
     or a brief goal that you hope to achieve in the very near short term, in third person, a single phrase.
     Also think what happened on the subconscious level that made the person had the brief thought.
 
-    {formatting_instructions}
+    {{formatting_instructions}}
     """
     ...
 
@@ -720,14 +784,14 @@ def _elicit_conversation(
     """\
     {% include "student_agent_thought_convo" %}
 
-    What would you ({_agent.name}) say? What would you do? Remember that your MBTI type is {_agent.mbti_type}
-    and you are in grade {_agent.grade}, age {_agent.age}. If no conversation is happening, you can
+    What would you ({{_agent.name}}) say? What would you do? Remember that your MBTI type is {{_agent.mbti_type}}
+    and you are in grade {{_agent.grade}}, age {{_agent.age}}. If no conversation is happening, you can
     initiate one. If you are in the middle of a conversation, please continue it. Be engaging,
     writer your own story. Act your age and in character. Be casual and breezy.
 
     ----
 
-    {formatting_instructions}
+    {{formatting_instructions}}
     """
     ...
 
@@ -741,21 +805,21 @@ def elicit_conversation(
 @raw_sparkle(demangle=True)
 def upgrade_to_friendship(student: Student, other: Student) -> Friendship:
     """\
-    You are {student.profile.name}. Here is your profile:
+    You are {{student.profile.name}}. Here is your profile:
 
-    > {student.profile.agent_context()}. {student.memories.recall(other.profile.bio)|join(', ')}.
+    > {{student.profile.agent_context()}}. {{student.memories.recall(other.profile.bio)|join(', ')}}.
 
     The most recent things that happened, in your **very fresh mind**, in log form:
 
-    > {student.memories.short_term_memories_repr()}
+    > {{student.memories.short_term_memories_repr()}}
 
     Now, you are thinking about the following person, and you are thinking about your friendship with them:
 
-    > {other.profile.agent_context()}
+    > {{other.profile.agent_context()}}
 
     Your original thoughts about them:
 
-    > {student.appearance_view[other].appearance}
+    > {{student.appearance_view[other].appearance}}
 
     Why are you friends with them?
 
@@ -764,20 +828,20 @@ def upgrade_to_friendship(student: Student, other: Student) -> Friendship:
     How would you say this person looks like, mostly physically, from your physical perspective?
     Write a brief description of the person and your friendship with them.
 
-    {formatting_instructions}
+    {{formatting_instructions}}
     """
 
 
 @raw_sparkle(demangle=True)
 def embellish_event(student: Student, event: str) -> Thought:
     """\
-    You are {student.profile.name}. Here is your profile:
+    You are {{student.profile.name}}. Here is your profile:
 
-    > {student.profile.agent_context()}. {student.memories.recall(event)|join(', ')}.
+    > {{student.profile.agent_context()}}. {{student.memories.recall(event)|join(', ')}}.
 
     You just suddenly recalled from your memory. It popped up in your thoughts
     again:
-    > {event}
+    > {{event}}
 
     Help them rate the significance on a scale of 1 to 10:
 
@@ -785,7 +849,7 @@ def embellish_event(student: Student, event: str) -> Thought:
     to be etched again in their memory? Write down one direct rephrased
     thought, in third person.
 
-    {formatting_instructions}
+    {{formatting_instructions}}
     """
     ...
 

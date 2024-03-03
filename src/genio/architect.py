@@ -59,14 +59,14 @@ class SchoolConcept(Mythical):
 
     Here is the brief of the city:
     ```
-    {city_lore}
+    {{city_lore}}
     ```
 
     Act as a reknowned designer with a specific love of literature works such as
-    "{literature}". This time, you decide to try an architectural marvel using the following elements:
+    "{{literature}}". This time, you decide to try an architectural marvel using the following elements:
 
     ```
-    {elements}
+    {{elements}}
     ```
 
     Write your best magnus opus for the concept. This is a grand school encompassing
@@ -107,7 +107,7 @@ class FloorPlan(Mythical):
 
     Here is the brief about the concept of the building, a grand school building in a "Gakuen Toshi".
     ```
-    {concept}
+    {{concept}}
     ```
 
     Come up with a floor plan for the building, including the number of floors and the general
@@ -154,10 +154,10 @@ class SingleFloorConcept:
 
     Extract from this grand concept:
     ```
-    {grand_concept}
+    {{grand_concept}}
     ```
 
-    Q: What's the {n}-th single floor (Floor {n}) for?
+    Q: What's the {{n}}-th single floor (Floor {{n}}) for?
     """
 
     floor_title: str
@@ -262,7 +262,7 @@ class ArchitecturalGuidelines(Mythical):
 
     Here is the brief about the concept of the building, a grand school building in a "Gakuen Toshi".
     ```
-    {concept}
+    {{concept}}
     ```
 
     Q: What are the guidelines for the architecture of the building?
@@ -290,7 +290,7 @@ class InteriorDesignGuidelines(Mythical):
 
     Here is the brief about the concept of the building, a grand school building in a "Gakuen Toshi".
     ```
-    {concept}
+    {{concept}}
     ```
 
     Q: What are the guidelines for the interior design of the building?
@@ -385,16 +385,16 @@ EXTRA_SENTENCES = {
 def design_hardware_concept(
     room_type: str, extra: str, guidelines: ArchitecturalGuidelines
 ) -> HardwareConcept:
-    """Act as an architect and design the hardware (wall, floor, lightning) concept for a {room_type}.
+    """Act as an architect and design the hardware (wall, floor, lightning) concept for a {{room_type}}.
 
-    {extra}
+    {{extra}}
 
     Here are the guidelines for the design:
     ```
-    {guidelines}
+    {{guidelines}}
     ```
 
-    {formatting_instructions}
+    {{formatting_instructions}}
     """
     ...
 
@@ -403,16 +403,16 @@ def design_hardware_concept(
 def design_furniture_concept(
     room_type: str, extra: str, guidelines: InteriorDesignGuidelines
 ) -> FurnitureConcept:
-    """Act as an interior designer and design the furniture concept for a {room_type}.
+    """Act as an interior designer and design the furniture concept for a {{room_type}}.
 
-    {extra}
+    {{extra}}
 
     Here are the guidelines for the design:
     ```
-    {guidelines}
+    {{guidelines}}
     ```
 
-    {formatting_instructions}
+    {{formatting_instructions}}
     """
     ...
 
@@ -440,18 +440,18 @@ def design_novelist_concept(
     hardware_concept: HardwareConcept,
     furniture_concept: FurnitureConcept,
 ) -> NovelistConcept:
-    """Act as a novelist doing excellent game design, and write the lore text for a {room_name}.
+    """Act as a novelist doing excellent game design, and write the lore text for a {{room_name}}.
 
     Remember, you are writing for a game, so the lore text should be engaging and interesting,
     while be informational to new players.
 
     Here are the hardware and furniture concepts for the room:
     ```
-    {hardware_concept}
-    {furniture_concept}
+    {{hardware_concept}}
+    {{furniture_concept}}
     ```
 
-    {formatting_instructions}
+    {{formatting_instructions}}
     """
 
 

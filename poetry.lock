@@ -1498,13 +1498,13 @@ files = [
 
 [[package]]
 name = "json5"
-version = "0.9.17"
+version = "0.9.18"
 description = "A Python implementation of the JSON5 data format."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "json5-0.9.17-py2.py3-none-any.whl", hash = "sha256:f8ec1ecf985951d70f780f6f877c4baca6a47b6e61e02c4cd190138d10a7805a"},
-    {file = "json5-0.9.17.tar.gz", hash = "sha256:717d99d657fa71b7094877b1d921b1cce40ab444389f6d770302563bb7dfd9ae"},
+    {file = "json5-0.9.18-py2.py3-none-any.whl", hash = "sha256:3f20193ff8dfdec6ab114b344e7ac5d76fac453c8bab9bdfe1460d1d528ec393"},
+    {file = "json5-0.9.18.tar.gz", hash = "sha256:ecb8ac357004e3522fb989da1bf08b146011edbd14fdffae6caad3bd68493467"},
 ]
 
 [package.extras]
@@ -4550,6 +4550,44 @@ files = [
 mpmath = ">=0.19"
 
 [[package]]
+name = "tantivy"
+version = "0.21.0"
+description = ""
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "tantivy-0.21.0-cp310-cp310-macosx_10_7_x86_64.whl", hash = "sha256:1782689425d76f9be571e080b0d62a08c932d9811205c522a835f1e206005af6"},
+    {file = "tantivy-0.21.0-cp310-cp310-macosx_10_9_x86_64.macosx_11_0_arm64.macosx_10_9_universal2.whl", hash = "sha256:49a974979cdb0d26c483a18d464fa1e1818aa4e56ec8d2fb14e7e2b7c7df22f6"},
+    {file = "tantivy-0.21.0-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:6d6efed2f771eaa3a9ad27540d58236a8357737bc84138269617af317558533a"},
+    {file = "tantivy-0.21.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:bd2f9a96ed60aa45ea0b97d553665acc691e994dae6d21a07b0b95b9b0a70be0"},
+    {file = "tantivy-0.21.0-cp310-none-win_amd64.whl", hash = "sha256:632f35c083093b964707ef1dac124b006e32a18fce6cd354a28ec5a53275bca8"},
+    {file = "tantivy-0.21.0-cp311-cp311-macosx_10_7_x86_64.whl", hash = "sha256:726809ec7bb446d616c9303f9ed5595095f9d738792c98350e3a6ef4128cf189"},
+    {file = "tantivy-0.21.0-cp311-cp311-macosx_10_9_x86_64.macosx_11_0_arm64.macosx_10_9_universal2.whl", hash = "sha256:f26bf2b192d09d6c1cea4dbed2455689d6800e0e462041b41c66bb228a46d7ba"},
+    {file = "tantivy-0.21.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:7d3bcf082fc5086b228c5cdebb27460338459b50e64f02e212bb3ca919c74f7f"},
+    {file = "tantivy-0.21.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c73be00cf41556295c5f088c3b5de3feb7539ee2ba62440d244c13b71c3ff3c6"},
+    {file = "tantivy-0.21.0-cp311-none-win_amd64.whl", hash = "sha256:8ae347af20c970262d2207b1c122fb0a702c35ee3e052773e31aae80f32a759a"},
+    {file = "tantivy-0.21.0-cp312-cp312-macosx_10_7_x86_64.whl", hash = "sha256:4639c2b59a818174ad83f4363d4e48092e348908ac1755970fd5352e22917d37"},
+    {file = "tantivy-0.21.0-cp312-cp312-macosx_10_9_x86_64.macosx_11_0_arm64.macosx_10_9_universal2.whl", hash = "sha256:c2342b4819a386ff4424bfefee5965f791a91192f367a62071ca1ab29525c381"},
+    {file = "tantivy-0.21.0-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:521a61248b97c22adf67c06a02b344bb2b231ecf287d2451a76585fbf52d1225"},
+    {file = "tantivy-0.21.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:1050546130ff92618191477e4dea8a8b3a02fb6db83226b21efd2059b153d9fc"},
+    {file = "tantivy-0.21.0-cp312-none-win_amd64.whl", hash = "sha256:7aacd0c96b681e6933e276c81cc822b0259c6414088287a4b62c263d529c7109"},
+    {file = "tantivy-0.21.0-cp38-cp38-macosx_10_7_x86_64.whl", hash = "sha256:ddc58a4e85d0df2893570b4ec52cb7737bf5245a2c20257c88e9bd22600949b9"},
+    {file = "tantivy-0.21.0-cp38-cp38-macosx_10_9_x86_64.macosx_11_0_arm64.macosx_10_9_universal2.whl", hash = "sha256:e8abe45eb4b2c57254e05ad17386a55b8323e1f23fab4f0f9a9b4618e0251381"},
+    {file = "tantivy-0.21.0-cp38-cp38-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c08784ce7b668b08bc1eaab747da6dddb4f82acd7c1e4e41fa3a4126c3590dfb"},
+    {file = "tantivy-0.21.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:3600c365ddc330d28a129e648187f6623a4cb734f3c4a5f430bdb254e536197b"},
+    {file = "tantivy-0.21.0-cp38-none-win_amd64.whl", hash = "sha256:d15d375c480f1db7791306a7d1b32943c2ce25f92cc96cb74137f45264867928"},
+    {file = "tantivy-0.21.0-cp39-cp39-macosx_10_7_x86_64.whl", hash = "sha256:2f904b52bb21cc3cda744e7ec6c06f37b2721f8c00a21b76700e94c0a8a3178f"},
+    {file = "tantivy-0.21.0-cp39-cp39-macosx_10_9_x86_64.macosx_11_0_arm64.macosx_10_9_universal2.whl", hash = "sha256:2122f0845c84bf34607edbf283840458c7714c0ab2b6973a56aee8820cae642d"},
+    {file = "tantivy-0.21.0-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:8e5290d32459e16b496ff0ae95dcb7e41f569b832ce5abf850042a88173c7ca2"},
+    {file = "tantivy-0.21.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d274e7828ae7307726ace780019f4ab3c5167e1c31ece1a427983cf2ca1d57bc"},
+    {file = "tantivy-0.21.0-cp39-none-win_amd64.whl", hash = "sha256:72fdb53814ee9f60d0d80d028bc1de753f130712b4c611afcd80a0992a7ac8a7"},
+    {file = "tantivy-0.21.0.tar.gz", hash = "sha256:fe1ea890b2d924417b93ced6036e5f688e606d7b1af9711a0d8ce826172255c2"},
+]
+
+[package.extras]
+dev = ["nox"]
+
+[[package]]
 name = "tenacity"
 version = "8.2.3"
 description = "Retry code until it succeeds"
@@ -5398,4 +5436,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<=3.12"
-content-hash = "789c6d684aaab4e0efc1190adffd70862255a57fd858c83ac1e0f4eaf7039463"
+content-hash = "1ac89478ec36b4b194e49ded0cc9a0c3fa53498480319cd65ffdadde64ea34d7"
