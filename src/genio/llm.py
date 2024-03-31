@@ -1,34 +1,28 @@
 from __future__ import annotations
 
 from functools import cache
-from typing import Any, Optional
-from uuid import UUID
 
 from google.generativeai.types import HarmBlockThreshold, HarmCategory
 from langchain_community.chat_models import ChatOllama
-from langchain_core.outputs import ChatGeneration, LLMResult
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langfuse.callback import CallbackHandler
-from langfuse.callback.langchain import _extract_raw_esponse
 
 
 @cache
 def default_llm() -> ChatGoogleGenerativeAI:
     return ChatGoogleGenerativeAI(
-        model="gemini-pro",
+        model="gemini-1.0-pro",
         safety_settings={
             HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
             HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
             HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
         },
+        convert_system_message_to_human=True,
     )
 
 
 @cache
 def aux_llm() -> ChatOllama:
-    return ChatOllama(
-        model="openhermes:7b-mistral-v2-q5_0", base_url="http://192.168.40.9:11434"
-    )
+    return default_llm()
 
 
 # @cache
