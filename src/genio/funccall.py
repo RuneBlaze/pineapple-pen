@@ -97,8 +97,21 @@ class Attack(BaseModel):
 
 class Cast(BaseModel):
     model_config = ConfigDict(alias_generator=to_snake)
-    spell: Literal["Hastega","Quickga","Slowga"]
+    spell: Literal["Hastega", "Quickga", "Slowga"]
     target: str
+
+
+def transform_pydantic_error(error: ValidationError):
+    simplified_errors = []
+    for e in error.errors():
+        simplified_errors.append(
+            {
+                "error_code": "invalid_input",  # You can customize the error code if needed
+                "message": e["msg"],
+                "fields": e["loc"],
+            }
+        )
+    return simplified_errors
 
 
 def prompt_for_structured_output(prompt: str, types: list[Type]) -> Any:
@@ -114,7 +127,9 @@ def prompt_for_structured_output(prompt: str, types: list[Type]) -> Any:
         name = dictionary["name"]
         if not response.candidates[0].content.parts[0].function_call:
             ic(response.candidates[0].content)
-            chat.send_message(f"Thanks! Given this information. Can you help me with the original request correctly?\n{prompt}")
+            response = chat.send_message(
+                f"Thanks! Given this information. Can you help me with the original request correctly?\n> {prompt}\nPlease use function calling."
+            )
             continue
         try:
             typ = snake2type[name]
@@ -129,11 +144,9 @@ def prompt_for_structured_output(prompt: str, types: list[Type]) -> Any:
                             function_response=glm.FunctionResponse(
                                 name=name,
                                 response={
-                                    "error": {
-                                        "message": "Please Retry",
-                                        "details": json.loads(e.json()),
-                                    },
-                                    "instructions": "Please Retry",
+                                    "status": "error",
+                                    "reason": "invalid_input; please try again with better formatted input.",
+                                    "details": json.loads(e.json()),
                                 },
                             )
                         )
@@ -164,5 +177,8 @@ def prompt_for_structured_output(prompt: str, types: list[Type]) -> Any:
 
 if __name__ == "__main__":
     # ic(dataclass_to_glm_schema(Attack))
-    r = prompt_for_structured_output("I'm designing a turn-based combat system for a game. A goblin attacks a knight. What actions could the knight take in response? Be creative; use cast.", [Attack, Cast])
+    r = prompt_for_structured_output(
+        "I'm designing a turn-based combat system for a game. A goblin attacks a knight. What actions could the knight take in response? Be creative; use cast.",
+        [Attack, Cast],
+    )
     ic(r)
