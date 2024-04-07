@@ -6,6 +6,7 @@ import random
 import re
 from abc import ABC
 from dataclasses import asdict, dataclass, fields, is_dataclass
+from datetime import time
 from functools import cache, partial, wraps
 from textwrap import dedent
 from typing import (
@@ -76,14 +77,15 @@ class TemplateRegistryLoader(BaseLoader):
         raise TemplateNotFound(template)
 
 
+def naturalize(t: time) -> str:
+    return t.strftime("%I:%M %p")
+
+
 jinja_env = Environment(
-    # block_start_string="{%",
-    # block_end_string="%}",
-    # variable_start_string="{{",
-    # variable_end_string="}}",
     loader=TemplateRegistryLoader(),
 )
 jinja_env.globals.update(zip=zip)
+jinja_env.globals.update(naturalize=naturalize)
 
 
 def render_template(template: str, context: dict[str, Any]) -> ChatPromptTemplate:

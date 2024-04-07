@@ -15,12 +15,16 @@ from .student import (
 
 @dataclass
 class Location:
+    """A location in the school."""
+
     name: str
     description: str
 
 
 @dataclass
 class Klass:
+    """A class that can be taught."""
+
     name: str
     description: str
 
@@ -41,7 +45,7 @@ def default_klasses() -> list[Klass]:
 class DailySchedule:
     entries: Annotated[
         list[str],
-        "A list of strings, each representing a schedule entry. In the format, 'HH:MM - HH:MM; Title; Class Location'",
+        "A list of strings, each representing a schedule entry. In the format, 'HH:MM - HH:MM; Title; Location'",
     ]
 
 
@@ -222,3 +226,4 @@ if __name__ == "__main__":
         ic(plan)
         for entry in schedule.entries:
             detailed = plan_details(student, location_tracker, plan, entry)
+            ic(detailed)

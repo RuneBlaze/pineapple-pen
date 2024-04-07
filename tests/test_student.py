@@ -7,7 +7,6 @@ def test_archetype_can_sample():
     assert Archetype.choice() is not None
 
 
-# @pytest.mark.skip("takes too long")
 def test_student_thingies():
     student = StudentProfile.generate_from_grade(1)
     assert student is not None
