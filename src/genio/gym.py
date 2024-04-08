@@ -6,11 +6,18 @@ from __future__ import annotations
 
 import json
 from collections import deque
-from copy import copy
 from dataclasses import dataclass, field
 from datetime import time
 from queue import PriorityQueue
+from pydantic.alias_generators import to_snake
 from typing import Any
+from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
+from .funccall import prompt_for_structured_output
+import textwrap
+from icecream import ic
+from functools import cache
+import re
+from .prelude.tantivy import TantivyStore, FactualEntry
 
 
 @dataclass(order=True)
@@ -70,7 +77,8 @@ class ScheduleZipper:
         else:
             context += "You currently have free time.\n"
 
-        # Next Activity (Detailed)
+        context += "Right now it is: " + t.strftime("%I:%M %p") + ".\n\n"
+
         if self.pending:
             entry = self.pending[0]
             context += "\n**Next Activity:**\n"
@@ -80,7 +88,6 @@ class ScheduleZipper:
             if entry.document:
                 context += f"* Reference: {entry.document}\n"
 
-        # Upcoming Schedule (Summary)
         context += "\n**Upcoming Schedule:**\n"
         for i in range(1, min(len(self.pending), 10)):
             entry = self.pending[i]
@@ -154,17 +161,6 @@ class ChronoAgent:
         return prompt
 
 
-# @dataclass
-# class GoToAction:
-#     location: str
-
-# @dataclass
-# class AwaitAction:
-#     minutes: int
-
-# def parse_actions(possible_actions: )
-
-
 @dataclass
 class Location:
     name: str
@@ -174,36 +170,138 @@ class Location:
 class WorldMap:
     def __init__(self) -> None:
         self.locations = []
+        self.store = TantivyStore()
 
+    @cache
     @staticmethod
     def default() -> WorldMap:
         with open("assets/demo/places.json") as f:
             locations = json.load(f)
         instance = WorldMap()
-        instance.locations = [Location(**loc) for loc in locations]
+        instance.locations = {loc["name"]: Location(**loc) for loc in locations}
+        for k, v in instance.locations.items():
+            instance.store.insert(k, v.description, None)
         return instance
+
+    def __getitem__(self, index: str) -> Location:
+        return self.locations[index]
+
+    def search(self, query: str) -> FactualEntry | None:
+        return self.store.recall_one(query)
 
     def __len__(self) -> int:
         return len(self.locations)
 
 
-class SimulationState:
+class Simulator:
     def __init__(self) -> None:
-        self.clock = time(6, 30)
-        self.knight = ChronoAgent("Knight", SCHEDULE_KNIGHT)
-        self.mail_person = ChronoAgent("Mail Person", SCHEDULE_MAIL_PERSON)
+        self.clock = Clock(time(6, 30))
+        self.map = WorldMap.default()
+
+        self.knight = ChronoAgent(
+            "Knight",
+            "a valiant warrior of the realm",
+            self.map["The Shrouded Bazaar"],
+            SCHEDULE_KNIGHT,
+            self.clock,
+        )
+
+        self.mail_person = ChronoAgent(
+            "Mail Person",
+            "a diligent courier of the realm",
+            self.map["The Shrouded Bazaar"],
+            SCHEDULE_MAIL_PERSON,
+            self.clock,
+        )
 
         self.pq = PriorityQueue()
-        self.pq.put(PrioritizedItem(copy(self.clock), self.knight, None))
-        self.pq.put(PrioritizedItem(copy(self.clock), self.mail_person, None))
+        self.pq.put(PrioritizedItem(self.clock.now, self.knight, None))
+        self.pq.put(PrioritizedItem(self.clock.now, self.mail_person, None))
 
     def step(self) -> None:
         next_item = self.pq.get()
-        self.clock = next_item.priority
+        self.clock.now = next_item.priority
+
         agent = next_item.topic
-        agent.step(self.clock)
+        agent.step()
+
+        action = elicit_action(agent)
+
+        ic(action)
+
+        match action:
+            case MoveAction(target=target):
+                result = self.map.search(target)
+                agent.location = self.map[result.title]
+                self.pq.put(PrioritizedItem(self.clock.now, agent, result))
+            case WaitAction(wait_until=wait_until):
+                self.pq.put(PrioritizedItem(wait_until, agent, None))
+
+
+class MoveAction(BaseModel):
+    """Move to a specific location."""
+
+    model_config = ConfigDict(alias_generator=to_snake)
+
+    target: str
+
+    @field_validator("target", mode="after")
+    def validate_location(cls, v):
+        world_map = WorldMap.default()
+        search_result = world_map.search(v)
+        if search_result is None:
+            raise ValueError(f"Location '{v}' not found in the world map")
+        return v
+
+
+class WaitAction(BaseModel):
+    """Wait until a specific time, in HH:MM format."""
+
+    model_config = ConfigDict(alias_generator=to_snake)
+
+    wait_until: time
+
+    @field_validator("wait_until", mode="before")
+    def parse_time(cls, v):
+        if isinstance(v, time):
+            return v
+
+        if isinstance(v, str):
+            match = re.match(r"^(1[0-2]|0?[1-9]):([0-5][0-9]) ?([AaPp][Mm])$", v)
+            if match:
+                hour, minute, part = match.groups()
+                hour = int(hour)
+                minute = int(minute)
+                part = part.lower()
+
+                # Convert 12-hour time to 24-hour time
+                if part == "pm" and hour != 12:
+                    hour += 12
+                elif part == "am" and hour == 12:
+                    hour = 0
+
+                return time(hour, minute)
+
+            raise ValueError("Invalid time format")
+
+        raise TypeError("Invalid type for wait_until")
+
+
+def elicit_action(agent: ChronoAgent) -> MoveAction | WaitAction:
+    agent_ctxt = agent.make_context()
+    prompt = textwrap.dedent(
+        f"""\
+    {agent_ctxt}
+
+    What would you like to do next? Please provide a valid action.
+    """
+    )
+    return prompt_for_structured_output(prompt, [MoveAction, WaitAction])
 
 
 if __name__ == "__main__":
-    simulation = SimulationState()
-    simulation.step()
+    # world_map = WorldMap.default()
+    # print(world_map.search("The Crimson Tavern"))
+    simulation = Simulator()
+    while True:
+        simulation.step()

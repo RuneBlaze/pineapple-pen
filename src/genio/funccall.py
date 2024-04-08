@@ -1,15 +1,24 @@
 import inspect
 import re
 import textwrap
+import json
+
 from typing import Annotated, Type, Union, get_args, get_origin, Any, Literal
 
 import google.ai.generativelanguage as glm
 import google.generativeai as genai
-from icecream import ic
+
+
 from pydantic import BaseModel, ConfigDict, ValidationError
 from pydantic.fields import FieldInfo
 from pydantic.alias_generators import to_snake
-import json
+
+from datetime import time
+
+
+from structlog import get_logger
+
+logger = get_logger()
 
 
 def dataclass_to_glm_schema(dc: Type[BaseModel]) -> glm.Schema:
@@ -59,14 +68,14 @@ def _field_type_to_glm_schema(field_type: FieldInfo) -> glm.Schema:
         int: glm.Type.NUMBER,
         float: glm.Type.NUMBER,
         bool: glm.Type.BOOLEAN,
+        time: glm.Type.STRING,
     }
 
     if field_type in type_map:
         return glm.Schema(type=type_map[field_type], description=description)
-    elif is_dataclass(field_type):  # Recursion for nested dataclasses
-        return dataclass_to_glm_schema(field_type)
-    else:
-        raise TypeError(f"Unsupported field type: {field_type}")
+    return dataclass_to_glm_schema(field_type)
+    # else:
+    #     raise TypeError(f"Unsupported field type: {field_type}")
 
 
 def dataclass_to_function_declaration(dc: Type) -> glm.FunctionDeclaration:
@@ -114,6 +123,13 @@ def transform_pydantic_error(error: ValidationError):
     return simplified_errors
 
 
+def extract_any_function_call(response) -> Any:
+    for part in response.candidates[0].content.parts:
+        if part.function_call:
+            return part.function_call
+    return None
+
+
 def prompt_for_structured_output(prompt: str, types: list[Type]) -> Any:
     function_decls = [dataclass_to_function_declaration(t) for t in types]
     snake2type = {_to_snake_case(t.__name__): t for t in types}
@@ -121,22 +137,26 @@ def prompt_for_structured_output(prompt: str, types: list[Type]) -> Any:
     model = genai.GenerativeModel(model_name="gemini-1.0-pro", tools=tool)
     chat = model.start_chat()
     response = chat.send_message(prompt)
+    logger.info(
+        "prompting for structured output",
+        prompt=prompt,
+        types=types,
+        cand0=response.candidates[0],
+    )
     while True:
-        fc = response.candidates[0].content.parts[0].function_call
-        dictionary = type(fc).to_dict(fc)
-        name = dictionary["name"]
-        if not response.candidates[0].content.parts[0].function_call:
-            ic(response.candidates[0].content)
+        fc = extract_any_function_call(response)
+        if not fc:
             response = chat.send_message(
-                f"Thanks! Given this information. Can you help me with the original request correctly?\n> {prompt}\nPlease use function calling."
+                f"I noticed an error in the previous response as it lacks a proper structured function call. Could you please reformat and address this issue by responding to the original request '{prompt}' with a structured function call? This format is necessary for processing your request effectively."
             )
             continue
         try:
+            dictionary = type(fc).to_dict(fc)
+            name = dictionary["name"]
             typ = snake2type[name]
             args = dictionary["args"]
             return typ.model_validate(args)
         except ValidationError as e:
-            ic(json.loads(e.json()))
             response = chat.send_message(
                 glm.Content(
                     parts=[
@@ -145,7 +165,7 @@ def prompt_for_structured_output(prompt: str, types: list[Type]) -> Any:
                                 name=name,
                                 response={
                                     "status": "error",
-                                    "reason": "invalid_input; please try again with better formatted input.",
+                                    "reason": "Invalid Input: Your input couldn't be processed due to validating issues. Please revise and resubmit to fit the constraints.",
                                     "details": json.loads(e.json()),
                                 },
                             )
@@ -153,30 +173,12 @@ def prompt_for_structured_output(prompt: str, types: list[Type]) -> Any:
                     ]
                 )
             )
+            logger.warning("retrying", error=e, cand0=response.candidates[0])
 
-
-# def recursive_instantiate(dc: Type, dictionary: dict) -> Any:
-#     if not isinstance(dictionary, dict):
-#         raise TypeError("Input must be a dictionary")
-
-#     return dc.parse_obj(dictionary)
-
-#     # kwargs = {}
-#     # for field in fields(dc):
-#     #     field_name = field.name
-#     #     if field_name not in dictionary:
-#     #         raise ValueError(f"Missing field '{field_name}' in dictionary")
-
-#     #     field_value = dictionary[field_name]
-#     #     if is_dataclass(field.type):
-#     #         field_value = recursive_instantiate(field.type, field_value)
-
-#     #     kwargs[field_name] = field_value
-
-#     # return dc(**kwargs)
 
 if __name__ == "__main__":
-    # ic(dataclass_to_glm_schema(Attack))
+    from icecream import ic
+
     r = prompt_for_structured_output(
         "I'm designing a turn-based combat system for a game. A goblin attacks a knight. What actions could the knight take in response? Be creative; use cast.",
         [Attack, Cast],
