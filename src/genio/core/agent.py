@@ -13,7 +13,7 @@ from sentence_transformers.util import cos_sim
 
 from genio.core.base import OUTPUT_FORMAT, jinja_global, promptly
 from genio.core.student import global_clock
-from genio.prelude.tantivy import TantivyStore, global_factual_storage
+from genio.core.tantivy import TantivyStore, global_factual_storage
 from genio.utils.embed import embed_single_sentence
 
 

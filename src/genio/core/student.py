@@ -16,7 +16,7 @@ from genio.core.agent import MemoryBank, MemoryEntry, Thought
 
 from ..human.height_chart import HeightChart
 from ..human.namegen import NameGenerator
-from ..prelude.tantivy import TantivyStore
+from .tantivy import TantivyStore
 from ..utils.embed import embed_single_sentence
 from .base import (
     TEMPLATE_REGISTRY,
