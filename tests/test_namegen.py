@@ -1,4 +1,4 @@
-from genio.namegen import NameGenerator
+from genio.human.namegen import NameGenerator
 
 
 def test_name_generator_can_generate_name():

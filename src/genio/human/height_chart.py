@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from .base import Mythical
+from ..core.base import Mythical
 
 
 @dataclass

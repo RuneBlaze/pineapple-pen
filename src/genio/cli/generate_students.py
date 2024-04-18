@@ -2,7 +2,7 @@ import random
 
 import typer
 import yaml
-from genio.student import (
+from genio.core.student import (
     Student,
     generate_student,
     populate_appearances_matrix,

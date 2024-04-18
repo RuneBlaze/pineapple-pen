@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 import pytest
-from genio.base import Mythical, generate_using_docstring, paragraph_consolidate
+from genio.core.base import Mythical, generate_using_docstring, paragraph_consolidate
 
 
 @dataclass

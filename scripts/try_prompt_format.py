@@ -1,4 +1,4 @@
-from genio.llm import default_llm
+from genio.core.llm import default_llm
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from rich import print

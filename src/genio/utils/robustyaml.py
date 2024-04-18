@@ -6,7 +6,7 @@ from yaml import safe_load
 from yaml.parser import ParserError
 from yaml.scanner import ScannerError
 
-from .llm import aux_llm
+from ..core.llm import aux_llm
 
 
 def is_nested_dict(d):

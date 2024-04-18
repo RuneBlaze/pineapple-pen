@@ -11,7 +11,7 @@ from typing import Annotated
 from structlog import get_logger
 from tqdm import tqdm
 
-from .base import (
+from ..core.base import (
     Mythical,
     generate_using_docstring,
     promptly,

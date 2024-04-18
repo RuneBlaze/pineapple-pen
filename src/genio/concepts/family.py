@@ -10,14 +10,14 @@ import faker
 import yaml
 from icecream import ic
 
-from .base import (
+from ..core.base import (
     Mythical,
     WriterArchetype,
     generate_using_docstring,
     slurp_toml,
     sparkle,
 )
-from .namegen import NameGenerator
+from ..human.namegen import NameGenerator
 
 fake = faker.Faker()
 

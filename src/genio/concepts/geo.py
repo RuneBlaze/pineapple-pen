@@ -5,8 +5,8 @@ from typing import Annotated
 import yaml
 from icecream import ic
 
-from .base import promptly, slurp_toml
-from .student import (
+from ..core.base import promptly, slurp_toml
+from ..core.student import (
     Friendship,
     Student,
     global_factual_storage,

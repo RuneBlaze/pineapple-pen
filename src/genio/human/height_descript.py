@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Annotated
 
-from .base import promptly
+from ..core.base import promptly
 
 
 @dataclass

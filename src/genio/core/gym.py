@@ -18,8 +18,8 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from pydantic.alias_generators import to_snake
 from structlog import get_logger
 
+from ..prelude.tantivy import FactualEntry, TantivyStore
 from .funccall import prompt_for_structured_output
-from .prelude.tantivy import FactualEntry, TantivyStore
 
 logger = get_logger()
 
