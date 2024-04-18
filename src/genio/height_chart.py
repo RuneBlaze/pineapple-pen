@@ -46,7 +46,7 @@ class HeightChart:
             return self.female_median[index], self.female_stddev[index]
 
     @staticmethod
-    def default() -> "HeightChart":
+    def default() -> HeightChart:
         return HeightChart(
             df_male,
             df_female,

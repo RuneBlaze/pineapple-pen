@@ -14,7 +14,7 @@ from tqdm import tqdm
 from .base import (
     Mythical,
     generate_using_docstring,
-    raw_sparkle,
+    promptly,
     slurp_toml,
     sparkle,
     yamlize,
@@ -381,7 +381,7 @@ EXTRA_SENTENCES = {
 }
 
 
-@raw_sparkle
+@promptly
 def design_hardware_concept(
     room_type: str, extra: str, guidelines: ArchitecturalGuidelines
 ) -> HardwareConcept:
@@ -399,7 +399,7 @@ def design_hardware_concept(
     ...
 
 
-@raw_sparkle
+@promptly
 def design_furniture_concept(
     room_type: str, extra: str, guidelines: InteriorDesignGuidelines
 ) -> FurnitureConcept:
@@ -434,7 +434,7 @@ class NovelistConcept:
     ]
 
 
-@raw_sparkle
+@promptly
 def design_novelist_concept(
     room_name: str,
     hardware_concept: HardwareConcept,

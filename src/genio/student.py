@@ -11,24 +11,22 @@ from random import choice, gauss
 from typing import Annotated, Protocol
 
 import humanize
-from numpy.typing import NDArray
-from sentence_transformers.util import cos_sim
 
-from .prelude.tantivy import TantivyStore, global_factual_storage
+from genio.core.agent import MemoryBank, MemoryEntry, Thought
 
 from .base import (
-    OUTPUT_FORMAT,
     TEMPLATE_REGISTRY,
-    AgentLike,
+    Agent,
     Mythical,
     WriterArchetype,
     generate_using_docstring,
-    raw_sparkle,
+    promptly,
     slurp_toml,
     yamlize,
 )
 from .height_chart import HeightChart
 from .namegen import NameGenerator
+from .prelude.tantivy import TantivyStore
 from .utils import embed_single_sentence
 
 
@@ -71,7 +69,7 @@ class Archetype:
 
 
 @dataclass
-class StudentProfile(Mythical, AgentLike):
+class StudentProfile(Mythical, Agent):
     """\
     A student in a school, the hero in their life.
 
@@ -135,219 +133,8 @@ class StudentProfile(Mythical, AgentLike):
             ),
         )
 
-
-@dataclass
-class MemoryNote:
-    log: str
-    topic: str
-    significance: int
-
-    def __post_init__(self):
-        self.significance = int(max(1, self.significance))
-
-
-class MemoryCell:
-    agent: AgentLike
-    memory_stream: list[MemoryNote]
-
-    def insert(self, log: str) -> None:
-        ...
-
-
-@dataclass
-class Thought:
-    significance: Annotated[
-        int,
-        (
-            "An integer from 1 to 10. The significance of the event,"
-            "where 8 or 9 are significant, e.g., getting married, a loved"
-            "one dies, etc.. 5 are relatively big events, e.g., getting a"
-            "new job, moving to a new city. 1 are everyday events, e.g.,"
-            "eating breakfast, going to work."
-        ),
-    ]
-    thought: Annotated[
-        str,
-        (
-            "The reaction of the person to the event, in third person, "
-            "their thoughts, their reflections, in one to four sentences."
-        ),
-    ]
-
-    def __post_init__(self):
-        if isinstance(self.significance, dict):
-            self.significance = list(self.significance.keys())[0]
-        if isinstance(self.significance, str):
-            self.significance = int(self.significance)
-        self.significance = int(max(1, self.significance))
-        if self.significance < 1 or self.significance > 10:
-            raise ValueError("Significance must be between 1 and 10.")
-
-
-@dataclass
-class MemoryEntry:
-    log: str
-    significance: int
-    embedding: NDArray[float]
-
-    timestamp: dt.datetime
-
-
-@raw_sparkle
-def witness_event(agent: AgentLike, related_events: list[str], event: str) -> Thought:
-    """\
-    You are the following person:
-    > {{agent}}
-
-    For context, some of the recent events that you recall:
-    > {{related_events}}
-
-    Help them rate the significance of the following event, on a scale of 1 to 10:
-    > {{event}}
-
-    In addition, how did they react? Write down one thought, reflection, given
-    who they are. Step yourself in their shoes.
-    **Write in the third person.**
-
-    {{formatting_instructions}}
-    """
-    ...
-
-
-@dataclass
-class CompactedMemories:
-    memories: Annotated[
-        list[str], f"A {OUTPUT_FORMAT} list of strings, the compacted memories."
-    ]
-    significances: Annotated[
-        list[int],
-        f"A {OUTPUT_FORMAT} list of integers, the significances. A parallel array to memories.",
-    ]
-
-    def __post_init__(self):
-        if len(self.memories) != len(self.significances):
-            raise ValueError(
-                "The length of memories and significances must be the same."
-            )
-
-
-@raw_sparkle
-def compact_memories(agent: AgentLike, memories: list[str]) -> CompactedMemories:
-    """\
-    Act as the following person:
-    > {{agent}}
-
-    For context, some relevant things that this person (you) remember:
-    {{memories}}
-
-    Help them think about some high-level thoughts about these memories,
-    and reflect on how these memories have impacted, influenced, and
-    shaped them. What would they think about their own experiences of those memories?
-    **Write in the third person.**
-
-    Write down a couple of new thoughts about the memories,
-    along with their significance, on a scale of 1 to 10, where 2, 3
-    are mundane everyday thoughts, 5, 6 are relatively big thoughts such as
-    thinking about a promotion, and 8, 9 are life-changing thoughts such as
-    thinking about a loved one who has passed away.
-
-    {{formatting_instructions}}
-    """
-
-
-@dataclass
-class ShortTermMemoryEntry:
-    log: str
-    timestamp: dt.datetime
-
-
-def humanize_time_delta(delta: dt.timedelta) -> str:
-    if delta.seconds <= 10:
-        return "just now"
-    return humanize.naturaltime(delta) + " ago"
-
-
 def from_documents(*args, **kwargs) -> TantivyStore:
     return TantivyStore.from_documents(*args, **kwargs)
-
-
-class MemoryBank:
-    def __init__(self, agent: AgentLike, max_memories: int = 30) -> None:
-        self.agent = agent
-        self.max_memories = max_memories
-        self.memories = []
-        self.factual_store = TantivyStore(global_factual_storage())
-        self.short_term_memories = []
-        self.short_term_memories_watermark = global_clock.state
-
-    def add_short_term_memory(self, log: str) -> None:
-        self.short_term_memories.append(ShortTermMemoryEntry(log, global_clock.state))
-
-    def catch_up_short_term_memories(self) -> None:
-        # TODO: implement this.
-        self.short_term_memories_watermark = len(self.short_term_memories)
-
-    def short_term_memories_repr(self) -> list[str]:
-        to_concat = [
-            (humanize_time_delta(global_clock.state - x.timestamp), x.log)
-            for x in self.short_term_memories
-        ]
-        return [f"({x[0]}) {x[1]}" for x in to_concat]
-
-    def witness_event(self, log: str) -> None:
-        related_events = self.recall(log, max_recall=5)
-        thoughts = witness_event(self.agent, related_events, log)
-        if not isinstance(thoughts, list):
-            thoughts = [thoughts]
-        for t in thoughts:
-            self.memories.append(
-                MemoryEntry(
-                    t.thought,
-                    t.significance,
-                    embed_single_sentence(t.thought),
-                    global_clock.state,
-                )
-            )
-        if len(self.memories) > self.max_memories:
-            self.run_compaction()
-
-    def run_compaction(self) -> None:
-        memories = [x.log for x in self.memories]
-        compacted = compact_memories(self.agent, memories)
-        for log, significance in zip(compacted.memories, compacted.significances):
-            self.memories.append(
-                MemoryEntry(
-                    log, significance, embed_single_sentence(log), global_clock.state
-                )
-            )
-        self.memories = sorted(
-            self.memories, key=lambda x: x.significance, reverse=True
-        )[: self.max_memories]
-
-    def recall(self, topic: str, max_recall: int = 3) -> list[str]:
-        semantic_results = self.recall_semantic(topic, max_recall)
-        factual_results = self.factual_store.recall(topic, 1)
-        if factual_results:
-            factual_results = [factual_results[0].to_context()]
-        return semantic_results + factual_results
-
-    def recall_semantic(self, topic: str, max_recall: int = 5) -> list[str]:
-        topic_embedding = embed_single_sentence(topic)
-        similarities = []
-        for memory in self.memories:
-            similarities.append((memory, cos_sim(topic_embedding, memory.embedding)))
-        similarities = sorted(
-            similarities,
-            key=lambda x: x[1] * x[0].significance ** 0.5,
-            reverse=True,
-        )
-        return [x[0].log for x in similarities[:max_recall]]
-
-    def __str__(self):
-        return f"MemoryBank for {self.agent} with {len(self.memories)} memories."
-
-    def __repr__(self):
-        return super().__repr__()
 
 
 def age_from_grade(grade: int) -> float:
@@ -489,7 +276,7 @@ class NarratorAddition:
     ]
 
 
-@raw_sparkle(demangle=True)
+@promptly(demangle=True)
 def add_narration(
     narrator: Narrator, students: list[Student], logs: list[str]
 ) -> NarratorAddition:
@@ -611,7 +398,7 @@ class Scenario:
                     )
 
 
-@raw_sparkle(demangle=True)
+@promptly(demangle=True)
 def _create_appearance_of(
     agent: StudentProfile,
     memories: list[str],
@@ -682,7 +469,7 @@ TEMPLATE_REGISTRY["student_agent_thought_convo"] = """\
     {% endfor %}"""
 
 
-@raw_sparkle
+@promptly
 def _elicit_brief_thought(
     agent: StudentProfile,
     memories: list[str],
@@ -706,7 +493,7 @@ class ConversationResponse:
     response: Annotated[str, "What you would say in this context. (Required)"]
 
 
-@raw_sparkle
+@promptly
 def _elicit_conversation(
     agent: StudentProfile,
     memories: list[str],
@@ -734,7 +521,7 @@ def elicit_conversation(
     ...
 
 
-@raw_sparkle(demangle=True)
+@promptly(demangle=True)
 def upgrade_to_friendship(student: Student, other: Student) -> Friendship:
     """\
     You are {{student.profile.name}}. Here is your profile:
@@ -764,7 +551,7 @@ def upgrade_to_friendship(student: Student, other: Student) -> Friendship:
     """
 
 
-@raw_sparkle(demangle=True)
+@promptly(demangle=True)
 def embellish_event(student: Student, event: str) -> Thought:
     """\
     You are {{student.profile.name}}. Here is your profile:

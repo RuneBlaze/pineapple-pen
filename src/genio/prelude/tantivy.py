@@ -1,9 +1,10 @@
 from __future__ import annotations
-from dataclasses import dataclass
+
 import re
+from dataclasses import dataclass
 from functools import cache
+
 import tantivy
-from tantivy import Document
 
 
 @cache

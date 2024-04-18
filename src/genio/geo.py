@@ -5,7 +5,7 @@ from typing import Annotated
 import yaml
 from icecream import ic
 
-from .base import raw_sparkle, slurp_toml
+from .base import promptly, slurp_toml
 from .student import (
     Friendship,
     Student,
@@ -49,7 +49,7 @@ class DailySchedule:
     ]
 
 
-@raw_sparkle(demangle=True)
+@promptly(demangle=True)
 def design_generic_schedule(
     locations: list[Location], klasses: list[Klass]
 ) -> DailySchedule:
@@ -120,7 +120,7 @@ class LocationTracker:
         self.student_positions = {student: locations[0] for student in students}
 
 
-@raw_sparkle(demangle=True)
+@promptly(demangle=True)
 def plan_broad_strokes(
     student: Student, location_tracker: LocationTracker, today_schedule: DailySchedule
 ) -> BroadStrokesPlan:
@@ -167,7 +167,7 @@ class DetailedPlans:
     ]
 
 
-@raw_sparkle(demangle=True)
+@promptly(demangle=True)
 def plan_details(
     student: Student,
     location_tracker: LocationTracker,
@@ -215,7 +215,7 @@ if __name__ == "__main__":
     for loc in locs:
         global_facts.insert("Location: " + loc.name, loc.description)
     schedule = design_generic_schedule(locs, klasses)
-    with open("saves/students.yml", "r") as f:
+    with open("saves/students.yml") as f:
         students = yaml.load(f, yaml.Loader)["students"]
     tracker = LocationTracker(locs, students)
     for student in students:

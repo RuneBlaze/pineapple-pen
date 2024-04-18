@@ -12,7 +12,6 @@ from textwrap import dedent
 from typing import (
     Annotated,
     Any,
-    Protocol,
     Type,
     TypeVar,
     get_args,
@@ -86,6 +85,10 @@ jinja_env = Environment(
 )
 jinja_env.globals.update(zip=zip)
 jinja_env.globals.update(naturalize=naturalize)
+
+def jinja_global(func):
+    jinja_env.globals[func.__name__] = func
+    return func
 
 
 def render_template(template: str, context: dict[str, Any]) -> ChatPromptTemplate:
@@ -403,20 +406,16 @@ def make_str_of_value(value):
         return yaml.dump(asdict(value))
 
 
-def raw_sparkle(f=None, demangle: bool = False):
+def promptly(f=None, demangle: bool = True):
     """Decorate a function to make it use LLM to generate responses.
 
     The docstring should contain the following:
-    ```
-    {{input_yaml}}
-    ```
-    and
     ```
     {{formatting_instructions}}
     ```
     """
     if f is None:
-        return partial(raw_sparkle, demangle=demangle)
+        return partial(promptly, demangle=demangle)
 
     doc = inspect.getdoc(f)
     if doc is None:
@@ -567,19 +566,14 @@ class WriterArchetype:
 
 @cache
 def load_writer_archetypes() -> list[WriterArchetype]:
-    with open("assets/writer_persona.toml", "r") as f:
+    with open("assets/writer_persona.toml") as f:
         parsed_data = tomlkit_to_popo(tomllib.load(f))
     return [WriterArchetype(**archetype) for archetype in parsed_data["writer"]]
 
 
 def slurp_toml(path):
-    with open(path, "r") as f:
+    with open(path) as f:
         return tomlkit_to_popo(tomllib.load(f))
-
-
-class AgentLike(Protocol):
-    def agent_context(self) -> str:
-        ...
 
 
 def yamlize(item: object) -> str:

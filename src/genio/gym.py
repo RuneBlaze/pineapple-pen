@@ -5,19 +5,23 @@ Environment to prototype agents.
 from __future__ import annotations
 
 import json
+import re
+import textwrap
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import time
-from queue import PriorityQueue
-from pydantic.alias_generators import to_snake
-from typing import Any
-from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
-from .funccall import prompt_for_structured_output
-import textwrap
-from icecream import ic
 from functools import cache
-import re
-from .prelude.tantivy import TantivyStore, FactualEntry
+from queue import PriorityQueue
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic.alias_generators import to_snake
+from structlog import get_logger
+
+from .funccall import prompt_for_structured_output
+from .prelude.tantivy import FactualEntry, TantivyStore
+
+logger = get_logger()
 
 
 @dataclass(order=True)
@@ -36,7 +40,7 @@ class ScheduleEntry:
     document: Any | None
 
     @staticmethod
-    def parse(text: str) -> "ScheduleEntry":
+    def parse(text: str) -> ScheduleEntry:
         # Splitting the text into parts
         time_part, topic, location = text.split("; ")
 
@@ -227,7 +231,7 @@ class Simulator:
 
         action = elicit_action(agent)
 
-        ic(action)
+        logger.info("Agent action", agent=agent.name, action=action)
 
         match action:
             case MoveAction(target=target):
@@ -300,8 +304,6 @@ def elicit_action(agent: ChronoAgent) -> MoveAction | WaitAction:
 
 
 if __name__ == "__main__":
-    # world_map = WorldMap.default()
-    # print(world_map.search("The Crimson Tavern"))
     simulation = Simulator()
     while True:
         simulation.step()

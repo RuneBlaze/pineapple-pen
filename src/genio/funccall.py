@@ -1,21 +1,15 @@
 import inspect
+import json
 import re
 import textwrap
-import json
-
-from typing import Annotated, Type, Union, get_args, get_origin, Any, Literal
+from datetime import time
+from typing import Annotated, Any, Literal, Type, Union, get_args, get_origin
 
 import google.ai.generativelanguage as glm
 import google.generativeai as genai
-
-
 from pydantic import BaseModel, ConfigDict, ValidationError
-from pydantic.fields import FieldInfo
 from pydantic.alias_generators import to_snake
-
-from datetime import time
-
-
+from pydantic.fields import FieldInfo
 from structlog import get_logger
 
 logger = get_logger()
@@ -74,8 +68,6 @@ def _field_type_to_glm_schema(field_type: FieldInfo) -> glm.Schema:
     if field_type in type_map:
         return glm.Schema(type=type_map[field_type], description=description)
     return dataclass_to_glm_schema(field_type)
-    # else:
-    #     raise TypeError(f"Unsupported field type: {field_type}")
 
 
 def dataclass_to_function_declaration(dc: Type) -> glm.FunctionDeclaration:

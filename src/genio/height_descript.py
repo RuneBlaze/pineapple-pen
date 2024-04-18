@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Annotated
 
-from .base import raw_sparkle
+from .base import promptly
 
 
 @dataclass
@@ -26,7 +26,7 @@ class HeightDescript:
     ]
 
 
-@raw_sparkle
+@promptly
 def generate_height_descript(
     your_height: int,
     person_height: int,
