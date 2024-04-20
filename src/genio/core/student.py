@@ -16,7 +16,6 @@ from genio.core.agent import MemoryBank, MemoryEntry, Thought
 
 from ..human.height_chart import HeightChart
 from ..human.namegen import NameGenerator
-from .tantivy import TantivyStore
 from ..utils.embed import embed_single_sentence
 from .base import (
     TEMPLATE_REGISTRY,
@@ -28,6 +27,7 @@ from .base import (
     slurp_toml,
     yamlize,
 )
+from .tantivy import TantivyStore
 
 
 class Clock:

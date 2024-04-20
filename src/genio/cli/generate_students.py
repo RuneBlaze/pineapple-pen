@@ -2,6 +2,7 @@ import random
 
 import typer
 import yaml
+
 from genio.core.student import (
     Student,
     generate_student,
