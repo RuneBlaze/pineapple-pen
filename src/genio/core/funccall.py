@@ -7,8 +7,7 @@ from typing import Annotated, Any, Literal, Type, Union, get_args, get_origin
 
 import google.ai.generativelanguage as glm
 import google.generativeai as genai
-from pydantic import BaseModel, ConfigDict, ValidationError
-from pydantic.alias_generators import to_snake
+from pydantic import BaseModel, ValidationError
 from pydantic.fields import FieldInfo
 from structlog import get_logger
 
@@ -91,17 +90,6 @@ def _to_snake_case(name: str) -> str:
     ).lower()  # Insert '_' before Uppercase
 
 
-class Attack(BaseModel):
-    model_config = ConfigDict(alias_generator=to_snake)
-    target: str
-
-
-class Cast(BaseModel):
-    model_config = ConfigDict(alias_generator=to_snake)
-    spell: Literal["Hastega", "Quickga", "Slowga"]
-    target: str
-
-
 def transform_pydantic_error(error: ValidationError):
     simplified_errors = []
     for e in error.errors():
@@ -168,11 +156,11 @@ def prompt_for_structured_output(prompt: str, types: list[Type]) -> Any:
             logger.warning("retrying", error=e, cand0=response.candidates[0])
 
 
-if __name__ == "__main__":
-    from icecream import ic
+# if __name__ == "__main__":
+#     from icecream import ic
 
-    r = prompt_for_structured_output(
-        "I'm designing a turn-based combat system for a game. A goblin attacks a knight. What actions could the knight take in response? Be creative; use cast.",
-        [Attack, Cast],
-    )
-    ic(r)
+#     r = prompt_for_structured_output(
+#         "I'm designing a turn-based combat system for a game. A goblin attacks a knight. What actions could the knight take in response? Be creative; use cast.",
+#         [Attack, Cast],
+#     )
+#     ic(r)

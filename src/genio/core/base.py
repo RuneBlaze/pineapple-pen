@@ -471,48 +471,6 @@ def promptly(f=None, demangle: bool = True):
     return wrapper
 
 
-def cmd_sparkle(allowed_commands: list[str]):
-    def decorator(f):
-        doc = inspect.getdoc(f)
-        if doc is None:
-            raise ValueError(f"Function {f} has no docstring.")
-
-        sig = inspect.signature(f)
-        llm = aux_llm()
-
-        @wraps(f)
-        def wrapper(*args, **kwargs):
-            try:
-                f(*args, **kwargs)
-            except Exception as e:
-                raise ValueError(f"Failed to call {f} with {args} and {kwargs}") from e
-            ba = sig.bind(*args, **kwargs)
-            return_type = get_type_hints(f).get("return", inspect.Signature.empty)
-            if return_type is inspect.Signature.empty:
-                raise ValueError(f"Function {f} has no return type.")
-            ctxt = []
-            args = dict(ba.arguments.items())
-            if args:
-                ctxt.append("```yml")
-                ctxt.append(yaml.dump(args))
-                ctxt.append("```")
-            input_str = "\n".join(ctxt)
-            prompt = render_template(
-                doc,
-                {
-                    "input_yaml": input_str,
-                    **{k: make_str_of_value(v) for k, v in args.items()},
-                    **{f"_{k}": v for k, v in args.items()},
-                },
-            )
-            chain = prompt | llm | CmdParser(allowed_commands=allowed_commands)
-            return chain.invoke({})
-
-        return wrapper
-
-    return decorator
-
-
 def sparkle(f):
     """Decorate a function to make it use LLM to generate responses."""
     doc = inspect.getdoc(f)

@@ -1,11 +1,17 @@
 """
 Generative agents.
+
+Memory model:
+ 1. Short-term working memory.
+ 2. Longer term meomry.
+ 3. Thoughts.
+ 4. Reflections.
 """
 from __future__ import annotations
 
 import datetime as dt
 from dataclasses import dataclass
-from typing import Annotated
+from typing import Annotated, TypeAlias
 
 import humanize
 from numpy.typing import NDArray
@@ -16,6 +22,59 @@ from genio.core.student import global_clock
 from genio.core.tantivy import TantivyStore, global_factual_storage
 from genio.utils.embed import embed_single_sentence
 
+IntoContext: TypeAlias = str | list[str]
+
+@dataclass
+class FragmentWithPriority:
+    fragment: str
+    priority: int
+
+
+@dataclass
+class AgentContext:
+    factual: list[FragmentWithPriority]
+    daily: list[FragmentWithPriority]
+    recall: list[FragmentWithPriority]
+    logs: list[FragmentWithPriority]
+
+    def combine(self, context: AgentContext) -> AgentContext:
+        return AgentContext(
+            self.factual + context.factual,
+            self.daily + context.daily,
+            self.recall + context.recall,
+            self.logs + context.logs,
+        )
+    
+    def __add__(self, context: AgentContext) -> AgentContext:
+        return self.combine(context)
+
+class ContextBuilder:
+    def __init__(self, agent: Agent) -> None:
+        self.agent = agent
+        self.state = AgentContext([], [], [], [])
+    
+    def _preprocess(self, fragment: IntoContext) -> list[FragmentWithPriority]:
+        if isinstance(fragment, str):
+            return [FragmentWithPriority(self._preprocess(fragment), 0)]
+        return [FragmentWithPriority(self._preprocess_str(x), 0) for x in fragment]
+    
+    def _preprocess_str(self, fragment: str) -> str:
+        return fragment.replace('{{TA}}', self.agent.name)
+
+    def fact(self, fragment: IntoContext, priority: int = 0) -> None:
+        self.state.factual.extend([FragmentWithPriority(x, priority) for x in self._preprocess(fragment)])
+
+    def daily(self, fragment: IntoContext, priority: int = 0) -> None:
+        self.state.daily.extend([FragmentWithPriority(x, priority) for x in self._preprocess(fragment)])
+
+    def recall(self, fragment: IntoContext, priority: int = 0) -> None:
+        self.state.recall.extend([FragmentWithPriority(x, priority) for x in self._preprocess(fragment)])
+    
+    def log(self, fragment: IntoContext, priority: int = 0) -> None:
+        self.state.logs.extend([FragmentWithPriority(x, priority) for x in self._preprocess(fragment)])
+
+    def build(self) -> AgentContext:
+        return self.state
 
 class Agent:
     components: list[ContextComponent]
@@ -26,7 +85,7 @@ class Agent:
         self.components.append(component)
         component.agent = self
 
-    def context(self) -> str:
+    def context(self, re: str | None) -> str:
         components = sorted(self.components, key=lambda x: x.priority(), reverse=True)
         return " ".join([x.context() for x in components])
 
@@ -37,7 +96,7 @@ class ContextComponent:
     def __init__(self, agent: Agent) -> None:
         self.agent = agent
 
-    def context(self) -> str:
+    def context(self, re: str | None) -> str:
         raise NotImplementedError
     
     def priority(self) -> int:
@@ -143,6 +202,9 @@ class MemoryBank(ContextComponent):
 
     def __repr__(self):
         return super().__repr__()
+    
+    def context(self, re: str | None) -> str:
+        ... # TODO: implement this.
 
 
 @dataclass
