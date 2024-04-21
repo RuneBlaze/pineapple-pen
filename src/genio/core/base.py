@@ -87,6 +87,7 @@ jinja_env = Environment(
 jinja_env.globals.update(zip=zip)
 jinja_env.globals.update(naturalize=naturalize)
 
+
 def jinja_global(func):
     jinja_env.globals[func.__name__] = func
     return func

@@ -11,23 +11,53 @@ from __future__ import annotations
 
 import datetime as dt
 from dataclasses import dataclass
-from typing import Annotated, TypeAlias
+from typing import Annotated, Any, TypeAlias
 
 import humanize
 from numpy.typing import NDArray
 from sentence_transformers.util import cos_sim
 
-from genio.core.base import OUTPUT_FORMAT, jinja_global, promptly
+from genio.core.base import OUTPUT_FORMAT, jinja_global, promptly, render_template
 from genio.core.student import global_clock
 from genio.core.tantivy import TantivyStore, global_factual_storage
 from genio.utils.embed import embed_single_sentence
 
 IntoContext: TypeAlias = str | list[str]
 
+
 @dataclass
 class FragmentWithPriority:
     fragment: str
     priority: int
+    timestamp: dt.datetime | None = None
+
+    def to_text(self, agent: Agent) -> str:
+        sentence = self.fragment
+        if sentence[-1] not in [".", "!", "?"]:
+            sentence += "."
+        return render_template(
+            sentence,
+            {
+                # The Agent.
+                "TA": agent.name,
+            },
+        )
+
+
+@dataclass
+class Paragraph:
+    sentences: list[FragmentWithPriority]
+
+    def to_text(self, agent: Agent) -> str:
+        return " ".join([x.to_text(agent) for x in self.sentences])
+
+
+@dataclass
+class TextFragment:
+    paragraphs: list[Paragraph]
+
+    def to_text(self, agent: Agent) -> str:
+        return "\n\n".join([x.to_text(agent) for x in self.paragraphs])
 
 
 @dataclass
@@ -44,40 +74,61 @@ class AgentContext:
             self.recall + context.recall,
             self.logs + context.logs,
         )
-    
+
     def __add__(self, context: AgentContext) -> AgentContext:
         return self.combine(context)
+
+    def to_context(self, agent: Agent) -> str:
+        factual_paragraph = Paragraph(self.factual)
+        daily_paragraph = Paragraph(self.daily)
+        recall_paragraph = Paragraph(self.recall)
+        logs_paragraph = Paragraph(self.logs)
+        text_fragment = TextFragment(
+            [factual_paragraph, daily_paragraph, recall_paragraph, logs_paragraph]
+        )
+        return text_fragment.to_text(agent)
+
 
 class ContextBuilder:
     def __init__(self, agent: Agent) -> None:
         self.agent = agent
         self.state = AgentContext([], [], [], [])
-    
+
     def _preprocess(self, fragment: IntoContext) -> list[FragmentWithPriority]:
         if isinstance(fragment, str):
             return [FragmentWithPriority(self._preprocess(fragment), 0)]
         return [FragmentWithPriority(self._preprocess_str(x), 0) for x in fragment]
-    
+
     def _preprocess_str(self, fragment: str) -> str:
-        return fragment.replace('{{TA}}', self.agent.name)
+        return fragment.replace("{{TA}}", self.agent.name)
 
     def fact(self, fragment: IntoContext, priority: int = 0) -> None:
-        self.state.factual.extend([FragmentWithPriority(x, priority) for x in self._preprocess(fragment)])
+        self.state.factual.extend(
+            [FragmentWithPriority(x, priority) for x in self._preprocess(fragment)]
+        )
 
     def daily(self, fragment: IntoContext, priority: int = 0) -> None:
-        self.state.daily.extend([FragmentWithPriority(x, priority) for x in self._preprocess(fragment)])
+        self.state.daily.extend(
+            [FragmentWithPriority(x, priority) for x in self._preprocess(fragment)]
+        )
 
     def recall(self, fragment: IntoContext, priority: int = 0) -> None:
-        self.state.recall.extend([FragmentWithPriority(x, priority) for x in self._preprocess(fragment)])
-    
+        self.state.recall.extend(
+            [FragmentWithPriority(x, priority) for x in self._preprocess(fragment)]
+        )
+
     def log(self, fragment: IntoContext, priority: int = 0) -> None:
-        self.state.logs.extend([FragmentWithPriority(x, priority) for x in self._preprocess(fragment)])
+        self.state.logs.extend(
+            [FragmentWithPriority(x, priority) for x in self._preprocess(fragment)]
+        )
 
     def build(self) -> AgentContext:
         return self.state
 
+
 class Agent:
     components: list[ContextComponent]
+
     def __init__(self):
         self.components = []
 
@@ -89,6 +140,13 @@ class Agent:
         components = sorted(self.components, key=lambda x: x.priority(), reverse=True)
         return " ".join([x.context() for x in components])
 
+    def provided_attributes(self) -> dict[str, Any]:
+        return {k: v for x in self.components for k, v in x.provides().items()}
+
+    @property
+    def name(self) -> str | None:
+        return self.provided_attributes().get("name")
+
 
 class ContextComponent:
     agent: Agent
@@ -96,11 +154,11 @@ class ContextComponent:
     def __init__(self, agent: Agent) -> None:
         self.agent = agent
 
-    def context(self, re: str | None) -> str:
+    def context(self, re: str | None) -> AgentContext:
         raise NotImplementedError
-    
-    def priority(self) -> int:
-        return 0
+
+    def provides(self) -> dict[str, Any]:
+        return {}
 
 
 @dataclass
@@ -202,9 +260,9 @@ class MemoryBank(ContextComponent):
 
     def __repr__(self):
         return super().__repr__()
-    
-    def context(self, re: str | None) -> str:
-        ... # TODO: implement this.
+
+    def context(self, re: str | None) -> AgentContext:
+        ...  # TODO: implement this.
 
 
 @dataclass
@@ -226,7 +284,7 @@ class CompactedMemories:
 
 @jinja_global
 def listof(coll: list[str]) -> str:
-    return "\n".join('- ' + x for x in coll)
+    return "\n".join("- " + x for x in coll)
 
 
 @promptly

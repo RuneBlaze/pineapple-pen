@@ -133,6 +133,7 @@ class StudentProfile(Mythical, Agent):
             ),
         )
 
+
 def from_documents(*args, **kwargs) -> TantivyStore:
     return TantivyStore.from_documents(*args, **kwargs)
 
