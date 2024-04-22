@@ -221,26 +221,6 @@ class RawJsonParser(BaseOutputParser):
         return "Please return in JSON."
 
 
-class CmdParser(BaseOutputParser):
-    allowed_commands: list[str]
-
-    def parse(self, text: str) -> Any:
-        parsed = parse_command(text)
-        if not parsed:
-            raise OutputParserException(
-                "No command found in completion."
-                "Commands must be given as a single Python code call statement",
-                llm_output=text,
-            )
-        command = parsed[0]
-        if command not in self.allowed_commands:
-            raise OutputParserException(
-                f"Command {command} not allowed. Must be one of {self.allowed_commands}",
-                llm_output=text,
-            )
-        return parsed
-
-
 def ask_for_json(prompt: str, expected_keys: list[str] | None = None) -> Any:
     template = ChatPromptTemplate.from_template(prompt)
     llm = aux_llm()
@@ -259,7 +239,7 @@ def clean_null_values(d: dict) -> None:
             del d[k]
 
 
-def instantiate_instance(cls: Type[T], data: dict) -> T:
+def instantiate_instance(cls: type[T], data: dict) -> T:
     try:
         return cls(**data)
     except TypeError as e:

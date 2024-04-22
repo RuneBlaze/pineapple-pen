@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import datetime as dt
 import pickle as pkl
 from collections import defaultdict
 from collections.abc import Mapping
@@ -10,47 +9,25 @@ from functools import cache
 from random import choice, gauss
 from typing import Annotated, Protocol
 
-import humanize
-
-from genio.core.agent import MemoryBank, MemoryEntry, Thought
-
-from ..human.height_chart import HeightChart
-from ..human.namegen import NameGenerator
-from ..utils.embed import embed_single_sentence
-from .base import (
+from genio.core.agent import (
+    ContextBuilder,
+    ContextComponent,
+    MemoryBank,
+    MemoryEntry,
+    Thought,
+)
+from genio.core.base import (
     TEMPLATE_REGISTRY,
-    Agent,
-    Mythical,
     WriterArchetype,
     generate_using_docstring,
     promptly,
     slurp_toml,
     yamlize,
 )
-from .tantivy import TantivyStore
-
-
-class Clock:
-    def __init__(self, time: dt.datetime) -> None:
-        self.state = time
-
-    def add_seconds(self, seconds: float) -> None:
-        self.state += dt.timedelta(seconds=seconds)
-
-    def add_minutes(self, minutes: float) -> None:
-        self.state += dt.timedelta(minutes=minutes)
-
-    @staticmethod
-    def default() -> Clock:
-        return Clock(dt.datetime(2002, 11, 6, 9))
-
-    def natural_repr(self) -> str:
-        d = humanize.naturaldate(self.state)
-        t = self.state.strftime("%I:%M %p")
-        return f"{d} at {t}"
-
-
-global_clock = Clock.default()
+from genio.core.tantivy import TantivyStore
+from genio.human.height_chart import HeightChart
+from genio.human.namegen import NameGenerator
+from genio.utils.embed import embed_single_sentence
 
 
 @cache
@@ -69,7 +46,7 @@ class Archetype:
 
 
 @dataclass
-class StudentProfile(Mythical, Agent):
+class StudentProfile(ContextComponent):
     """\
     A student in a school, the hero in their life.
 
@@ -103,12 +80,13 @@ class StudentProfile(Mythical, Agent):
         if isinstance(self.grade, str):
             self.grade = int(self.grade)
 
-    def agent_context(self) -> str:
-        return (
-            f"{self.name}, age {self.age}, grade {self.grade}, {self.height} CM tall.\n"
-            f"gender: {self.gender}.\n"
-            f"MBTI: {self.mbti_type}. {self.bio}\n"
+    def build_context(self, re: str | None, builder: ContextBuilder) -> None:
+        builder.fact(
+            f"{self.name}, age {self.age}, grade {self.grade}, {self.height} CM tall"
         )
+        builder.fact_pair("gender", self.gender)
+        builder.fact_pair("MBTI", self.mbti_type)
+        builder.fact(self.bio)
 
     @staticmethod
     def generate_from_grade(grade: int) -> StudentProfile:
