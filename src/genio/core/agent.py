@@ -128,15 +128,22 @@ class ContextBuilder:
         return self.state
 
 
+
 class Agent:
     components: list[ContextComponent]
 
-    def __init__(self):
+    def __init__(self, global_components : Any = None) -> None:
         self.components = []
+        self.global_components = global_components
 
-    def add_component(self, component: ContextComponent) -> None:
-        self.components.append(component)
+    def add_component(self, component: ContextComponent | type[ContextComponent]) -> None:
+        if not isinstance(component, ContextComponent):
+            component = component(self)
+        component.__post_init__()
         component.agent = self
+        component.tick("init")
+        component.tick("new_day")
+        self.components.append(component)
 
     def context(self, re: str | None = None) -> str:
         components = sorted(self.components, key=lambda x: x.priority(), reverse=True)
@@ -175,6 +182,9 @@ class ContextComponent:
     def __init__(self, agent: Agent) -> None:
         self.agent = agent
 
+    def __post_init__(self) -> None:
+        ...
+
     def context(self, re: str | None) -> AgentContext:
         builder = ContextBuilder(self.agent)
         self.build_context(re, builder)
@@ -191,4 +201,11 @@ class ContextComponent:
             self.set_attribute(key, value)
 
     def set_attribute(self, key: str, value: Any) -> None:
+        raise NotImplementedError
+    
+    @property
+    def global_components(self) -> Any:
+        return self.agent.global_components
+
+    def tick(self, event: str) -> None:
         raise NotImplementedError

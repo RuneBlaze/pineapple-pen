@@ -9,8 +9,8 @@ from genio.core.base import promptly, slurp_toml
 from genio.core.student import (
     Friendship,
     Student,
-    global_factual_storage,
 )
+from genio.core.tantivy import global_factual_storage
 
 
 @dataclass
@@ -223,7 +223,6 @@ if __name__ == "__main__":
     location_tracker = LocationTracker(locs, students)
     for student in students:
         plan = plan_broad_strokes(student, location_tracker, schedule)
-        ic(plan)
         for entry in schedule.entries:
             detailed = plan_details(student, location_tracker, plan, entry)
             ic(detailed)
