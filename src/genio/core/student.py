@@ -12,9 +12,6 @@ from typing import Annotated, Protocol
 from genio.core.agent import (
     ContextBuilder,
     ContextComponent,
-    MemoryBank,
-    MemoryEntry,
-    Thought,
 )
 from genio.core.base import (
     TEMPLATE_REGISTRY,
@@ -24,6 +21,7 @@ from genio.core.base import (
     slurp_toml,
     yamlize,
 )
+from genio.core.memory import MemoryBank, MemoryEntry, Thought
 from genio.core.tantivy import TantivyStore
 from genio.human.height_chart import HeightChart
 from genio.human.namegen import NameGenerator

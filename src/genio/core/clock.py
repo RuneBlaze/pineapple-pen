@@ -23,3 +23,5 @@ class Clock:
         d = humanize.naturaldate(self.state)
         t = self.state.strftime("%I:%M %p")
         return f"{d} at {t}"
+
+global_clock = Clock.default()

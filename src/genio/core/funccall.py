@@ -154,13 +154,3 @@ def prompt_for_structured_output(prompt: str, types: list[Type]) -> Any:
                 )
             )
             logger.warning("retrying", error=e, cand0=response.candidates[0])
-
-
-# if __name__ == "__main__":
-#     from icecream import ic
-
-#     r = prompt_for_structured_output(
-#         "I'm designing a turn-based combat system for a game. A goblin attacks a knight. What actions could the knight take in response? Be creative; use cast.",
-#         [Attack, Cast],
-#     )
-#     ic(r)

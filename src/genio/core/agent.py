@@ -1,12 +1,3 @@
-"""
-Generative agents.
-
-Memory model:
- 1. Short-term working memory.
- 2. Longer term meomry.
- 3. Thoughts.
- 4. Reflections.
-"""
 from __future__ import annotations
 
 import datetime as dt
@@ -61,6 +52,10 @@ class AgentContext:
     agenda: list[FragmentWithPriority]  # Today's schedule
     memory: list[FragmentWithPriority]  # High-level memory
     activity: list[FragmentWithPriority]  # Recent events or logs
+
+    @staticmethod
+    def default() -> AgentContext:
+        return AgentContext([], [], [], [])
 
     def combine(self, context: AgentContext) -> AgentContext:
         return AgentContext(

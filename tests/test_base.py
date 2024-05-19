@@ -1,20 +1,5 @@
-from dataclasses import dataclass
 
-import pytest
-from genio.core.base import Mythical, generate_using_docstring, paragraph_consolidate
-
-
-@dataclass
-class Chocolate(Mythical):
-    "A chocolate with a specific flavor."
-
-    flavor: str
-
-
-@pytest.mark.skip("takes too long")
-def test_gen_from_docstring():
-    choco = generate_using_docstring(Chocolate, {})
-    assert choco.flavor
+from genio.core.base import paragraph_consolidate
 
 
 def test_paragraph_consolidate_with_multiple_paragraphs():

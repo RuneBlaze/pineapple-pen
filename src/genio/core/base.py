@@ -32,7 +32,6 @@ from structlog import get_logger
 
 from genio.utils.robustyaml import cleaning_parse
 
-from .cmd import parse_command
 from .llm import aux_llm
 
 logger = get_logger()
@@ -402,7 +401,7 @@ def promptly(f=None, demangle: bool = True):
     doc = inspect.getdoc(f)
     if doc is None:
         raise ValueError(f"Function {f} has no docstring.")
-    if "{{formatting_instructions}}" not in doc:
+    if not re.search(r"{{\s*formatting_instructions\s*}}", doc):
         raise ValueError(
             f"Function {f} docstring {doc} does not contain {{formatting_instructions}}"
         )
