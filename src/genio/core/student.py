@@ -21,6 +21,7 @@ from genio.core.base import (
     slurp_toml,
     yamlize,
 )
+from genio.core.clock import global_clock
 from genio.core.memory import MemoryBank, MemoryEntry, Thought
 from genio.core.tantivy import TantivyStore
 from genio.human.height_chart import HeightChart

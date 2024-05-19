@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any, TypeAlias
 
 from genio.core.base import render_template
+from genio.core.clock import Clock
 
 KV: TypeAlias = tuple[str, Any]
 SingleIntoContext: TypeAlias = str | KV
@@ -137,16 +138,35 @@ class Agent:
         self.components.append(component)
         component.agent = self
 
-    def context(self, re: str | None) -> str:
+    def context(self, re: str | None = None) -> str:
         components = sorted(self.components, key=lambda x: x.priority(), reverse=True)
         return " ".join([x.context() for x in components])
 
     def provided_attributes(self) -> dict[str, Any]:
         return {k: v for x in self.components for k, v in x.provides().items()}
 
+    def attribute_set(self, key: str, value: Any) -> None:
+        for component in self.components:
+            component.try_set_attribute(key, value)
+
+    def attribute_get(self, key: str) -> Any:
+        for component in self.components:
+            if key in (provided := component.provides()):
+                return provided[key]
+
+    def search_component(self, typ: type[ContextComponent]) -> ContextComponent | None:
+        for component in self.components:
+            if isinstance(component, typ):
+                return component
+        return None
+
     @property
     def name(self) -> str | None:
-        return self.provided_attributes().get("name")
+        return self.attribute_get("name")
+
+    @property
+    def clock(self) -> Clock | None:
+        return self.attribute_get("clock")
 
 
 class ContextComponent:
@@ -165,3 +185,10 @@ class ContextComponent:
 
     def provides(self) -> dict[str, Any]:
         return {}
+
+    def try_set_attribute(self, key: str, value: Any) -> None:
+        if key in self.provides():
+            self.set_attribute(key, value)
+
+    def set_attribute(self, key: str, value: Any) -> None:
+        raise NotImplementedError

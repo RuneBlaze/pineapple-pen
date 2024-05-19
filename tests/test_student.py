@@ -1,5 +1,3 @@
-
-
 # def test_student_thingies():
 #     student = StudentProfile.generate_from_grade(1)
 #     assert student is not None

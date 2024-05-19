@@ -8,12 +8,11 @@ import humanize
 from numpy.typing import NDArray
 from sentence_transformers.util import cos_sim
 
+from genio.core.agent import Agent, AgentContext, ContextComponent
 from genio.core.base import OUTPUT_FORMAT, jinja_global, promptly
 from genio.core.clock import global_clock
 from genio.core.tantivy import TantivyStore, global_factual_storage
 from genio.utils.embed import embed_single_sentence
-
-from .agent import Agent, AgentContext, ContextComponent
 
 
 @dataclass
@@ -92,6 +91,7 @@ class MemoryBank(ContextComponent):
         )[: self.max_memories]
 
     def recall(self, topic: str, max_recall: int = 3) -> list[str]:
+        """The default recall."""
         semantic_results = self.recall_semantic(topic, max_recall)
         factual_results = self.factual_store.recall(topic, 1)
         if factual_results:

@@ -1,4 +1,3 @@
-
 from genio.core.base import paragraph_consolidate
 
 
