@@ -8,8 +8,8 @@ from icecream import ic
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
-from ..core.base import Mythical, generate_using_docstring, sparkle
-from ..core.llm import aux_llm
+from genio.core.base import Mythical, generate_using_docstring, sparkle
+from genio.core.llm import aux_llm
 
 
 def generate_inspiration_keywords():

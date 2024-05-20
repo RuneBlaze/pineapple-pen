@@ -12,7 +12,6 @@ from textwrap import dedent
 from typing import (
     Annotated,
     Any,
-    Type,
     TypeVar,
     get_args,
     get_origin,
@@ -266,7 +265,7 @@ def instantiate_instance(cls: type[T], data: dict) -> T:
 
 
 class JsonParser(BaseOutputParser):
-    cls: Type
+    cls: type
 
     def parse(self, text: str) -> Any:
         flds = fields(self.cls)
@@ -310,7 +309,7 @@ class Mythical(ABC):
 T = TypeVar("T", bound=Mythical)
 
 
-def generate_using_docstring(klass: Type[T], args: dict) -> T:
+def generate_using_docstring(klass: type[T], args: dict) -> T:
     llm = aux_llm()
     docstrings = get_docstrings(klass)
     prompt = "Generate me a "

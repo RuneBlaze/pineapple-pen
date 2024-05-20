@@ -11,7 +11,7 @@ from typing import Annotated
 from structlog import get_logger
 from tqdm import tqdm
 
-from ..core.base import (
+from genio.core.base import (
     Mythical,
     generate_using_docstring,
     promptly,
@@ -19,6 +19,7 @@ from ..core.base import (
     sparkle,
     yamlize,
 )
+
 from .family import Backdrop
 
 logger = get_logger()

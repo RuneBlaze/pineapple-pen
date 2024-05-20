@@ -10,14 +10,14 @@ import faker
 import yaml
 from icecream import ic
 
-from ..core.base import (
+from genio.core.base import (
     Mythical,
     WriterArchetype,
     generate_using_docstring,
     slurp_toml,
     sparkle,
 )
-from ..human.namegen import NameGenerator
+from genio.human.namegen import NameGenerator
 
 fake = faker.Faker()
 

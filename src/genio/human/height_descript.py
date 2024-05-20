@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Annotated
 
-from ..core.base import promptly
+from genio.core.base import promptly
 
 
 @dataclass

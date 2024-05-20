@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from ..core.base import Mythical
+from genio.core.base import Mythical
 
 
 @dataclass
