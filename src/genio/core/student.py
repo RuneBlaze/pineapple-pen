@@ -11,7 +11,6 @@ from typing import Annotated, Protocol
 
 from genio.core.agent import (
     ContextBuilder,
-    ContextComponent,
 )
 from genio.core.base import (
     TEMPLATE_REGISTRY,
@@ -21,7 +20,7 @@ from genio.core.base import (
     slurp_toml,
     yamlize,
 )
-from genio.core.clock import global_clock
+from genio.core.clock import Clock, global_clock
 from genio.core.memory import MemoryBank, MemoryEntry, Thought
 from genio.core.tantivy import TantivyStore
 from genio.human.height_chart import HeightChart
@@ -45,7 +44,7 @@ class Archetype:
 
 
 @dataclass
-class StudentProfile(ContextComponent):
+class StudentProfile:
     """\
     A student in a school, the hero in their life.
 

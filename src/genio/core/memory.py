@@ -99,6 +99,8 @@ class MemoryBank(ContextComponent):
         return semantic_results + factual_results
 
     def recall_semantic(self, topic: str, max_recall: int = 5) -> list[str]:
+        if not topic:
+            return self.top_memories(max_recall)
         topic_embedding = embed_single_sentence(topic)
         similarities = []
         for memory in self.memories:
@@ -109,6 +111,12 @@ class MemoryBank(ContextComponent):
             reverse=True,
         )
         return [x[0].log for x in similarities[:max_recall]]
+
+    def top_memories(self, n: int = 5) -> list[str]:
+        sorted_memories = sorted(
+            self.memories, key=lambda x: x.significance, reverse=True
+        )
+        return [x.log for x in sorted_memories[:n]]
 
     def __str__(self):
         return f"MemoryBank for {self.agent} with {len(self.memories)} memories."

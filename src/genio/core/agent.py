@@ -128,18 +128,22 @@ class ContextBuilder:
         return self.state
 
 
-
 class Agent:
     components: list[ContextComponent]
 
-    def __init__(self, global_components : Any = None) -> None:
+    def __init__(self, global_components: Any = None) -> None:
         self.components = []
         self.global_components = global_components
 
-    def add_component(self, component: ContextComponent | type[ContextComponent]) -> None:
+    def add_component(
+        self, component: ContextComponent | type[ContextComponent]
+    ) -> None:
         if not isinstance(component, ContextComponent):
-            component = component(self)
-        component.__post_init__()
+            component = component()
+            component.agent = self
+        if not component.agent:
+            raise ValueError("Component does not have an agent.")
+        component.__post_attach__()
         component.agent = self
         component.tick("init")
         component.tick("new_day")
@@ -179,11 +183,8 @@ class Agent:
 class ContextComponent:
     agent: Agent
 
-    def __init__(self, agent: Agent) -> None:
-        self.agent = agent
-
-    def __post_init__(self) -> None:
-        ...
+    def __post_attach__(self) -> None:
+        pass
 
     def context(self, re: str | None) -> AgentContext:
         builder = ContextBuilder(self.agent)
@@ -191,6 +192,7 @@ class ContextComponent:
         return builder.build()
 
     def build_context(self, re: str | None, builder: ContextBuilder) -> None:
+        """Main method to build the context for the agent."""
         raise NotImplementedError
 
     def provides(self) -> dict[str, Any]:
@@ -202,7 +204,7 @@ class ContextComponent:
 
     def set_attribute(self, key: str, value: Any) -> None:
         raise NotImplementedError
-    
+
     @property
     def global_components(self) -> Any:
         return self.agent.global_components

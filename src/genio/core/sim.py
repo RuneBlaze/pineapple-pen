@@ -1,5 +1,3 @@
-from icecream import ic
-
 from genio.concepts.geo import (
     BroadStrokesPlan,
     DailySchedule,
@@ -10,7 +8,7 @@ from genio.concepts.geo import (
 )
 from genio.core.agent import Agent, ContextComponent
 from genio.core.base import promptly
-from genio.core.clock import Clock, global_clock
+from genio.core.clock import Clock
 from genio.core.map import Map
 from genio.core.tantivy import global_factual_storage
 
@@ -25,10 +23,9 @@ class GlobalComponents:
         self.schedule = design_generic_schedule(self.locs, self.klasses)
         self.map = Map({loc.name: loc.description for loc in self.locs})
 
+
 @promptly()
-def plan_broad_strokes(
-    agent: Agent, today_schedule: DailySchedule
-) -> BroadStrokesPlan:
+def plan_broad_strokes(agent: Agent, today_schedule: DailySchedule) -> BroadStrokesPlan:
     """\
     {{agent.context()}}
 
@@ -87,12 +84,12 @@ def plan_details(
     """
     ...
 
-class PlanForToday(ContextComponent):
 
+class PlanForToday(ContextComponent):
     broad_stroke_plans: BroadStrokesPlan
     detailed_plans: list[DetailedPlans]
 
-    def __post_init__(self) -> None:
+    def __post_attach__(self) -> None:
         self.detailed_plans = []
 
     def tick(self, event: str) -> None:
@@ -106,8 +103,14 @@ class PlanForToday(ContextComponent):
             detailed_plan = plan_details(self.agent, plan, entry)
             self.detailed_plans.append(detailed_plan)
 
+
 class Simulation:
-    def __init__(self, agents: list[Agent], clock: Clock, global_components: GlobalComponents | None = None) -> None:
+    def __init__(
+        self,
+        agents: list[Agent],
+        clock: Clock,
+        global_components: GlobalComponents | None = None,
+    ) -> None:
         global_components = global_components or GlobalComponents()
         self.global_components = global_components
         self.agents = agents
@@ -115,7 +118,8 @@ class Simulation:
             agent.global_components = global_components
         self.clock = clock
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     global_components = GlobalComponents()
     agent = Agent(global_components)
     agent.add_component(PlanForToday)
