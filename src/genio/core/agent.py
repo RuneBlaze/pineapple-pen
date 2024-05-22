@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import datetime as dt
+import textwrap
 from dataclasses import dataclass
 from typing import Any, TypeAlias
 
+from pydantic import BaseModel
+
 from genio.core.base import render_template
 from genio.core.clock import Clock
+from genio.core.funccall import prompt_for_structured_output
 
 KV: TypeAlias = tuple[str, Any]
 SingleIntoContext: TypeAlias = str | KV
@@ -178,6 +182,16 @@ class Agent:
     @property
     def clock(self) -> Clock | None:
         return self.attribute_get("clock")
+
+    def elicit_action(self, actions: list[type[BaseModel]]) -> BaseModel:
+        ctxt = self.context()
+        prompt = textwrap.dedent(
+            f"""\
+        {ctxt}
+        What would you like to do next? Please provide a valid action.
+        """
+        )
+        return prompt_for_structured_output(prompt, actions)
 
 
 class ContextComponent:

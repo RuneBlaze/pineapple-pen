@@ -1,3 +1,12 @@
+from dataclasses import dataclass, field
+from datetime import time
+from queue import PriorityQueue
+from typing import Any, cast
+
+from icecream import ic
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_snake
+
 from genio.concepts.geo import (
     BroadStrokesPlan,
     DailySchedule,
@@ -6,10 +15,10 @@ from genio.concepts.geo import (
     default_locations,
     design_generic_schedule,
 )
-from genio.core.agent import Agent, ContextComponent
+from genio.core.agent import Agent, ContextBuilder, ContextComponent
 from genio.core.base import promptly
 from genio.core.clock import Clock
-from genio.core.map import Map
+from genio.core.map import Location, Map
 from genio.core.tantivy import global_factual_storage
 
 
@@ -21,7 +30,7 @@ class GlobalComponents:
         for loc in self.locs:
             self.factual_storage.insert("Location: " + loc.name, loc.description)
         self.schedule = design_generic_schedule(self.locs, self.klasses)
-        self.map = Map({loc.name: loc.description for loc in self.locs})
+        self.map = Map.default()
 
 
 @promptly()
@@ -104,6 +113,31 @@ class PlanForToday(ContextComponent):
             self.detailed_plans.append(detailed_plan)
 
 
+class PhysicalLocation(ContextComponent):
+    location: Location
+
+    def __post_attach__(self) -> None:
+        self.location = self.global_components.map.fallback_location()
+
+    def build_context(self, re: str | None, builder: ContextBuilder) -> None:
+        builder.add_agenda("You are currently at: " + self.location.name)
+
+
+@dataclass(order=True)
+class PrioritizedItem:
+    priority: time
+    topic: Any = field(compare=False)
+    metadata: Any = field(compare=False)
+
+
+class MoveAction(BaseModel):
+    """Effect: Move to a specific location in the world map."""
+
+    model_config = ConfigDict(alias_generator=to_snake)
+
+    target: str
+
+
 class Simulation:
     def __init__(
         self,
@@ -117,9 +151,30 @@ class Simulation:
         for agent in agents:
             agent.global_components = global_components
         self.clock = clock
+        self.queue = PriorityQueue()
+        for a in self.agents:
+            self.queue.put(PrioritizedItem(self.clock.time, a))
+
+    def turn(self) -> None:
+        next_item = self.queue.get()
+        self.clock.state = next_item.priority
+
+        agent = cast(Agent, next_item.topic)
+        action = agent.elicit_action([MoveAction])
+
+        match action:
+            case MoveAction(target=target):
+                result = self.global_components.map.search(target)
+                agent.location = self.global_components.map[result.title]
+                self.queue.put(PrioritizedItem(self.clock.time, agent, result))
+            case _:
+                pass
 
 
 if __name__ == "__main__":
     global_components = GlobalComponents()
     agent = Agent(global_components)
     agent.add_component(PlanForToday)
+    agent.add_component(PhysicalLocation)
+
+    ic(agent.context())
