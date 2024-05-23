@@ -2,9 +2,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Annotated, Any, Iterator
 
-from pydantic import BaseModel, ConfigDict, create_model
+from pydantic import BaseModel, ConfigDict, create_model, field_validator
 from pydantic.alias_generators import to_snake
-from pydantic import field_validator
 
 from genio.core.agent import Agent
 from genio.core.map import Location, Map

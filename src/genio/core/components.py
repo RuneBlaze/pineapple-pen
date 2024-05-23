@@ -64,3 +64,9 @@ class StudentProfileComponent(ContextComponent):
         me = StudentProfileComponent()
         me.student_profile = StudentProfile.generate_from_grade(grade)
         return me
+
+    @override
+    def provides(self) -> dict[str, Any]:
+        return {
+            "name": self.student_profile.name,
+        }

@@ -5,6 +5,7 @@ from datetime import time
 from queue import PriorityQueue
 from typing import Any, ClassVar, Iterator, cast
 
+import logfire
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_snake
 
@@ -138,7 +139,24 @@ class PhysicalLocation(ContextComponent):
         self.location = self.global_components.map.fallback_location()
 
     def build_context(self, re: str | None, builder: ContextBuilder) -> None:
-        builder.add_agenda("You are currently at: " + self.location.name)
+        builder.add_agenda(
+            "You are currently at: "
+            + self.location.name
+            + " -- "
+            + self.location.description
+        )
+
+    def provides(self) -> dict[str, Any]:
+        return {
+            "location": self.location,
+        }
+
+    def set_attribute(self, key: str, value: Any) -> None:
+        match key:
+            case "location":
+                self.location = value
+            case _:
+                raise ValueError(f"Unknown attribute {key}")
 
 
 class CurrentTimeComponent(ContextComponent):
@@ -185,35 +203,38 @@ class Simulation:
         self.clock.state = next_item.priority
 
         agent = cast(Agent, next_item.topic)
-        effects = cast(Iterator[Effect] | None, next_item.metadata)
+        with logfire.span("Simulation", agent_name=agent.name):
+            effects = cast(Iterator[Effect] | None, next_item.metadata)
 
-        cont: Effect | None = None
-        if effects:
-            try:
+            cont: Effect | None = None
+            if effects:
+                try:
+                    cont = next(effects)
+                except StopIteration:
+                    pass
+            if not cont:
+                logfire.info("elicit action")
+                cards = [MoveCard(), WaitCard()]
+                possible_actions = [card.to_action(agent) for card in cards]
+                action2card = {
+                    action: card for action, card in zip(possible_actions, cards)
+                }
+                action = agent.elicit_action(possible_actions)
+                effects = action2card[action.__class__].effects(agent, action)
                 cont = next(effects)
-            except StopIteration:
-                pass
-        if not cont:
-            cards = [MoveCard(), WaitCard()]
-            possible_actions = [card.to_action(agent) for card in cards]
-            action2card = {
-                action: card for action, card in zip(possible_actions, cards)
-            }
-            action = agent.elicit_action(possible_actions)
-            effects = action2card[action.__class__].effects(agent, action)
-            cont = next(effects)
-        match cont:
-            case None:
-                raise ValueError("No continuation effect")
-            case WaitEffect(duration):
-                self.queue.put(
-                    PrioritizedItem(self.clock.in_minutes(duration), agent, effects)
-                )
-            case TeleportEffect(target):
-                agent.location = target
-                self.queue.put(
-                    PrioritizedItem(self.clock.in_minutes(5), agent, effects)
-                )
+            logfire.info("effect", cont=cont)
+            match cont:
+                case WaitEffect(duration):
+                    self.queue.put(
+                        PrioritizedItem(self.clock.in_minutes(duration), agent, effects)
+                    )
+                case TeleportEffect(target):
+                    agent.attribute_set("location", target)
+                    self.queue.put(
+                        PrioritizedItem(self.clock.in_minutes(5), agent, effects)
+                    )
+                case _:
+                    raise ValueError(f"Unknown effect {cont}")
 
 
 if __name__ == "__main__":
