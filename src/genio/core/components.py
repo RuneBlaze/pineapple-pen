@@ -1,5 +1,6 @@
-from dataclasses import dataclass
-from typing import Any, override
+from __future__ import annotations
+
+from typing_extensions import Any, override
 
 from genio.core.agent import ContextBuilder, ContextComponent
 from genio.core.clock import Clock
@@ -46,7 +47,6 @@ class MemoryComponent(ContextComponent):
         return {"memory": self.memory_bank}
 
 
-@dataclass
 class StudentProfileComponent(ContextComponent):
     student_profile: StudentProfile
 
@@ -58,3 +58,9 @@ class StudentProfileComponent(ContextComponent):
         builder.add_identity_pair("gender", self.student_profile.gender)
         builder.add_identity_pair("MBTI", self.student_profile.mbti_type)
         builder.add_identity(self.student_profile.bio)
+
+    @staticmethod
+    def generate_from_grade(grade: int) -> StudentProfileComponent:
+        me = StudentProfileComponent()
+        me.student_profile = StudentProfile.generate_from_grade(grade)
+        return me

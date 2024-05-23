@@ -29,7 +29,10 @@ class Map:
         return Map(locations, store)
 
     def search(self, query: str) -> Location | None:
-        title = self.store.recall_one(query).title
+        entry = self.store.recall_one(query)
+        if not entry:
+            return None
+        title = entry.title
         if found_loc := self.locations.get(title):
             return Location(title, found_loc)
         return None
@@ -38,3 +41,8 @@ class Map:
         return self.search("dorm") or Location(
             "home", "a place where you feel comfortable"
         )
+
+
+if __name__ == "__main__":
+    m = Map.default()
+    print(m.default())

@@ -2,14 +2,20 @@ from __future__ import annotations
 
 import datetime as dt
 import textwrap
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, TypeAlias
+from uuid import uuid4
 
 from pydantic import BaseModel
+from structlog import get_logger
 
-from genio.core.base import render_template
+from genio.core.agent_cache import agent_cache
+from genio.core.base import render_text
 from genio.core.clock import Clock
 from genio.core.funccall import prompt_for_structured_output
+
+logger = get_logger()
 
 KV: TypeAlias = tuple[str, Any]
 SingleIntoContext: TypeAlias = str | KV
@@ -22,11 +28,20 @@ class FragmentWithPriority:
     priority: int
     timestamp: dt.datetime | None = None
 
+    def __post_init__(self) -> None:
+        if isinstance(self.fragment, FragmentWithPriority):
+            raise ValueError(
+                "FragmentWithPriority cannot contain another FragmentWithPriority"
+            )
+
     def to_text(self, agent: Agent) -> str:
         sentence = self.fragment
+        if isinstance(sentence, tuple):
+            k, v = sentence
+            sentence = f"{k}: {v}"
         if sentence[-1] not in [".", "!", "?"]:
             sentence += "."
-        return render_template(
+        return render_text(
             sentence,
             {
                 # The Agent.
@@ -91,10 +106,12 @@ class ContextBuilder:
 
     def _preprocess(self, fragment: IntoContext) -> list[FragmentWithPriority]:
         if isinstance(fragment, str):
-            return [FragmentWithPriority(fragment, 0)]
+            return [fragment]
         elif isinstance(fragment, tuple):
-            return [FragmentWithPriority(fragment, 0)]
-        return [FragmentWithPriority(x, 0) for x in fragment]
+            return [fragment]
+        elif isinstance(fragment, FragmentWithPriority):
+            return [fragment]
+        return [x for x in fragment]
 
     def add_identity(self, fragment: IntoContext, priority: int = 0) -> None:
         self.state.identity.extend(
@@ -134,19 +151,33 @@ class ContextBuilder:
 
 class Agent:
     components: list[ContextComponent]
+    identifier: str
 
-    def __init__(self, global_components: Any = None) -> None:
+    def __init__(self, identifier: str | None = None) -> None:
         self.components = []
-        self.global_components = global_components
+        if identifier is None:
+            identifier = uuid4().hex
+        self.identifier = identifier
+
+    @staticmethod
+    def named(identifier: str) -> Agent:
+        if (k := identifier.encode()) in agent_cache:
+            logger.debug("Agent cache hit", identifier=identifier)
+            return agent_cache[k]
+        return Agent(identifier)
 
     def add_component(
-        self, component: ContextComponent | type[ContextComponent]
+        self,
+        component: type[ContextComponent],
+        ctor: Callable[[], ContextComponent] | None = None,
     ) -> None:
-        if not isinstance(component, ContextComponent):
-            component = component()
-            component.agent = self
+        for c in self.components:
+            if isinstance(c, component):
+                logger.debug("Component already attached", component=component.__name__)
+                return
+        component = ctor() if ctor else component()
         if not component.agent:
-            raise ValueError("Component does not have an agent.")
+            component.agent = self
         component.__post_attach__()
         component.agent = self
         component.tick("init")
@@ -155,7 +186,7 @@ class Agent:
 
     def context(self, re: str | None = None) -> str:
         components = sorted(self.components, key=lambda x: x.priority(), reverse=True)
-        return " ".join([x.context() for x in components])
+        return " ".join([x.context().describe_context(self) for x in components])
 
     def provided_attributes(self) -> dict[str, Any]:
         return {k: v for x in self.components for k, v in x.provides().items()}
@@ -193,14 +224,23 @@ class Agent:
         )
         return prompt_for_structured_output(prompt, actions)
 
+    def commit_state(self) -> None:
+        agent_cache[self.identifier.encode()] = self
+
+    @property
+    def global_components(self) -> Any:
+        from genio.core.sim import GlobalComponents
+
+        return GlobalComponents.instance()
+
 
 class ContextComponent:
-    agent: Agent
+    agent: Agent = None
 
     def __post_attach__(self) -> None:
         pass
 
-    def context(self, re: str | None) -> AgentContext:
+    def context(self, re: str | None = None) -> AgentContext:
         builder = ContextBuilder(self.agent)
         self.build_context(re, builder)
         return builder.build()
@@ -224,4 +264,7 @@ class ContextComponent:
         return self.agent.global_components
 
     def tick(self, event: str) -> None:
-        raise NotImplementedError
+        pass
+
+    def priority(self) -> int:
+        return 0

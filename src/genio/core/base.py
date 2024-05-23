@@ -91,12 +91,17 @@ def jinja_global(func):
     return func
 
 
-def render_template(template: str, context: dict[str, Any]) -> ChatPromptTemplate:
+def render_text(template: str, context: dict[str, Any]) -> str:
     logger.info(f"Rendering template: {template}")
     template = jinja_env.from_string(template).render(context)
     template = template.replace("{", "")
     template = template.replace("}", "")
-    return ChatPromptTemplate.from_template(paragraph_consolidate(template))
+    return paragraph_consolidate(template)
+
+
+def render_template(template: str, context: dict[str, Any]) -> ChatPromptTemplate:
+    rendered_text = render_text(template, context)
+    return ChatPromptTemplate.from_template(rendered_text)
 
 
 def tomlkit_to_popo(d):

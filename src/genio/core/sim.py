@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import time
 from queue import PriorityQueue
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
-from icecream import ic
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_snake
 
@@ -18,11 +19,14 @@ from genio.concepts.geo import (
 from genio.core.agent import Agent, ContextBuilder, ContextComponent
 from genio.core.base import promptly
 from genio.core.clock import Clock
+from genio.core.components import StudentProfileComponent
 from genio.core.map import Location, Map
 from genio.core.tantivy import global_factual_storage
 
 
 class GlobalComponents:
+    _instance: ClassVar[GlobalComponents] = None
+
     def __init__(self) -> None:
         self.locs = default_locations()
         self.klasses = default_klasses()
@@ -31,6 +35,12 @@ class GlobalComponents:
             self.factual_storage.insert("Location: " + loc.name, loc.description)
         self.schedule = design_generic_schedule(self.locs, self.klasses)
         self.map = Map.default()
+
+    @staticmethod
+    def instance() -> GlobalComponents:
+        if not GlobalComponents._instance:
+            GlobalComponents._instance = GlobalComponents()
+        return GlobalComponents._instance
 
 
 @promptly()
@@ -172,9 +182,10 @@ class Simulation:
 
 
 if __name__ == "__main__":
-    global_components = GlobalComponents()
-    agent = Agent(global_components)
-    agent.add_component(PlanForToday)
+    agent = Agent.named("test_agent_1")
+    agent.add_component(
+        StudentProfileComponent, lambda: StudentProfileComponent.generate_from_grade(4)
+    )
     agent.add_component(PhysicalLocation)
-
-    ic(agent.context())
+    agent.commit_state()
+    print(agent.context())
