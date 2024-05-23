@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import time
 from queue import PriorityQueue
-from typing import Any, ClassVar, cast
+from typing import Any, ClassVar, Iterator, cast
 
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_snake
@@ -18,7 +18,8 @@ from genio.concepts.geo import (
 )
 from genio.core.agent import Agent, ContextBuilder, ContextComponent
 from genio.core.base import promptly
-from genio.core.clock import Clock
+from genio.core.card import Effect, MoveCard, TeleportEffect, WaitCard, WaitEffect
+from genio.core.clock import Clock, global_clock
 from genio.core.components import StudentProfileComponent
 from genio.core.map import Location, Map
 from genio.core.tantivy import global_factual_storage
@@ -35,6 +36,7 @@ class GlobalComponents:
             self.factual_storage.insert("Location: " + loc.name, loc.description)
         self.schedule = design_generic_schedule(self.locs, self.klasses)
         self.map = Map.default()
+        self.clock = global_clock
 
     @staticmethod
     def instance() -> GlobalComponents:
@@ -122,6 +124,12 @@ class PlanForToday(ContextComponent):
             detailed_plan = plan_details(self.agent, plan, entry)
             self.detailed_plans.append(detailed_plan)
 
+    def build_context(self, re: str | None, builder: ContextBuilder) -> None:
+        builder.add_agenda("Today's plan:")
+        for plan in self.broad_stroke_plans.plans:
+            builder.add_agenda(plan)
+            # TODO: add detailed plans
+
 
 class PhysicalLocation(ContextComponent):
     location: Location
@@ -133,11 +141,19 @@ class PhysicalLocation(ContextComponent):
         builder.add_agenda("You are currently at: " + self.location.name)
 
 
+class CurrentTimeComponent(ContextComponent):
+    def build_context(self, re: str | None, builder: ContextBuilder) -> None:
+        builder.add_identity(
+            "You look at your watch and see the time: "
+            + self.global_components.clock.state.strftime("%I:%M %p")
+        )
+
+
 @dataclass(order=True)
 class PrioritizedItem:
     priority: time
     topic: Any = field(compare=False)
-    metadata: Any = field(compare=False)
+    metadata: Any = field(compare=False, default=None)
 
 
 class MoveAction(BaseModel):
@@ -152,33 +168,52 @@ class Simulation:
     def __init__(
         self,
         agents: list[Agent],
-        clock: Clock,
-        global_components: GlobalComponents | None = None,
     ) -> None:
-        global_components = global_components or GlobalComponents()
+        global_components = GlobalComponents.instance()
         self.global_components = global_components
         self.agents = agents
-        for agent in agents:
-            agent.global_components = global_components
-        self.clock = clock
         self.queue = PriorityQueue()
         for a in self.agents:
-            self.queue.put(PrioritizedItem(self.clock.time, a))
+            self.queue.put(PrioritizedItem(self.clock.state, a))
+
+    @property
+    def clock(self) -> Clock:
+        return self.global_components.clock
 
     def turn(self) -> None:
         next_item = self.queue.get()
         self.clock.state = next_item.priority
 
         agent = cast(Agent, next_item.topic)
-        action = agent.elicit_action([MoveAction])
+        effects = cast(Iterator[Effect] | None, next_item.metadata)
 
-        match action:
-            case MoveAction(target=target):
-                result = self.global_components.map.search(target)
-                agent.location = self.global_components.map[result.title]
-                self.queue.put(PrioritizedItem(self.clock.time, agent, result))
-            case _:
+        cont: Effect | None = None
+        if effects:
+            try:
+                cont = next(effects)
+            except StopIteration:
                 pass
+        if not cont:
+            cards = [MoveCard(), WaitCard()]
+            possible_actions = [card.to_action(agent) for card in cards]
+            action2card = {
+                action: card for action, card in zip(possible_actions, cards)
+            }
+            action = agent.elicit_action(possible_actions)
+            effects = action2card[action.__class__].effects(agent, action)
+            cont = next(effects)
+        match cont:
+            case None:
+                raise ValueError("No continuation effect")
+            case WaitEffect(duration):
+                self.queue.put(
+                    PrioritizedItem(self.clock.in_minutes(duration), agent, effects)
+                )
+            case TeleportEffect(target):
+                agent.location = target
+                self.queue.put(
+                    PrioritizedItem(self.clock.in_minutes(5), agent, effects)
+                )
 
 
 if __name__ == "__main__":
@@ -187,5 +222,9 @@ if __name__ == "__main__":
         StudentProfileComponent, lambda: StudentProfileComponent.generate_from_grade(4)
     )
     agent.add_component(PhysicalLocation)
+    agent.add_component(PlanForToday)
+    agent.add_component(CurrentTimeComponent)
     agent.commit_state()
-    print(agent.context())
+
+    sim = Simulation([agent])
+    sim.turn()

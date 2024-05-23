@@ -15,6 +15,9 @@ class Clock:
     def add_minutes(self, minutes: float) -> None:
         self.state += dt.timedelta(minutes=minutes)
 
+    def in_minutes(self, minutes: float) -> dt.datetime:
+        return self.state + dt.timedelta(minutes=minutes)
+
     @staticmethod
     def default() -> Clock:
         return Clock(dt.datetime(2002, 11, 6, 9))

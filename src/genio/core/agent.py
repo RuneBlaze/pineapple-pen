@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 import textwrap
+from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, TypeAlias
@@ -57,13 +58,19 @@ class Paragraph:
     def to_text(self, agent: Agent) -> str:
         return " ".join([x.to_text(agent) for x in self.sentences])
 
+    def __len__(self) -> int:
+        return len(self.sentences)
+
 
 @dataclass
 class TextFragment:
     paragraphs: list[Paragraph]
 
     def to_text(self, agent: Agent) -> str:
-        return "\n\n".join([x.to_text(agent) for x in self.paragraphs])
+        return "\n\n".join([x.to_text(agent) for x in self.paragraphs if x])
+
+    def __len__(self) -> int:
+        return sum(len(x) for x in self.paragraphs)
 
 
 @dataclass
@@ -234,7 +241,7 @@ class Agent:
         return GlobalComponents.instance()
 
 
-class ContextComponent:
+class ContextComponent(ABC):
     agent: Agent = None
 
     def __post_attach__(self) -> None:
@@ -245,9 +252,9 @@ class ContextComponent:
         self.build_context(re, builder)
         return builder.build()
 
+    @abstractmethod
     def build_context(self, re: str | None, builder: ContextBuilder) -> None:
-        """Main method to build the context for the agent."""
-        raise NotImplementedError
+        ...
 
     def provides(self) -> dict[str, Any]:
         return {}

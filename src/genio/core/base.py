@@ -92,7 +92,6 @@ def jinja_global(func):
 
 
 def render_text(template: str, context: dict[str, Any]) -> str:
-    logger.info(f"Rendering template: {template}")
     template = jinja_env.from_string(template).render(context)
     template = template.replace("{", "")
     template = template.replace("}", "")
