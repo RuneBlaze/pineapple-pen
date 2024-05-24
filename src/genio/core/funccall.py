@@ -129,13 +129,16 @@ def prompt_for_structured_output(prompt: str, types: list[Type]) -> Any:
             response = chat.send_message(
                 f"I noticed an error in the previous response as it lacks a proper structured function call. Could you please reformat and address this issue by responding to the original request '{prompt}' with a structured function call? This format is necessary for processing your request effectively."
             )
+            logger.warning("retrying", cand0=response.candidates[0])
             continue
         try:
             dictionary = type(fc).to_dict(fc)
             name = dictionary["name"]
             typ = snake2type[name]
             args = dictionary["args"]
-            return typ.model_validate(args)
+            res = typ.model_validate(args)
+            logger.info("validated", res=res)
+            return res
         except ValidationError as e:
             response = chat.send_message(
                 glm.Content(

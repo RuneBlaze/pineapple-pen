@@ -8,7 +8,7 @@ import humanize
 from numpy.typing import NDArray
 from sentence_transformers.util import cos_sim
 
-from genio.core.agent import Agent, AgentContext, ContextComponent
+from genio.core.agent import Agent
 from genio.core.base import OUTPUT_FORMAT, jinja_global, promptly
 from genio.core.clock import global_clock
 from genio.core.tantivy import TantivyStore, global_factual_storage
@@ -36,9 +36,9 @@ def humanize_time_delta(delta: dt.timedelta) -> str:
     return humanize.naturaltime(delta) + " ago"
 
 
-class MemoryBank(ContextComponent):
+class MemoryBank:
     def __init__(self, agent: Agent, max_memories: int = 30) -> None:
-        super().__init__(agent)
+        super().__init__()
         self.max_memories = max_memories
         self.memories = []
 
@@ -123,9 +123,6 @@ class MemoryBank(ContextComponent):
 
     def __repr__(self):
         return super().__repr__()
-
-    def context(self, re: str | None) -> AgentContext:
-        ...  # TODO: implement this.
 
 
 @dataclass

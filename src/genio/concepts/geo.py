@@ -1,6 +1,10 @@
+from __future__ import annotations
+
+from collections import defaultdict
 from dataclasses import dataclass
+from datetime import time
 from functools import cache
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Mapping
 
 import yaml
 from icecream import ic
@@ -12,6 +16,9 @@ from genio.core.student import (
 )
 from genio.core.tantivy import global_factual_storage
 
+if TYPE_CHECKING:
+    from genio.core.agent import Agent
+
 
 @dataclass
 class Location:
@@ -19,6 +26,8 @@ class Location:
 
     name: str
     description: str
+
+    occupancy: ClassVar[Mapping[str, list[Agent]]] = defaultdict(list)
 
 
 @dataclass
@@ -100,6 +109,37 @@ def remind_recurrent_memories(student: Student) -> None:
 
 
 @dataclass
+class ScheduleEntry:
+    start_time: time
+    end_time: time | None
+    topic: str
+    location: str
+    document: Any | None
+
+    @staticmethod
+    def parse(text: str) -> ScheduleEntry:
+        # Splitting the text into parts
+        time_part, topic, location = text.split("; ")
+
+        start_str, end_str = time_part.split("-")
+        start_str = start_str.strip()
+        end_str = end_str.strip()
+        start_hour, start_minute = map(int, start_str.split(":"))
+        end_hour, end_minute = map(int, end_str.split(":"))
+
+        return ScheduleEntry(
+            start_time=time(start_hour, start_minute),
+            end_time=time(end_hour, end_minute),
+            topic=topic,
+            location=location,
+            document=None,
+        )
+
+    def __str__(self) -> str:
+        return f"{self.start_time} - {self.end_time}; {self.topic}; {self.location}"
+
+
+@dataclass
 class BroadStrokesPlan:
     plans: Annotated[
         list[str],
@@ -109,6 +149,17 @@ class BroadStrokesPlan:
             "specific on the topic, or location if you don't know yet, but plan with your best effort."
         ),
     ]
+
+    def __post_init__(self):
+        plans = []
+        for plan in self.plans:
+            try:
+                plans.append(ScheduleEntry.parse(plan))
+            except ValueError as e:
+                raise ValueError(
+                    "Invalid plan format. Please follow the format."
+                ) from e
+        self.plans = plans
 
 
 class LocationTracker:

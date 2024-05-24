@@ -18,11 +18,13 @@ from genio.concepts.geo import (
     design_generic_schedule,
 )
 from genio.core.agent import Agent, ContextBuilder, ContextComponent
+from genio.core.agent_cache import agent_cache
 from genio.core.base import promptly
 from genio.core.card import Effect, MoveCard, TeleportEffect, WaitCard, WaitEffect
 from genio.core.clock import Clock, global_clock
 from genio.core.components import StudentProfileComponent
 from genio.core.map import Location, Map
+from genio.core.memory import MemoryBank
 from genio.core.tantivy import global_factual_storage
 
 
@@ -42,7 +44,11 @@ class GlobalComponents:
     @staticmethod
     def instance() -> GlobalComponents:
         if not GlobalComponents._instance:
-            GlobalComponents._instance = GlobalComponents()
+            if global_components := agent_cache.get("global_components"):
+                GlobalComponents._instance = global_components
+            else:
+                GlobalComponents._instance = GlobalComponents()
+                agent_cache["global_components"] = GlobalComponents._instance
         return GlobalComponents._instance
 
 
@@ -119,17 +125,17 @@ class PlanForToday(ContextComponent):
             self._build_plan()
 
     def _build_plan(self) -> None:
-        plan = plan_broad_strokes(self.agent, self.global_components.schedule)
-        self.broad_stroke_plans = plan
-        for entry in plan.plans:
-            detailed_plan = plan_details(self.agent, plan, entry)
+        self.broad_stroke_plans = broad_stroke_plans = plan_broad_strokes(
+            self.agent, self.global_components.schedule
+        )
+        for entry in broad_stroke_plans.plans:
+            detailed_plan = plan_details(self.agent, broad_stroke_plans, entry)
             self.detailed_plans.append(detailed_plan)
 
     def build_context(self, re: str | None, builder: ContextBuilder) -> None:
         builder.add_agenda("Today's plan:")
         for plan in self.broad_stroke_plans.plans:
             builder.add_agenda(plan)
-            # TODO: add detailed plans
 
 
 class PhysicalLocation(ContextComponent):
@@ -237,14 +243,35 @@ class Simulation:
                     raise ValueError(f"Unknown effect {cont}")
 
 
+class MemoryBankComponent(ContextComponent):
+    memory_bank: MemoryBank
+
+    def build_context(self, re: str | None, builder: ContextBuilder) -> None:
+        if not re:
+            recalled = self.memory_bank.top_memories()
+        else:
+            recalled = self.memory_bank.recall(re)
+        for entry in recalled:
+            builder.add_memory(entry)
+
+    @staticmethod
+    def for_agent(agent: Agent, max_memories: int) -> MemoryBankComponent:
+        component = MemoryBankComponent()
+        component.memory_bank = MemoryBank(agent, max_memories)
+        return component
+
+
 if __name__ == "__main__":
     agent = Agent.named("test_agent_1")
     agent.add_component(
         StudentProfileComponent, lambda: StudentProfileComponent.generate_from_grade(4)
     )
     agent.add_component(PhysicalLocation)
-    agent.add_component(PlanForToday)
     agent.add_component(CurrentTimeComponent)
+    agent.add_component(PlanForToday)
+    agent.add_component(
+        MemoryBankComponent, lambda: MemoryBankComponent.for_agent(agent, 5)
+    )
     agent.commit_state()
 
     sim = Simulation([agent])

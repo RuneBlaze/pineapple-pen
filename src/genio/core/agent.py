@@ -118,7 +118,7 @@ class ContextBuilder:
             return [fragment]
         elif isinstance(fragment, FragmentWithPriority):
             return [fragment]
-        return [x for x in fragment]
+        return [str(fragment)]
 
     def add_identity(self, fragment: IntoContext, priority: int = 0) -> None:
         self.state.identity.extend(
