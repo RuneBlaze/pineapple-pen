@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import time
 from functools import cache, cached_property
 from typing import TYPE_CHECKING, Annotated, Any, Literal
+from genio.core.clock import Clock
 
 import yaml
 from icecream import ic
@@ -18,16 +20,6 @@ from genio.core.tantivy import global_factual_storage
 
 if TYPE_CHECKING:
     pass
-
-
-# @dataclass
-# class Location:
-#     """A location in the school."""
-
-#     name: str
-#     description: str
-
-#     occupancy: ClassVar[Mapping[str, list[Agent]]] = defaultdict(list)
 
 
 @dataclass
@@ -50,8 +42,28 @@ def default_klasses() -> list[Klass]:
     return [Klass(**i) for i in klasses]
 
 
+class ScheduleLike(ABC):
+    @abstractmethod
+    def provide_schedule(self) -> list[ScheduleEntry]:
+        ...
+
+    def current_entry(self, now: Clock) -> ScheduleEntry | None:
+        schedule = self.provide_schedule()
+        for entry in schedule:
+            if entry.sign_of_time(now.time) == 0:
+                return entry
+        return None
+    
+    def upcoming_entry(self, now: Clock) -> ScheduleEntry | None:
+        schedule = self.provide_schedule()
+        for entry in zip(schedule, schedule[1:] + [schedule[0]]):
+            if entry[0].sign_of_time(now.time) == 0:
+                return entry[1]
+        return None
+
+
 @dataclass
-class DailySchedule:
+class DailySchedule(ScheduleLike):
     entries: Annotated[
         list[ScheduleEntry],
         "A list of strings, each representing a schedule entry. In the format, 'HH:MM - HH:MM; Title; Location'",
@@ -67,6 +79,9 @@ class DailySchedule:
                     "Invalid schedule entry format. Please follow the format."
                 ) from e
         self.entries = entries
+
+    def provide_schedule(self) -> list[ScheduleEntry]:
+        return self.entries
 
 
 @promptly(demangle=True)
@@ -164,7 +179,7 @@ class ScheduleEntry:
 
 
 @dataclass
-class BroadStrokesPlan:
+class BroadStrokesPlan(ScheduleLike):
     plans: Annotated[
         list[ScheduleEntry],
         (
@@ -184,6 +199,9 @@ class BroadStrokesPlan:
                     "Invalid plan format. Please follow the format."
                 ) from e
         self.plans = plans
+
+    def provide_schedule(self) -> list[ScheduleEntry]:
+        return self.plans
 
 
 class LocationTracker:

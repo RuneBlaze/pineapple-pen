@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Annotated, Any, Iterator
@@ -38,33 +40,33 @@ class ModelBuilder:
         model.__doc__ = self.doc
         return model
 
-    def set_name(self, name: str) -> "ModelBuilder":
+    def set_name(self, name: str) -> ModelBuilder:
         self.name = name
         return self
 
-    def set_doc(self, doc: str) -> "ModelBuilder":
+    def set_doc(self, doc: str) -> ModelBuilder:
         self.doc = doc
         return self
 
     def add_field(
         self, name: str, field_type: type[Any], annotation: Any, default: Any = ...
-    ) -> "ModelBuilder":
+    ) -> ModelBuilder:
         self.fields[name] = (Annotated[field_type, annotation], default)
         return self
 
     def add_int_field(
         self, name: str, annotation: str, default: int = ...
-    ) -> "ModelBuilder":
+    ) -> ModelBuilder:
         return self.add_field(name, int, annotation, default)
 
     def add_float_field(
         self, name: str, annotation: str, default: float = ...
-    ) -> "ModelBuilder":
+    ) -> ModelBuilder:
         return self.add_field(name, float, annotation, default)
 
     def add_string_field(
         self, name: str, annotation: str, default: str = ...
-    ) -> "ModelBuilder":
+    ) -> ModelBuilder:
         return self.add_field(name, str, annotation, default)
 
 
@@ -113,3 +115,18 @@ class MoveCard(Card):
 
     def effects(self, caster: Agent, action: BaseModel) -> Iterator[Effect]:
         yield TeleportEffect(location=Map.default().search(action.target))
+
+
+class ListenToClass(Card):
+    def to_action(self, re: Agent) -> type[BaseModel]:
+        builder = ModelBuilder()
+        return (
+            builder.set_name("ListenToClassAction")
+            .set_doc(
+                "Listen to the lesson at the current location, for roughly 15 minutes."
+            )
+            .build()
+        )
+
+    def effects(self, caster: Agent, action: BaseModel) -> Iterator[Effect]:
+        yield WaitEffect(duration=15)
