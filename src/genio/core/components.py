@@ -33,7 +33,7 @@ class MemoryComponent(ContextComponent):
     memory_bank: MemoryBank
 
     @override
-    def __post_attach__(self) -> None:
+    def __pre_attach__(self) -> None:
         self.memory_bank = MemoryBank(self.agent)
 
     @override

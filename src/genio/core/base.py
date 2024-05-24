@@ -333,7 +333,10 @@ def generate_using_docstring(klass: type[T], args: dict) -> T:
     return chain.with_retry().invoke({})
 
 
-def typescriptize_type(typ: str) -> str:
+def typescriptize_type(typ: str | type) -> str:
+    if is_dataclass(typ):
+        # Assuming that they will be parsed from JSON string.
+        return "string"
     if typ == str:
         return "string"
     if typ == int:

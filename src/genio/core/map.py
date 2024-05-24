@@ -1,16 +1,29 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import TYPE_CHECKING, ClassVar
 
 from genio.core.base import slurp_toml
 from genio.core.tantivy import TantivyStore
+
+if TYPE_CHECKING:
+    from genio.core.agent import Agent
 
 
 @dataclass(frozen=True)
 class Location:
     name: str
     description: str
+
+    occupancy: ClassVar[Mapping[str, list[Agent]]] = defaultdict(list)
+
+    def add_occupancy(self, agent: Agent) -> None:
+        self.occupancy[self.name].append(agent)
+
+    def remove_occupancy(self, agent: Agent) -> None:
+        self.occupancy[self.name].remove(agent)
 
 
 @dataclass

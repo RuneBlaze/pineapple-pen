@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from collections import defaultdict
 from dataclasses import dataclass
 from datetime import time
-from functools import cache
-from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Mapping
+from functools import cache, cached_property
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 import yaml
 from icecream import ic
 
 from genio.core.base import promptly, slurp_toml
+from genio.core.map import Location
 from genio.core.student import (
     Friendship,
     Student,
@@ -17,17 +17,17 @@ from genio.core.student import (
 from genio.core.tantivy import global_factual_storage
 
 if TYPE_CHECKING:
-    from genio.core.agent import Agent
+    pass
 
 
-@dataclass
-class Location:
-    """A location in the school."""
+# @dataclass
+# class Location:
+#     """A location in the school."""
 
-    name: str
-    description: str
+#     name: str
+#     description: str
 
-    occupancy: ClassVar[Mapping[str, list[Agent]]] = defaultdict(list)
+#     occupancy: ClassVar[Mapping[str, list[Agent]]] = defaultdict(list)
 
 
 @dataclass
@@ -53,9 +53,20 @@ def default_klasses() -> list[Klass]:
 @dataclass
 class DailySchedule:
     entries: Annotated[
-        list[str],
+        list[ScheduleEntry],
         "A list of strings, each representing a schedule entry. In the format, 'HH:MM - HH:MM; Title; Location'",
     ]
+
+    def __post_init__(self):
+        entries = []
+        for entry in self.entries:
+            try:
+                entries.append(ScheduleEntry.parse(entry))
+            except ValueError as e:
+                raise ValueError(
+                    "Invalid schedule entry format. Please follow the format."
+                ) from e
+        self.entries = entries
 
 
 @promptly(demangle=True)
@@ -136,13 +147,26 @@ class ScheduleEntry:
         )
 
     def __str__(self) -> str:
-        return f"{self.start_time} - {self.end_time}; {self.topic}; {self.location}"
+        return f"{self.start_time.strftime('%H:%M')} - {self.end_time.strftime('%H:%M')}; {self.topic}; {self.location}"
+
+    def sign_of_time(self, t: time) -> Literal[-1, 0, 1]:
+        if t < self.start_time:
+            return -1
+        if t > self.end_time:
+            return 1
+        return 0
+
+    @cached_property
+    def relevant_location(self) -> Location:
+        from genio.core.global_components import GlobalComponents
+
+        return GlobalComponents.instance().map.search(self.location)
 
 
 @dataclass
 class BroadStrokesPlan:
     plans: Annotated[
-        list[str],
+        list[ScheduleEntry],
         (
             "Plans for the day, slightly vague but allowing more detailed planning further along;"
             "in broad strokes. In the format, 'HH:MM - HH:MM; Topic; Location'. No need to be very"

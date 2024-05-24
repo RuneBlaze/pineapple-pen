@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import time
 from queue import PriorityQueue
-from typing import Any, ClassVar, Iterator, cast
+from typing import Any, Iterator, cast
 
 import logfire
 from pydantic import BaseModel, ConfigDict
@@ -13,43 +13,15 @@ from genio.concepts.geo import (
     BroadStrokesPlan,
     DailySchedule,
     DetailedPlans,
-    default_klasses,
-    default_locations,
-    design_generic_schedule,
 )
 from genio.core.agent import Agent, ContextBuilder, ContextComponent
-from genio.core.agent_cache import agent_cache
 from genio.core.base import promptly
 from genio.core.card import Effect, MoveCard, TeleportEffect, WaitCard, WaitEffect
-from genio.core.clock import Clock, global_clock
+from genio.core.clock import Clock
 from genio.core.components import StudentProfileComponent
-from genio.core.map import Location, Map
+from genio.core.global_components import GlobalComponents
+from genio.core.map import Location
 from genio.core.memory import MemoryBank
-from genio.core.tantivy import global_factual_storage
-
-
-class GlobalComponents:
-    _instance: ClassVar[GlobalComponents] = None
-
-    def __init__(self) -> None:
-        self.locs = default_locations()
-        self.klasses = default_klasses()
-        self.factual_storage = global_factual_storage()
-        for loc in self.locs:
-            self.factual_storage.insert("Location: " + loc.name, loc.description)
-        self.schedule = design_generic_schedule(self.locs, self.klasses)
-        self.map = Map.default()
-        self.clock = global_clock
-
-    @staticmethod
-    def instance() -> GlobalComponents:
-        if not GlobalComponents._instance:
-            if global_components := agent_cache.get("global_components"):
-                GlobalComponents._instance = global_components
-            else:
-                GlobalComponents._instance = GlobalComponents()
-                agent_cache["global_components"] = GlobalComponents._instance
-        return GlobalComponents._instance
 
 
 @promptly()
@@ -117,7 +89,7 @@ class PlanForToday(ContextComponent):
     broad_stroke_plans: BroadStrokesPlan
     detailed_plans: list[DetailedPlans]
 
-    def __post_attach__(self) -> None:
+    def __pre_attach__(self) -> None:
         self.detailed_plans = []
 
     def tick(self, event: str) -> None:
@@ -141,8 +113,11 @@ class PlanForToday(ContextComponent):
 class PhysicalLocation(ContextComponent):
     location: Location
 
-    def __post_attach__(self) -> None:
+    def __pre_attach__(self) -> None:
         self.location = self.global_components.map.fallback_location()
+
+    def __post_attach__(self) -> None:
+        self.location.add_occupancy(self.agent)
 
     def build_context(self, re: str | None, builder: ContextBuilder) -> None:
         builder.add_agenda(
@@ -160,9 +135,16 @@ class PhysicalLocation(ContextComponent):
     def set_attribute(self, key: str, value: Any) -> None:
         match key:
             case "location":
+                current_location = self.location
                 self.location = value
+                if current_location != value:
+                    current_location.remove_occupancy(self.agent)
+                    value.add_occupancy(self.agent)
             case _:
                 raise ValueError(f"Unknown attribute {key}")
+
+    def provide_cards(self) -> None:
+        self.global_components.schedule
 
 
 class CurrentTimeComponent(ContextComponent):

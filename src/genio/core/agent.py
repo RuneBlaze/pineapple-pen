@@ -5,7 +5,7 @@ import textwrap
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, TypeAlias
+from typing import TYPE_CHECKING, Any, TypeAlias
 from uuid import uuid4
 
 from pydantic import BaseModel
@@ -15,6 +15,9 @@ from genio.core.agent_cache import agent_cache
 from genio.core.base import render_text
 from genio.core.clock import Clock
 from genio.core.funccall import prompt_for_structured_output
+
+if TYPE_CHECKING:
+    from genio.core.global_components import GlobalComponents
 
 logger = get_logger()
 
@@ -185,8 +188,9 @@ class Agent:
         component = ctor() if ctor else component()
         if not component.agent:
             component.agent = self
-        component.__post_attach__()
+        component.__pre_attach__()
         component.agent = self
+        component.__post_attach__()
         component.tick("init")
         component.tick("new_day")
         self.components.append(component)
@@ -236,13 +240,16 @@ class Agent:
 
     @property
     def global_components(self) -> Any:
-        from genio.core.sim import GlobalComponents
+        from genio.core.global_components import GlobalComponents
 
         return GlobalComponents.instance()
 
 
 class ContextComponent(ABC):
     agent: Agent = None
+
+    def __pre_attach__(self) -> None:
+        pass
 
     def __post_attach__(self) -> None:
         pass
@@ -267,7 +274,7 @@ class ContextComponent(ABC):
         raise NotImplementedError
 
     @property
-    def global_components(self) -> Any:
+    def global_components(self) -> GlobalComponents:
         return self.agent.global_components
 
     def tick(self, event: str) -> None:
