@@ -17,13 +17,16 @@ class Location:
     name: str
     description: str
 
-    occupancy: ClassVar[Mapping[str, list[Agent]]] = defaultdict(list)
-
     def add_occupancy(self, agent: Agent) -> None:
-        self.occupancy[self.name].append(agent)
+        from genio.core.global_components import GlobalComponents
+        local_occupancy = GlobalComponents.instance().occupancy[self.name]
+        if agent not in local_occupancy:
+            local_occupancy.append(agent)
 
     def remove_occupancy(self, agent: Agent) -> None:
-        self.occupancy[self.name].remove(agent)
+        from genio.core.global_components import GlobalComponents
+
+        GlobalComponents.instance().occupancy[self.name].remove(agent)
 
 
 @dataclass

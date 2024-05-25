@@ -27,5 +27,9 @@ class Clock:
         t = self.state.strftime("%I:%M %p")
         return f"{d} at {t}"
 
+    @property
+    def time(self) -> dt.time:
+        return self.state.time()
+
 
 global_clock = Clock.default()

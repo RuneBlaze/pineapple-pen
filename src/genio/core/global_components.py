@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections import defaultdict
+from collections.abc import Mapping
 from typing import ClassVar
 
 from genio.concepts.geo import (
@@ -15,6 +17,7 @@ from genio.core.tantivy import global_factual_storage
 
 class GlobalComponents:
     _instance: ClassVar[GlobalComponents] = None
+    occupancy: Mapping[str, list]
 
     def __init__(self) -> None:
         self.locs = default_locations()
@@ -25,6 +28,7 @@ class GlobalComponents:
         self.schedule = design_generic_schedule(self.locs, self.klasses)
         self.map = Map.default()
         self.clock = global_clock
+        self.occupancy = defaultdict(list)
 
     @staticmethod
     def instance() -> GlobalComponents:
@@ -35,3 +39,7 @@ class GlobalComponents:
                 GlobalComponents._instance = GlobalComponents()
                 agent_cache["global_components"] = GlobalComponents._instance
         return GlobalComponents._instance
+
+    @staticmethod
+    def save_instance() -> None:
+        agent_cache["global_components"] = GlobalComponents.instance()

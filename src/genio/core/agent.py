@@ -13,6 +13,7 @@ from structlog import get_logger
 
 from genio.core.agent_cache import agent_cache
 from genio.core.base import render_text
+from genio.core.card import Card, MoveCard, WaitCard
 from genio.core.clock import Clock
 from genio.core.funccall import prompt_for_structured_output
 
@@ -184,6 +185,7 @@ class Agent:
         for c in self.components:
             if isinstance(c, component):
                 logger.debug("Component already attached", component=component.__name__)
+                c.__post_attach__()
                 return
         component = ctor() if ctor else component()
         if not component.agent:
@@ -226,6 +228,8 @@ class Agent:
         return self.attribute_get("clock")
 
     def elicit_action(self, actions: list[type[BaseModel]]) -> BaseModel:
+        if not actions:
+            raise ValueError("Expected at least one action to choose from; got none.")
         ctxt = self.context()
         prompt = textwrap.dedent(
             f"""\
@@ -236,13 +240,25 @@ class Agent:
         return prompt_for_structured_output(prompt, actions)
 
     def commit_state(self) -> None:
+        from genio.core.global_components import GlobalComponents
+
         agent_cache[self.identifier.encode()] = self
+        GlobalComponents.save_instance()
 
     @property
     def global_components(self) -> Any:
         from genio.core.global_components import GlobalComponents
 
         return GlobalComponents.instance()
+
+    def provide_cards(self) -> list[Card]:
+        cards = []
+        cards.extend([MoveCard(), WaitCard()])
+        for component in self.components:
+            cards.extend(component.provide_cards())
+        if len(cards) >= 5:
+            return cards[:5]
+        return cards
 
 
 class ContextComponent(ABC):
@@ -277,8 +293,15 @@ class ContextComponent(ABC):
     def global_components(self) -> GlobalComponents:
         return self.agent.global_components
 
+    @property
+    def clock(self) -> Clock:
+        return self.global_components.clock
+
     def tick(self, event: str) -> None:
         pass
 
     def priority(self) -> int:
         return 0
+
+    def provide_cards(self) -> list[Card]:
+        return []

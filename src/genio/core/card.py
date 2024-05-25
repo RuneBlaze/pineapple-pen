@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Annotated, Any, Iterator
+from typing import TYPE_CHECKING, Annotated, Any, Iterator
 
 from pydantic import BaseModel, ConfigDict, create_model, field_validator
 from pydantic.alias_generators import to_snake
 
-from genio.core.agent import Agent
+if TYPE_CHECKING:
+    from genio.core.agent import Agent
 from genio.core.map import Location, Map
 
 
@@ -117,7 +118,7 @@ class MoveCard(Card):
         yield TeleportEffect(location=Map.default().search(action.target))
 
 
-class ListenToClass(Card):
+class ListenToClassCard(Card):
     def to_action(self, re: Agent) -> type[BaseModel]:
         builder = ModelBuilder()
         return (

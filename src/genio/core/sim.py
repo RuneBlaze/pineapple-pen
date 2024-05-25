@@ -16,7 +16,13 @@ from genio.concepts.geo import (
 )
 from genio.core.agent import Agent, ContextBuilder, ContextComponent
 from genio.core.base import promptly
-from genio.core.card import Effect, MoveCard, TeleportEffect, WaitCard, WaitEffect
+from genio.core.card import (
+    Card,
+    Effect,
+    ListenToClassCard,
+    TeleportEffect,
+    WaitEffect,
+)
 from genio.core.clock import Clock
 from genio.core.components import StudentProfileComponent
 from genio.core.global_components import GlobalComponents
@@ -143,8 +149,14 @@ class PhysicalLocation(ContextComponent):
             case _:
                 raise ValueError(f"Unknown attribute {key}")
 
-    def provide_cards(self) -> None:
-        self.global_components.schedule
+    def provide_cards(self) -> list[Card]:
+        current_entry = self.global_components.schedule.current_entry(self.clock)
+        if (
+            current_entry.location == self.location
+            and "classroom" in self.location.name.lower()
+        ):
+            return [ListenToClassCard()]
+        return []
 
 
 class CurrentTimeComponent(ContextComponent):
@@ -202,7 +214,8 @@ class Simulation:
                     pass
             if not cont:
                 logfire.info("elicit action")
-                cards = [MoveCard(), WaitCard()]
+                cards = agent.provide_cards()
+                logfire.info("cards", cards=cards)
                 possible_actions = [card.to_action(agent) for card in cards]
                 action2card = {
                     action: card for action, card in zip(possible_actions, cards)
@@ -257,4 +270,5 @@ if __name__ == "__main__":
     agent.commit_state()
 
     sim = Simulation([agent])
-    sim.turn()
+    while True:
+        sim.turn()

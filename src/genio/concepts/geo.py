@@ -5,12 +5,12 @@ from dataclasses import dataclass
 from datetime import time
 from functools import cache, cached_property
 from typing import TYPE_CHECKING, Annotated, Any, Literal
-from genio.core.clock import Clock
 
 import yaml
 from icecream import ic
 
 from genio.core.base import promptly, slurp_toml
+from genio.core.clock import Clock
 from genio.core.map import Location
 from genio.core.student import (
     Friendship,
@@ -53,7 +53,7 @@ class ScheduleLike(ABC):
             if entry.sign_of_time(now.time) == 0:
                 return entry
         return None
-    
+
     def upcoming_entry(self, now: Clock) -> ScheduleEntry | None:
         schedule = self.provide_schedule()
         for entry in zip(schedule, schedule[1:] + [schedule[0]]):

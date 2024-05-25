@@ -144,6 +144,8 @@ def get_docstrings(cls: type) -> DocStrings:
     main_description = inspect.getdoc(cls)
     args = []
     for field in fields(cls):
+        from genio.concepts.geo import ScheduleEntry  # noqa
+
         typ = eval(field.type) if isinstance(field.type, str) else field.type
         if get_origin(typ) is Annotated:
             typ, metadata = get_args(typ)
