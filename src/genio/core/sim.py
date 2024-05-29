@@ -268,15 +268,13 @@ if __name__ == "__main__":
     agent.add_component(
         StudentProfileComponent, lambda: StudentProfileComponent.generate_from_grade(4)
     )
-    ic(str(agent))
-    # agent.add_component(PhysicalLocation)
-    # agent.add_component(CurrentTimeComponent)
-    # agent.add_component(PlanForToday)
-    # agent.add_component(
-    #     MemoryBankComponent, lambda: MemoryBankComponent.for_agent(agent, 5)
-    # )
-    # ic(agent)
-    # agent.commit_state()
+    agent.add_component(PhysicalLocation)
+    agent.add_component(CurrentTimeComponent)
+    agent.add_component(PlanForToday)
+    agent.add_component(
+        MemoryBankComponent, lambda: MemoryBankComponent.for_agent(agent, 5)
+    )
+    agent.commit_state()
 
     # sim = Simulation([agent])
     # while True:

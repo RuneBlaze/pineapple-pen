@@ -30,6 +30,7 @@ json5 = "^0.9.18"
 newrelic = "^9.8.0"
 logfire = "^0.35.0"
 rocksdict = "^0.3.23"
+mistune = "^3.0.2"
 
 
 [tool.poetry.group.dev.dependencies]
