@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from collections import defaultdict
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 from genio.core.base import slurp_toml
 from genio.core.tantivy import TantivyStore
@@ -19,6 +18,7 @@ class Location:
 
     def add_occupancy(self, agent: Agent) -> None:
         from genio.core.global_components import GlobalComponents
+
         local_occupancy = GlobalComponents.instance().occupancy[self.name]
         if agent not in local_occupancy:
             local_occupancy.append(agent)
@@ -27,6 +27,12 @@ class Location:
         from genio.core.global_components import GlobalComponents
 
         GlobalComponents.instance().occupancy[self.name].remove(agent)
+
+    def broadcast(self, fn_name, *args, **kwargs):
+        from genio.core.global_components import GlobalComponents
+
+        for agent in GlobalComponents.instance().occupancy[self.name]:
+            getattr(agent, fn_name)(*args, **kwargs)
 
 
 @dataclass

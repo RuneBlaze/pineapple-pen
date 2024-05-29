@@ -6,6 +6,7 @@ from queue import PriorityQueue
 from typing import Any, Iterator, cast
 
 import logfire
+from icecream import ic  # noqa
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_snake
 
@@ -158,6 +159,9 @@ class PhysicalLocation(ContextComponent):
             return [ListenToClassCard()]
         return []
 
+    def performed_observable(self, topic: Agent, message: str) -> None:
+        self.location.broadcast("log", topic, message)
+
 
 class CurrentTimeComponent(ContextComponent):
     def build_context(self, re: str | None, builder: ContextBuilder) -> None:
@@ -255,20 +259,25 @@ class MemoryBankComponent(ContextComponent):
         component.memory_bank = MemoryBank(agent, max_memories)
         return component
 
+    def log(self, topic: Agent, message: str) -> None:
+        self.memory_bank.add_short_term_memory(topic.name + " " + message)
+
 
 if __name__ == "__main__":
     agent = Agent.named("test_agent_1")
     agent.add_component(
         StudentProfileComponent, lambda: StudentProfileComponent.generate_from_grade(4)
     )
-    agent.add_component(PhysicalLocation)
-    agent.add_component(CurrentTimeComponent)
-    agent.add_component(PlanForToday)
-    agent.add_component(
-        MemoryBankComponent, lambda: MemoryBankComponent.for_agent(agent, 5)
-    )
-    agent.commit_state()
+    ic(str(agent))
+    # agent.add_component(PhysicalLocation)
+    # agent.add_component(CurrentTimeComponent)
+    # agent.add_component(PlanForToday)
+    # agent.add_component(
+    #     MemoryBankComponent, lambda: MemoryBankComponent.for_agent(agent, 5)
+    # )
+    # ic(agent)
+    # agent.commit_state()
 
-    sim = Simulation([agent])
-    while True:
-        sim.turn()
+    # sim = Simulation([agent])
+    # while True:
+    #     sim.turn()

@@ -60,9 +60,9 @@ class StudentProfileComponent(ContextComponent):
         builder.add_identity(self.student_profile.bio)
 
     @staticmethod
-    def generate_from_grade(grade: int) -> StudentProfileComponent:
+    def generate_from_grade(*args, **kwargs) -> StudentProfileComponent:
         me = StudentProfileComponent()
-        me.student_profile = StudentProfile.generate_from_grade(grade)
+        me.student_profile = StudentProfile.generate_from_grade(*args, **kwargs)
         return me
 
     @override
@@ -70,3 +70,6 @@ class StudentProfileComponent(ContextComponent):
         return {
             "name": self.student_profile.name,
         }
+
+    def __str__(self) -> str:
+        return f"StudentProfileComponent({self.student_profile})"

@@ -272,6 +272,7 @@ def instantiate_instance(cls: type[T], data: dict) -> T:
 
 class JsonParser(BaseOutputParser):
     cls: type
+    predefined_args: dict = {}
 
     def parse(self, text: str) -> Any:
         flds = fields(self.cls)
@@ -284,10 +285,12 @@ class JsonParser(BaseOutputParser):
                 data = {k.replace(" ", "_"): v for k, v in data.items()}
                 data = {k.lower(): v for k, v in data.items()}
                 data = auto_fix_typos([f.name for f in flds], data)
-                return instantiate_instance(self.cls, data)
+                with_predefined_args = {**data, **self.predefined_args}
+                return instantiate_instance(self.cls, with_predefined_args)
             else:
                 try:
-                    return instantiate_instance(self.cls, data)
+                    with_predefined_args = {**data, **self.predefined_args}
+                    return instantiate_instance(self.cls, with_predefined_args)
                 except TypeError:
                     if isinstance(data, list):
                         return [instantiate_instance(self.cls, x) for x in data]
@@ -315,7 +318,11 @@ class Mythical(ABC):
 T = TypeVar("T", bound=Mythical)
 
 
-def generate_using_docstring(klass: type[T], args: dict) -> T:
+def generate_using_docstring(
+    klass: type[T], args: dict, predefined_args: dict | None = None
+) -> T:
+    if predefined_args is None:
+        predefined_args = {}
     llm = aux_llm()
     docstrings = get_docstrings(klass)
     prompt = "Generate me a "
@@ -324,13 +331,15 @@ def generate_using_docstring(klass: type[T], args: dict) -> T:
     prompt += "".join(desc)
 
     prompt += "\n"
-    prompt += inst_for_struct(klass)
+    prompt += inst_for_struct(klass, ignore_set=set(predefined_args.keys()))
     template = render_template(prompt, args)
 
     chain = (
         template
         | llm
-        | OutputFixingParser.from_llm(parser=JsonParser(cls=klass), llm=llm)
+        | OutputFixingParser.from_llm(
+            parser=JsonParser(cls=klass, predefined_args=predefined_args), llm=llm
+        )
     )
     return chain.with_retry().invoke({})
 
@@ -363,13 +372,17 @@ def typescriptize_type(typ: str | type) -> str:
     return typ
 
 
-def inst_for_struct(klass):
+def inst_for_struct(klass, ignore_set: set[str] | None = None) -> str:
+    if ignore_set is None:
+        ignore_set = set()
     docstrings = get_docstrings(klass)
     prompt = ""
     prompt += "Fill out the following JSON object:\n"
     prompt += "```json\n"
     prompt += "{\n"
     for arg in docstrings.args:
+        if arg.name in ignore_set:
+            continue
         prompt += (
             f'"{arg.name}": // {typescriptize_type(arg.type)}, {arg.description}\n'
             if arg.description

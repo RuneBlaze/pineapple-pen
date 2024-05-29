@@ -67,6 +67,9 @@ class StudentProfile:
     grade: int
     gender: Annotated[str, "either male | female"]
 
+    gender_bool: bool
+    height_zscore: float
+
     def __post_init__(self):
         if isinstance(self.age, str):
             self.age = int(self.age)
@@ -79,6 +82,7 @@ class StudentProfile:
             self.grade = int(self.grade)
 
     def build_context(self, re: str | None, builder: ContextBuilder) -> None:
+        # TODO: not used anymore. clean up.
         builder.fact(
             f"{self.name}, age {self.age}, grade {self.grade}, {self.height} CM tall"
         )
@@ -87,7 +91,9 @@ class StudentProfile:
         builder.fact(self.bio)
 
     @staticmethod
-    def generate_from_grade(grade: int) -> StudentProfile:
+    def generate_from_grade(
+        grade: int, height_zscore: float | None = None
+    ) -> StudentProfile:
         """Generate a random student."""
         age = age_from_grade(grade)
         namegen = NameGenerator.default()
@@ -95,17 +101,26 @@ class StudentProfile:
         gender = choice([True, False])
         lookup = HeightChart.default()
         mean, stddev = lookup.query_params(gender, age_months)
-        height = gauss(0, 1) * stddev + mean
+        if height_zscore is None:
+            height_zscore = gauss(0, 1)
+        height = height_zscore * stddev + mean
         name = namegen.generate_name("m" if gender else "f", "JP")
         return generate_using_docstring(
             StudentProfile,
             dict(
                 name=f"{name.first_name} {name.last_name}",
-                grade=grade,
                 age=round(age),
                 archetype=yamlize(Archetype.choice()),
                 height=round(height),
                 style=WriterArchetype.random().tone,
+            ),
+            dict(
+                grade=grade,
+                gender_bool=gender,
+                gender=["female", "male"][int(gender)],
+                height_zscore=height_zscore,
+                height=round(height),
+                age=round(age),
             ),
         )
 

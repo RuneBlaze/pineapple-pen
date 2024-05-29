@@ -160,6 +160,12 @@ class ContextBuilder:
         return self.state
 
 
+@dataclass
+class ObservableLog:
+    topic: Agent | None
+    message: str
+
+
 class Agent:
     components: list[ContextComponent]
     identifier: str
@@ -260,6 +266,24 @@ class Agent:
             return cards[:5]
         return cards
 
+    def log(self, topic: Agent, message: str) -> None:
+        for c in self.components:
+            c.log(topic, message)
+
+    def log_myself(self, message: str) -> None:
+        return self.log(self, message)
+
+    def performed_observable(self, topic: Agent, message: str) -> None:
+        ...
+
+    def just_performed(self, message: str) -> None:
+        self.performed_observable(self, message)
+
+    def __str__(self) -> str:
+        return (
+            f"Agent({self.identifier}, {self.name}, {list(map(str, self.components))})"
+        )
+
 
 class ContextComponent(ABC):
     agent: Agent = None
@@ -305,3 +329,12 @@ class ContextComponent(ABC):
 
     def provide_cards(self) -> list[Card]:
         return []
+
+    def log(self, topic: Agent, message: str) -> None:
+        ...
+
+    def performed_observable(self, topic: Agent, message: str) -> None:
+        ...
+
+    def just_performed(self, message: str) -> None:
+        self.agent.just_performed(message)
