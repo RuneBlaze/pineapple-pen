@@ -3,7 +3,7 @@ from __future__ import annotations
 import io
 from collections.abc import Callable, MutableMapping
 from dataclasses import dataclass, field
-from random import sample
+from random import random, sample
 from typing import Iterator
 
 import numpy as np
@@ -57,6 +57,26 @@ class Battler:
         self.stats = stats
         self.name = name
         self.marks = []
+
+        for key in VALUES:
+            setattr(
+                self.__class__,
+                key,
+                property(lambda self: self.stats[key]),
+            )
+
+        for key in CLAMPED_VALUES:
+            setattr(
+                self.__class__,
+                key,
+                property(lambda self: self.stats[key].value),
+            )
+
+            setattr(
+                self.__class__,
+                "m" + key,
+                property(lambda self: self.stats[key].max_value),
+            )
 
     def mark(self, name: str, effects: list[str], duration: int) -> None:
         self.marks.append(Mark(name, effects, duration))
@@ -177,26 +197,9 @@ deciding the outcome of the following action:
 
 > {{ caster.name }} uses the skill "{{ action.name }}" on "{{ target.name }}".
 > {{ action.name }}:
-{% for effect in action.effects %}
+{%- for effect in action.effects %}
 > - {{ effect }}
-{% endfor %}
-
-Fill out the following Python function as your judgement:
-
-```python
-ralph = battler("ralph")
-slime1 = battler("slime 1")
-
-slime1.receive_damage(ralph.atk - slime1.pdef * 2)
-```
-
-Also fill out a new board. Mark the new board with the board tag:
-
-```board
-# NEW BOARD
-```
-
-Omit all type annotations in your output to save space. Return a single Python code-block with a program that decides the outcome of the action, and a new board.
+{%- endfor %}
 """
 
 
@@ -227,7 +230,9 @@ class BattleManager:
         buf.write("Current board:\n")
         self.board.show_board(buf)
         addendum = render_text(
-            ACTION_TEMPLATE, {"caster": attacker, "target": target, "action": item}
+            ACTION_TEMPLATE,
+            {"caster": attacker, "target": target, "action": item},
+            consolidate=False,
         )
         buf.write(addendum)
         print(buf.getvalue())
@@ -365,3 +370,18 @@ if __name__ == "__main__":
     # output = io.StringIO()
     # battle_manager.board.show_board(output)
     # print(output.getvalue())
+
+
+class DMTools:
+    def __init__(self, battle_manager: BattleManager) -> None:
+        self.battle_manager = battle_manager
+        self.logs = []
+
+    def prob_check(self, prob: float) -> bool:
+        return random() < prob
+
+    def battler(self, name: str) -> Battler:
+        return battle_manager.index.search_battler(name)
+
+    def log(self, message: str) -> None:
+        self.logs.append(message)
