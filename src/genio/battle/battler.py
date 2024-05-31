@@ -9,6 +9,10 @@ from typing import Iterator
 import numpy as np
 
 from genio.core.base import render_text
+from genio.core.llm import default_llm
+# from langchain
+from langchain_core.prompts import ChatPromptTemplate
+# from langchain_core.output_parsers import 
 
 VALUES = ["patk", "pdef", "matk", "mdef", "agi", "eva"]
 CLAMPED_VALUES = ["hp", "mp"]
@@ -157,9 +161,9 @@ class ASCIIBoard:
         for row in to_fill:
             output.write("".join(chr(c) if c else "." for c in row) + "\n")
 
-        output.write("\nLegends:\n")
-        for key, legend in self.legends.items():
-            output.write(f"{key}: {legend}\n")
+        # output.write("\nLegends:\n")
+        # for key, legend in self.legends.items():
+        #     output.write(f"{key}: {legend}\n")
 
     @staticmethod
     def parse_board(board: str) -> ASCIIBoard:
@@ -192,6 +196,11 @@ class ASCIIBoard:
         return ascii_board
 
 
+@dataclass
+class Tile:
+    glyph: str
+    description: str
+
 ACTION_TEMPLATE = """\
 Respond in the form of "judgements", in the form of a Python program,
 deciding the outcome of the following action:
@@ -222,21 +231,31 @@ class BattleManager:
         self, attacker: Battler, target: Battler, item: ItemLike
     ) -> None:
         buf = io.StringIO()
-        buf.write(f"{attacker.name} uses {item} on {target.name}\n")
-        buf.write("Abbreviations used on the board:\n")
-        for battler, abbrev, side in self.index.battlers_with_abbreviations_and_side():
-            side_vocab = "player" if side == "player" else "enemy"
-            buf.write(f"- {abbrev}: {battler.name} [team {side_vocab}]\n")
-        buf.write("\n")
-        buf.write("Current board:\n")
         self.board.show_board(buf)
-        addendum = render_text(
-            ACTION_TEMPLATE,
-            {"caster": attacker, "target": target, "action": item},
-            consolidate=False,
-        )
-        buf.write(addendum)
-        print(buf.getvalue())
+        board_repr = buf.getvalue()
+
+        allies = zip("ABCDEFGHIJKLMNOPQRSTUVWXYZ", self.index.players)
+        enemies = zip("abcdefghijklmnopqrstuvwxyz", self.index.enemies)
+
+        tiles = [Tile(".", "Empty space")]
+        
+        for battler, abbrev, side in self.index.battlers_with_abbreviations_and_side():
+            tiles.append(Tile(abbrev, f"{battler.name} ({side})"))
+
+        rendered_prompt = render_text("{% include('main_prompt.md') %}", context = {
+            "battlefield": board_repr,
+            "caster": attacker,
+            "target": target,
+            "action": item,
+            "allies": allies,
+            "enemies": enemies,
+            "tiles": tiles,
+        }, consolidate=False)
+
+        print(rendered_prompt)
+        llm = default_llm()
+        # chain = ChatPromptTemplate.from_template(rendered_prompt) | llm | 
+        print(llm.invoke(rendered_prompt).content)
 
     def evaluate_effects(s: str) -> list[str]:
         tools = DMTools(battle_manager)
@@ -372,10 +391,6 @@ if __name__ == "__main__":
     # Initialize the BattleManager with the created allies and enemies
     battle_manager = BattleManager(allies, enemies)
     battle_manager.perform_action(allies[0], enemies[0], slash)
-    # # Display the initial board setup
-    # output = io.StringIO()
-    # battle_manager.board.show_board(output)
-    # print(output.getvalue())
 
 
 class DMTools:
