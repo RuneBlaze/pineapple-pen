@@ -58,26 +58,6 @@ class Battler:
         self.name = name
         self.marks = []
 
-        for key in VALUES:
-            setattr(
-                self.__class__,
-                key,
-                property(lambda self: self.stats[key]),
-            )
-
-        for key in CLAMPED_VALUES:
-            setattr(
-                self.__class__,
-                key,
-                property(lambda self: self.stats[key].value),
-            )
-
-            setattr(
-                self.__class__,
-                "m" + key,
-                property(lambda self: self.stats[key].max_value),
-            )
-
     def mark(self, name: str, effects: list[str], duration: int) -> None:
         self.marks.append(Mark(name, effects, duration))
 
@@ -93,6 +73,27 @@ class Battler:
         for mark in self.marks:
             mark.turns_left -= 1
         self.marks = [mark for mark in self.marks if mark.turns_left > 0]
+
+
+for key in VALUES:
+    setattr(
+        Battler,
+        key,
+        property(lambda self, k=key: self.stats[k]),
+    )
+
+for key in CLAMPED_VALUES:
+    setattr(
+        Battler,
+        key,
+        property(lambda self, k=key: self.stats[k].value),
+    )
+
+    setattr(
+        Battler,
+        "m" + key,
+        property(lambda self, k=key: self.stats[k].max_value),
+    )
 
 
 class BattlerIndex:
@@ -236,6 +237,11 @@ class BattleManager:
         )
         buf.write(addendum)
         print(buf.getvalue())
+
+    def evaluate_effects(s: str) -> list[str]:
+        tools = DMTools(battle_manager)
+        exec(s, globals(), tools.__dict__)
+        return tools.logs
 
 
 if __name__ == "__main__":
@@ -381,7 +387,7 @@ class DMTools:
         return random() < prob
 
     def battler(self, name: str) -> Battler:
-        return battle_manager.index.search_battler(name)
+        return self.battle_manager.index.search_battler(name)
 
     def log(self, message: str) -> None:
         self.logs.append(message)

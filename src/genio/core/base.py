@@ -28,6 +28,7 @@ from langchain_core.exceptions import OutputParserException
 from langchain_core.output_parsers import BaseOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from structlog import get_logger
+from pathlib import Path
 
 from genio.utils.robustyaml import cleaning_parse
 
@@ -67,11 +68,12 @@ def paragraph_consolidate(text: str) -> str:
 
     return "\n\n".join(flushed_paragraphs).strip()
 
-
 class TemplateRegistryLoader(BaseLoader):
     def get_source(self, environment, template):
         if template in TEMPLATE_REGISTRY:
             return TEMPLATE_REGISTRY[template], template, lambda: True
+        if (target_path := Path("assets/includes") / template).exists():
+            return target_path.read_text(), str(target_path), lambda: True
         raise TemplateNotFound(template)
 
 
