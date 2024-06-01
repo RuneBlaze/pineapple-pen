@@ -54,6 +54,8 @@ repaint("""\
 """, {"^": "Trap set by Ralph, deals 10 damage to whoever steps on it."})
 ```
 
+Only add legends to terrain effects (i.e., non `a-zA-Z`). The battler glyphs are automatically updated by the system.
+
 ## `Battler`
 
 ### Properties

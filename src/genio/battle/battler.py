@@ -5,7 +5,7 @@ import re
 from collections.abc import Callable, MutableMapping
 from dataclasses import dataclass, field
 from random import random, sample
-from typing import Iterator
+from typing import Iterator, Protocol
 
 import numpy as np
 
@@ -137,12 +137,20 @@ class BattlerIndex:
         raise ValueError(f"No battler with name {term}")
 
 
+class Briefable(Protocol):
+    def briefs(self) -> list[str]:
+        ...
+
+
 @dataclass
-class ItemLike:
+class ItemLike(Briefable):
     name: str
     effects: list[str]
     cost: int = 0
     marks: list[Mark] = field(default_factory=list)
+
+    def briefs(self) -> list[str]:
+        return self.effects
 
 
 class ASCIIBoard:
@@ -168,6 +176,8 @@ class ASCIIBoard:
         # Create an empty ASCIIBoard with the determined dimensions
         ascii_board = ASCIIBoard(height, width)
 
+        legend_start_index = None
+
         # Parse the board representation
         for y, line in enumerate(lines):
             if line.strip() == "Legends:":
@@ -180,12 +190,13 @@ class ASCIIBoard:
                         continue
                     ascii_board.base[y, x] = ord(char)
 
-        # Parse the legends
-        for legend in lines[legend_start_index:]:
-            if legend.strip():
-                key, desc = legend.split(":", 1)
-                key, desc = key.strip(), desc.strip()
-                ascii_board.legends[key] = desc
+        if legend_start_index is not None:
+            # Parse the legends
+            for legend in lines[legend_start_index:]:
+                if legend.strip():
+                    key, desc = legend.split(":", 1)
+                    key, desc = key.strip(), desc.strip()
+                    ascii_board.legends[key] = desc
 
         return ascii_board
 
@@ -196,22 +207,35 @@ class Tile:
     description: str
 
 
-ACTION_TEMPLATE = """\
-Respond in the form of "judgements", in the form of a Python program,
-deciding the outcome of the following action:
+class BriefCase:
+    inner: dict[str, Briefable]
 
-> {{ caster.name }} uses the skill "{{ action.name }}" on "{{ target.name }}".
-> {{ action.name }}:
-{%- for effect in action.effects %}
-> - {{ effect }}
-{%- endfor %}
-"""
+    def __init__(self) -> None:
+        self.inner = {}
+
+    def add(self, key: str, value: Briefable) -> None:
+        key = key.strip().lower()
+        if key in self.inner:
+            raise ValueError(f"Key {key} already exists in the briefcase")
+        self.inner[key] = value
+
+    def search(self, key: str) -> Briefable:
+        key = key.strip().lower()
+        if key not in self.inner:
+            raise ValueError(f"No brief with key {key}")
+        return self.inner[key]
 
 
 class BattleManager:
-    def __init__(self, allies: list[Battler], enemies: list[Battler]) -> None:
+    def __init__(
+        self,
+        allies: list[Battler],
+        enemies: list[Battler],
+        breifcase: BriefCase | None = None,
+    ) -> None:
         self.index = BattlerIndex(allies, enemies)
         self.board = ASCIIBoard(6, 6)
+        self.briefcase = breifcase or BriefCase()
 
         # Randomly place battlers on the board
         positions = sample(
@@ -250,6 +274,7 @@ class BattleManager:
             },
             consolidate=False,
         )
+        print(rendered_prompt)
 
         llm = default_llm()
         result_content = llm.invoke(rendered_prompt).content
@@ -263,6 +288,7 @@ class BattleManager:
         if match is None:
             raise ValueError("No Python code found in the result content")
         python_code = match.group("code").strip()
+        print(python_code)
         effects = self.evaluate_effects(python_code)
         print(effects)
 
@@ -300,9 +326,11 @@ class DMTools:
         self.logs.append(message)
 
     def repaint(self, board: str, legends: dict[str, str] | None = None) -> None:
+        board = re.sub(r"\s*", "", board)
         legends = legends or {}
+        old_legends = self.battle_manager.board.legends
         self.battle_manager.board = ASCIIBoard.parse_board(board)
-        self.battle_manager.board.legends = {**self.battle_manager.board.legends, **legends}
+        self.battle_manager.board.legends = {**old_legends, **legends}
 
 
 if __name__ == "__main__":
@@ -339,6 +367,7 @@ if __name__ == "__main__":
             "Damage formula: Attacker.patk - Defender.pdef",
             "Accuracy: 95%",
             "This skill has a 10% chance to cause 'Bleed' status on the target.",
+            "This skill if hit deals one block of knockback.",
         ],
         marks=[],
     )
@@ -366,6 +395,10 @@ if __name__ == "__main__":
         ],
         marks=[],
     )
+
+    briefcase = BriefCase()
+    for item in [fireball, heal, slash, shield, normal_attack]:
+        briefcase.add(item.name, item)
 
     # Define some allies and enemies for testing
     allies = [

@@ -98,8 +98,8 @@ def render_text(
     template: str, context: dict[str, Any], consolidate: bool = True
 ) -> str:
     template = jinja_env.from_string(template).render(context)
-    template = template.replace("{", "")
-    template = template.replace("}", "")
+    # template = template.replace("{", "")
+    # template = template.replace("}", "")
     if consolidate:
         return paragraph_consolidate(template)
     return template
