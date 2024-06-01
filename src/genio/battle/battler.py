@@ -12,6 +12,8 @@ import numpy as np
 from genio.core.base import render_text
 from genio.core.llm import default_llm
 
+from rich.prompt import Prompt
+
 VALUES = ["patk", "pdef", "matk", "mdef", "agi", "eva"]
 CLAMPED_VALUES = ["hp", "mp"]
 RULES = []
@@ -141,9 +143,13 @@ class Briefable(Protocol):
     def briefs(self) -> list[str]:
         ...
 
+    @property
+    def name(self) -> str:
+        ...
+
 
 @dataclass
-class ItemLike(Briefable):
+class ItemLike:
     name: str
     effects: list[str]
     cost: int = 0
@@ -226,6 +232,14 @@ class BriefCase:
         return self.inner[key]
 
 
+def svo_sentence(attacker: Battler, target: Battler, item: ItemLike) -> str:
+    return f'{attacker.name} uses "{item.name}" on {target.name}.'
+
+
+def extract_double_quoted_words(s: str) -> list[str]:
+    return re.findall(r'"([^"]*)"', s)
+
+
 class BattleManager:
     def __init__(
         self,
@@ -246,9 +260,10 @@ class BattleManager:
         ):
             self.board.battler_positions[abbrev] = (y, x)
 
-    def perform_action(
-        self, attacker: Battler, target: Battler, item: ItemLike
-    ) -> None:
+    def perform_action(self, sentence: str) -> None:
+        briefable_words = extract_double_quoted_words(sentence)
+        briefables = [self.briefcase.search(word) for word in briefable_words]
+
         buf = io.StringIO()
         self.board.show_board(buf)
         board_repr = buf.getvalue()
@@ -265,12 +280,11 @@ class BattleManager:
             "{% include('main_prompt.md') %}",
             context={
                 "battlefield": board_repr,
-                "caster": attacker,
-                "target": target,
-                "action": item,
                 "allies": allies,
                 "enemies": enemies,
                 "tiles": tiles,
+                "briefables": briefables,
+                "sentence": sentence.strip("."),
             },
             consolidate=False,
         )
@@ -289,8 +303,9 @@ class BattleManager:
             raise ValueError("No Python code found in the result content")
         python_code = match.group("code").strip()
         print(python_code)
-        effects = self.evaluate_effects(python_code)
-        print(effects)
+        # print(python_code)
+        # effects = self.evaluate_effects(python_code)
+        # print(effects)
 
     def evaluate_effects(
         self, s: str, active_battler: Battler | None = None
@@ -464,5 +479,7 @@ if __name__ == "__main__":
     ]
 
     # Initialize the BattleManager with the created allies and enemies
-    battle_manager = BattleManager(allies, enemies)
-    battle_manager.perform_action(allies[0], enemies[0], slash)
+    battle_manager = BattleManager(allies, enemies, briefcase)
+    while True:
+        action = Prompt.ask("Enter action")
+        battle_manager.perform_action(action)

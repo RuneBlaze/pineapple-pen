@@ -1,4 +1,10 @@
-from genio.battle.battler import BattleManager, Battler, DMTools, ItemLike
+from genio.battle.battler import (
+    BattleManager,
+    Battler,
+    DMTools,
+    ItemLike,
+    extract_double_quoted_words,
+)
 from pytest import fixture
 
 
@@ -147,3 +153,9 @@ def test_dm_tools_trivial(battle_manager: BattleManager):
     ralph.receive_damage(100_000_000)
     assert ralph.hp == 0
     assert ralph.mhp == original_mhp
+
+
+def test_extract_double_quoted_words():
+    s = 'This is a "test" string with "double" quoted words.'
+    expected = ["test", "double"]
+    assert extract_double_quoted_words(s) == expected

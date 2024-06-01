@@ -64,13 +64,17 @@ Legend:
 
 Now, act as an excellent "mechanical DM" almost like a world simulator, and interpret this specific action of the actor:
 
-> {{caster.name}} uses "{{action.name}}" on {{target.name}}.
+> {{sentence}}.
 
-Your brief regarding {{caster.name}}'s skill **{{action.name}}** is as follows:
+{%- for briefable in briefables %}
 
-**{{action.name}}**:
-{%- for line in action.effects %}
+## Your brief regarding skill **{{briefable.name}}** is as follows:
+
+**{{briefable.name}}**:
+{%- for line in briefable.briefs() %}
 - {{line}}
+{%- endfor %}
+
 {%- endfor %}
 
 Think step by step, and give a detailed description of what happens. After thinking step by step, You MUST
