@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import re
 from collections.abc import Callable, MutableMapping
 from dataclasses import dataclass, field
 from random import random, sample
@@ -10,9 +11,6 @@ import numpy as np
 
 from genio.core.base import render_text
 from genio.core.llm import default_llm
-# from langchain
-from langchain_core.prompts import ChatPromptTemplate
-# from langchain_core.output_parsers import 
 
 VALUES = ["patk", "pdef", "matk", "mdef", "agi", "eva"]
 CLAMPED_VALUES = ["hp", "mp"]
@@ -161,10 +159,6 @@ class ASCIIBoard:
         for row in to_fill:
             output.write("".join(chr(c) if c else "." for c in row) + "\n")
 
-        # output.write("\nLegends:\n")
-        # for key, legend in self.legends.items():
-        #     output.write(f"{key}: {legend}\n")
-
     @staticmethod
     def parse_board(board: str) -> ASCIIBoard:
         lines = board.strip().split("\n")
@@ -200,6 +194,7 @@ class ASCIIBoard:
 class Tile:
     glyph: str
     description: str
+
 
 ACTION_TEMPLATE = """\
 Respond in the form of "judgements", in the form of a Python program,
@@ -238,29 +233,76 @@ class BattleManager:
         enemies = zip("abcdefghijklmnopqrstuvwxyz", self.index.enemies)
 
         tiles = [Tile(".", "Empty space")]
-        
+
         for battler, abbrev, side in self.index.battlers_with_abbreviations_and_side():
             tiles.append(Tile(abbrev, f"{battler.name} ({side})"))
 
-        rendered_prompt = render_text("{% include('main_prompt.md') %}", context = {
-            "battlefield": board_repr,
-            "caster": attacker,
-            "target": target,
-            "action": item,
-            "allies": allies,
-            "enemies": enemies,
-            "tiles": tiles,
-        }, consolidate=False)
+        rendered_prompt = render_text(
+            "{% include('main_prompt.md') %}",
+            context={
+                "battlefield": board_repr,
+                "caster": attacker,
+                "target": target,
+                "action": item,
+                "allies": allies,
+                "enemies": enemies,
+                "tiles": tiles,
+            },
+            consolidate=False,
+        )
 
-        print(rendered_prompt)
         llm = default_llm()
-        # chain = ChatPromptTemplate.from_template(rendered_prompt) | llm | 
-        print(llm.invoke(rendered_prompt).content)
+        result_content = llm.invoke(rendered_prompt).content
 
-    def evaluate_effects(s: str) -> list[str]:
-        tools = DMTools(battle_manager)
-        exec(s, globals(), tools.__dict__)
+        # Extract the Python code from the result content
+        pattern: re.Pattern = re.compile(
+            r"^```(?:python)?(?P<code>[^`]*)", re.MULTILINE | re.DOTALL
+        )
+
+        match = pattern.search(result_content)
+        if match is None:
+            raise ValueError("No Python code found in the result content")
+        python_code = match.group("code").strip()
+        effects = self.evaluate_effects(python_code)
+        print(effects)
+
+    def evaluate_effects(
+        self, s: str, active_battler: Battler | None = None
+    ) -> list[str]:
+        tools = DMTools(battle_manager=self, active_battler=active_battler)
+        exposed_api = {
+            m: getattr(tools, m) for m in dir(tools) if not m.startswith("__")
+        }
+        exec(s, globals(), exposed_api)
         return tools.logs
+
+
+class DMTools:
+    def __init__(
+        self, battle_manager: BattleManager, active_battler: Battler | None = None
+    ) -> None:
+        self.battle_manager = battle_manager
+        self.logs = []
+        self._active_battler = active_battler
+
+    def active_battler(self) -> Battler:
+        if self._active_battler is None:
+            raise ValueError("No active battler set")
+        return self._active_battler
+
+    def prob_check(self, prob: float) -> bool:
+        return random() < prob
+
+    def battler(self, name: str) -> Battler:
+        return self.battle_manager.index.search_battler(name)
+
+    def log(self, message: str) -> None:
+        self.logs.append(message)
+
+    def repaint(self, board: str, legends: dict[str, str] | None = None) -> None:
+        legends = legends or {}
+        self.battle_manager.board = ASCIIBoard.parse_board(board)
+        self.battle_manager.board.legends = {**self.battle_manager.board.legends, **legends}
 
 
 if __name__ == "__main__":
@@ -391,18 +433,3 @@ if __name__ == "__main__":
     # Initialize the BattleManager with the created allies and enemies
     battle_manager = BattleManager(allies, enemies)
     battle_manager.perform_action(allies[0], enemies[0], slash)
-
-
-class DMTools:
-    def __init__(self, battle_manager: BattleManager) -> None:
-        self.battle_manager = battle_manager
-        self.logs = []
-
-    def prob_check(self, prob: float) -> bool:
-        return random() < prob
-
-    def battler(self, name: str) -> Battler:
-        return self.battle_manager.index.search_battler(name)
-
-    def log(self, message: str) -> None:
-        self.logs.append(message)

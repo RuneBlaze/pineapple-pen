@@ -276,6 +276,6 @@ if __name__ == "__main__":
     )
     agent.commit_state()
 
-    # sim = Simulation([agent])
-    # while True:
-    #     sim.turn()
+    sim = Simulation([agent])
+    while True:
+        sim.turn()

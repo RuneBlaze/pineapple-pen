@@ -73,5 +73,5 @@ Your brief regarding {{caster.name}}'s skill **{{action.name}}** is as follows:
 - {{line}}
 {%- endfor %}
 
-Think step by step, and give a detailed description of what happens. You MUST
-return a code-block with the Python code using the API provided above.
+Think step by step, and give a detailed description of what happens. After thinking step by step, You MUST
+return a single code-block with the Python code using the API provided above.

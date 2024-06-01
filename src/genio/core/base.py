@@ -8,6 +8,7 @@ from abc import ABC
 from dataclasses import asdict, dataclass, fields, is_dataclass
 from datetime import time
 from functools import cache, partial, wraps
+from pathlib import Path
 from textwrap import dedent
 from typing import (
     Annotated,
@@ -28,7 +29,6 @@ from langchain_core.exceptions import OutputParserException
 from langchain_core.output_parsers import BaseOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from structlog import get_logger
-from pathlib import Path
 
 from genio.utils.robustyaml import cleaning_parse
 
@@ -67,6 +67,7 @@ def paragraph_consolidate(text: str) -> str:
         flushed_paragraphs.append(" ".join(buf))
 
     return "\n\n".join(flushed_paragraphs).strip()
+
 
 class TemplateRegistryLoader(BaseLoader):
     def get_source(self, environment, template):
