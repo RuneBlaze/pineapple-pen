@@ -23,6 +23,9 @@ class MemoryEntry:
 
     timestamp: dt.datetime
 
+    def idempotency_key(self) -> str:
+        return f"{self.log} {self.timestamp}"
+
 
 @dataclass
 class ShortTermMemoryEntry:
@@ -42,7 +45,8 @@ class AppearanceOf:
         str,
         (
             "A brief description of the target person from the perspective of the observer. Write one descriptive sentence"
-            "in third person: how does the target person physically look like to you? Height differences, etc."
+            "in third person: how does the target person physically look like to **you**? Height differences, etc. ."
+            "Think from your own perspective, with your eyes standing next to the target person."
         ),
     ]
 
@@ -70,13 +74,18 @@ def create_appearance_of(
     ...
 
 
+def dedup(memories: list[str]) -> list[str]:
+    seen = set()
+    return [x for x in memories if not (x in seen or seen.add(x))]
+
+
 class MemoryBank:
     def __init__(self, agent: Agent, max_memories: int = 30) -> None:
         super().__init__()
         self.max_memories = max_memories
         self.memories = []
-
         self.factual_store = TantivyStore(global_factual_storage())
+        self.doc_store = TantivyStore()
         self.short_term_memories = []
         self.short_term_memories_watermark = global_clock.state
 
@@ -100,16 +109,18 @@ class MemoryBank:
         if not isinstance(thoughts, list):
             thoughts = [thoughts]
         for t in thoughts:
-            self.memories.append(
-                MemoryEntry(
-                    t.thought,
-                    t.significance,
-                    embed_single_sentence(t.thought),
-                    global_clock.state,
-                )
-            )
+            self.append_entry(t.thought, t.significance, global_clock.state)
         if len(self.memories) > self.max_memories:
             self.run_compaction()
+
+    def append_entry(
+        self, thought: str, significance: int, current_time: dt.datetime
+    ) -> None:
+        memory_entry = MemoryEntry(
+            thought, significance, embed_single_sentence(thought), current_time
+        )
+        self.memories.append(memory_entry)
+        self.doc_store.insert(None, thought, None, memory_entry.idempotency_key())
 
     def run_compaction(self) -> None:
         memories = [x.log for x in self.memories]
@@ -127,10 +138,11 @@ class MemoryBank:
     def recall(self, topic: str, max_recall: int = 3) -> list[str]:
         """The default recall."""
         semantic_results = self.recall_semantic(topic, max_recall)
-        factual_results = self.factual_store.recall(topic, 1)
+        docs_results = self.doc_store.recall_as_str(topic, max_recall)
+        factual_results = self.factual_store.recall_as_str(topic, 1)
         if factual_results:
             factual_results = [factual_results[0].to_context()]
-        return semantic_results + factual_results
+        return dedup(semantic_results + factual_results + docs_results)
 
     def recall_semantic(self, topic: str, max_recall: int = 5) -> list[str]:
         if not topic:

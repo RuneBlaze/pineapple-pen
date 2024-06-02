@@ -286,6 +286,12 @@ class Agent:
                 return
         raise AttributeError(f"Method {method} not found in any component.")
 
+    def broadcast_attr(self, attr: str) -> None:
+        for c in self.components:
+            if hasattr(c, attr):
+                return getattr(c, attr)
+        raise AttributeError(f"Attribute {attr} not found in any component.")
+
     def __str__(self) -> str:
         return (
             f"Agent({self.identifier}, {self.name}, {list(map(str, self.components))})"
@@ -302,6 +308,9 @@ class BroadcastProxy:
 
     def __getattr__(self, name: str) -> Any:
         return lambda *args, **kwargs: self._agent.broadcast(name, *args, **kwargs)
+
+    def __getitem__(self, name: str) -> Any:
+        return self._agent.broadcast_attr(name)
 
 
 class ContextComponent(ABC):

@@ -294,7 +294,7 @@ if __name__ == "__main__":
     b_agent.add_component(
         MemoryBankComponent, lambda: MemoryBankComponent.for_agent(b_agent, 5)
     )
-    b_agent.commit_state()
+    # b_agent.commit_state()
 
     s_agent = Agent.named("smaller_kid")
     s_agent.add_component(
@@ -306,10 +306,13 @@ if __name__ == "__main__":
     s_agent.add_component(
         MemoryBankComponent, lambda: MemoryBankComponent.for_agent(s_agent, 5)
     )
-    s_agent.commit_state()
+    # s_agent.commit_state()
 
-    b_agent.b.meet_agent(s_agent)
     s_agent.b.meet_agent(b_agent)
+    b_agent.b.meet_agent(s_agent)
+
+    s_agent.commit_state()
+    b_agent.commit_state()
 
     # sim = Simulation([agent])
     # while True:
