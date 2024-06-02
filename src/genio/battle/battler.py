@@ -8,11 +8,10 @@ from random import random, sample
 from typing import Iterator, Protocol
 
 import numpy as np
+from rich.prompt import Prompt
 
 from genio.core.base import render_text
 from genio.core.llm import default_llm
-
-from rich.prompt import Prompt
 
 VALUES = ["patk", "pdef", "matk", "mdef", "agi", "eva"]
 CLAMPED_VALUES = ["hp", "mp"]

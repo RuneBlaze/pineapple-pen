@@ -28,6 +28,7 @@ from langchain.output_parsers import OutputFixingParser
 from langchain_core.exceptions import OutputParserException
 from langchain_core.output_parsers import BaseOutputParser
 from langchain_core.prompts import ChatPromptTemplate
+from scipy.stats import norm
 from structlog import get_logger
 
 from genio.utils.robustyaml import cleaning_parse
@@ -82,11 +83,48 @@ def naturalize(t: time) -> str:
     return t.strftime("%I:%M %p")
 
 
+def humanize_zscore(zscore: float) -> str:
+    if abs(zscore) < 0.01:
+        return "perfectly average"
+    directionality = "above" if zscore > 0 else "below"
+    return f"{zscore:.2f} standard deviations {directionality} average"
+
+
+def humanize_height_zscore(zscore: float) -> str:
+    if abs(zscore) < 0.01:
+        return "perfectly average in height for their age"
+
+    directionality = "above" if zscore > 0 else "below"
+    abs_zscore = abs(zscore)
+    percentile = norm.cdf(zscore) * 100
+    rounded_percentile = round(percentile, 1)
+
+    if abs_zscore < 0.5:
+        descriptor = "slightly"
+        additional_info = "a bit taller" if zscore > 0 else "a bit shorter"
+    elif abs_zscore < 1:
+        descriptor = "a little"
+        additional_info = "taller" if zscore > 0 else "shorter"
+    elif abs_zscore < 2:
+        descriptor = "moderately"
+        additional_info = "quite tall" if zscore > 0 else "quite short"
+    elif abs_zscore < 3:
+        descriptor = "significantly"
+        additional_info = "very tall" if zscore > 0 else "very short"
+    else:
+        descriptor = "extremely"
+        additional_info = "huge for their age" if zscore > 0 else "tiny for their age"
+
+    return f"{descriptor} {directionality} average in height for their age (around the {rounded_percentile}th percentile), {additional_info}"
+
+
 jinja_env = Environment(
     loader=TemplateRegistryLoader(),
 )
 jinja_env.globals.update(zip=zip)
 jinja_env.globals.update(naturalize=naturalize)
+jinja_env.globals.update(humanize_zscore=humanize_zscore)
+jinja_env.globals.update(humanize_height_zscore=humanize_height_zscore)
 
 
 def jinja_global(func):
@@ -98,8 +136,6 @@ def render_text(
     template: str, context: dict[str, Any], consolidate: bool = True
 ) -> str:
     template = jinja_env.from_string(template).render(context)
-    # template = template.replace("{", "")
-    # template = template.replace("}", "")
     if consolidate:
         return paragraph_consolidate(template)
     return template
@@ -107,6 +143,8 @@ def render_text(
 
 def render_template(template: str, context: dict[str, Any]) -> ChatPromptTemplate:
     rendered_text = render_text(template, context)
+    rendered_text = rendered_text.replace("{", "")
+    rendered_text = rendered_text.replace("}", "")
     return ChatPromptTemplate.from_template(rendered_text)
 
 
@@ -254,7 +292,7 @@ def instantiate_instance(cls: type[T], data: dict) -> T:
     try:
         return cls(**data)
     except TypeError as e:
-        logger.error(f"Failed to instantiate {cls} with {data}. Got: {e}")
+        logger.exception(f"Failed to instantiate {cls} with {data}. Got: {e}")
         docstring = get_docstrings(cls)
         buf = []
         args = docstring.args
@@ -336,10 +374,9 @@ def generate_using_docstring(
     desc = list(" ".join(docstrings.main_description.split("\n")))
     desc[0] = desc[0].lower()
     prompt += "".join(desc)
-
     prompt += "\n"
     prompt += inst_for_struct(klass, ignore_set=set(predefined_args.keys()))
-    template = render_template(prompt, args)
+    template = render_template(prompt, {**args, **predefined_args})
 
     chain = (
         template

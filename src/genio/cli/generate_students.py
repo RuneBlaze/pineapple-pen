@@ -32,7 +32,6 @@ def main(
     for i, j in two_pairs:
         upgrade_friendship(students, i, j)
     data = {"students": students}
-    breakpoint()
     with open(output, "w") as f:
         yaml.dump(data, f)
 

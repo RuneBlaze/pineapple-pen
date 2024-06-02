@@ -54,6 +54,9 @@ class StudentProfile:
 
     The student is a {{age}} year old {{height}} CM tall {{name}}.
     They are currently in grade {{grade}}. Be a light novel writer; write in this style: {{style}}.
+
+    Their height can be described as "{{humanize_height_zscore(height_zscore)}}".
+    Their gender is **{{gender}}**.
     """
 
     name: str
@@ -92,13 +95,16 @@ class StudentProfile:
 
     @staticmethod
     def generate_from_grade(
-        grade: int, height_zscore: float | None = None
+        grade: int, height_zscore: float | None = None, gender: str | None = None
     ) -> StudentProfile:
         """Generate a random student."""
         age = age_from_grade(grade)
         namegen = NameGenerator.default()
         age_months = int(age * 12)
-        gender = choice([True, False])
+        if isinstance(gender, str):
+            gender = {"male": True, "female": False}[gender]
+        if gender is None:
+            gender = choice([True, False])
         lookup = HeightChart.default()
         mean, stddev = lookup.query_params(gender, age_months)
         if height_zscore is None:

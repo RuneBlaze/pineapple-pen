@@ -264,18 +264,33 @@ class MemoryBankComponent(ContextComponent):
 
 
 if __name__ == "__main__":
-    agent = Agent.named("test_agent_1")
-    agent.add_component(
-        StudentProfileComponent, lambda: StudentProfileComponent.generate_from_grade(4)
+    b_agent = Agent.named("bigger_kid")
+    b_agent.add_component(
+        StudentProfileComponent,
+        lambda: StudentProfileComponent.generate_from_grade(
+            4, height_zscore=2, gender="female"
+        ),
     )
-    agent.add_component(PhysicalLocation)
-    agent.add_component(CurrentTimeComponent)
-    agent.add_component(PlanForToday)
-    agent.add_component(
-        MemoryBankComponent, lambda: MemoryBankComponent.for_agent(agent, 5)
+    b_agent.add_component(
+        MemoryBankComponent, lambda: MemoryBankComponent.for_agent(b_agent, 5)
     )
-    agent.commit_state()
+    b_agent.commit_state()
 
-    sim = Simulation([agent])
-    while True:
-        sim.turn()
+    s_agent = Agent.named("smaller_kid")
+    s_agent.add_component(
+        StudentProfileComponent,
+        lambda: StudentProfileComponent.generate_from_grade(
+            4, height_zscore=-2, gender="male"
+        ),
+    )
+    s_agent.add_component(
+        MemoryBankComponent, lambda: MemoryBankComponent.for_agent(s_agent, 5)
+    )
+    s_agent.commit_state()
+
+    print(b_agent.context())
+    print(s_agent.context())
+
+    # sim = Simulation([agent])
+    # while True:
+    #     sim.turn()
