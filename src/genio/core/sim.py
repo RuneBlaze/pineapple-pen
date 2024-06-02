@@ -28,7 +28,8 @@ from genio.core.clock import Clock
 from genio.core.components import StudentProfileComponent
 from genio.core.global_components import GlobalComponents
 from genio.core.map import Location
-from genio.core.memory import MemoryBank
+from genio.core.memory import MemoryBank, MemoryEntry, create_appearance_of
+from genio.utils.embed import embed_single_sentence
 
 
 @promptly()
@@ -245,6 +246,9 @@ class Simulation:
 class MemoryBankComponent(ContextComponent):
     memory_bank: MemoryBank
 
+    def __post_attach__(self) -> None:
+        self.met_agents = set()
+
     def build_context(self, re: str | None, builder: ContextBuilder) -> None:
         if not re:
             recalled = self.memory_bank.top_memories()
@@ -261,6 +265,22 @@ class MemoryBankComponent(ContextComponent):
 
     def log(self, topic: Agent, message: str) -> None:
         self.memory_bank.add_short_term_memory(topic.name + " " + message)
+
+    def meet_agent(self, agent: Agent) -> None:
+        if agent.identifier not in self.met_agents:
+            self.met_agents.add(agent.identifier)
+            self._meet_agent(agent)
+
+    def _meet_agent(self, agent: Agent) -> None:
+        appearance_of = create_appearance_of(self.agent, agent)
+        self.memory_bank.memories.append(
+            MemoryEntry(
+                appearance_of.appearance,
+                5,
+                embed_single_sentence(appearance_of.appearance),
+                self.agent.clock,
+            )
+        )
 
 
 if __name__ == "__main__":
@@ -288,8 +308,8 @@ if __name__ == "__main__":
     )
     s_agent.commit_state()
 
-    print(b_agent.context())
-    print(s_agent.context())
+    b_agent.b.meet_agent(s_agent)
+    s_agent.b.meet_agent(b_agent)
 
     # sim = Simulation([agent])
     # while True:

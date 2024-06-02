@@ -36,6 +36,40 @@ def humanize_time_delta(delta: dt.timedelta) -> str:
     return humanize.naturaltime(delta) + " ago"
 
 
+@dataclass
+class AppearanceOf:
+    appearance: Annotated[
+        str,
+        (
+            "A brief description of the target person from the perspective of the observer. Write one descriptive sentence"
+            "in third person: how does the target person physically look like to you? Height differences, etc."
+        ),
+    ]
+
+
+@promptly
+def create_appearance_of(
+    agent: Agent,
+    target_agent: Agent,
+) -> AppearanceOf:
+    """\
+    You are {{agent.name}}. Here is your profile:
+
+    {{agent.context()}}
+
+    ------------
+
+    Now, you are observing the following person:
+
+    > {{target_agent.context()}}
+
+    How would you say this person looks like, mostly physically, from your perspective? Write a brief description of the person.
+
+    {{formatting_instructions}}
+    """
+    ...
+
+
 class MemoryBank:
     def __init__(self, agent: Agent, max_memories: int = 30) -> None:
         super().__init__()
@@ -171,7 +205,7 @@ def compact_memories(agent: Agent, memories: list[str]) -> CompactedMemories:
     """
 
 
-@promptly
+@promptly()
 def witness_event(agent: Agent, event: str) -> Thought:
     """\
     You are the following person:

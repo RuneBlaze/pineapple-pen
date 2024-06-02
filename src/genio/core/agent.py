@@ -279,10 +279,29 @@ class Agent:
     def just_performed(self, message: str) -> None:
         self.performed_observable(self, message)
 
+    def broadcast(self, method: str, *args: Any, **kwargs: Any) -> None:
+        for c in self.components:
+            if hasattr(c, method):
+                getattr(c, method)(*args, **kwargs)
+                return
+        raise AttributeError(f"Method {method} not found in any component.")
+
     def __str__(self) -> str:
         return (
             f"Agent({self.identifier}, {self.name}, {list(map(str, self.components))})"
         )
+
+    @property
+    def b(self) -> BroadcastProxy:
+        return BroadcastProxy(self)
+
+
+class BroadcastProxy:
+    def __init__(self, agent: Agent) -> None:
+        self._agent = agent
+
+    def __getattr__(self, name: str) -> Any:
+        return lambda *args, **kwargs: self._agent.broadcast(name, *args, **kwargs)
 
 
 class ContextComponent(ABC):
