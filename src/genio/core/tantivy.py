@@ -71,12 +71,12 @@ class TantivyStore:
         self.index.reload()
         try:
             query = self.index.parse_query(
-                topic, ["title", "body", "keywords", "payload"]
+                topic, ["title", "body", "keywords"]
             )
         except ValueError:
             topic = re.sub("[^0-9a-zA-Z]+", " ", topic)
             query = self.index.parse_query(
-                topic, ["title", "body", "keywords", "payload"]
+                topic, ["title", "body", "keywords"]
             )
         searcher = self.index.searcher()
         hits = searcher.search(query, top_k).hits

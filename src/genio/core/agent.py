@@ -191,7 +191,6 @@ class Agent:
         for c in self.components:
             if isinstance(c, component):
                 logger.debug("Component already attached", component=component.__name__)
-                c.__post_attach__()
                 return
         component = ctor() if ctor else component()
         if not component.agent:

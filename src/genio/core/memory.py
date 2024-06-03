@@ -85,7 +85,6 @@ class MemoryBank:
         self.max_memories = max_memories
         self.memories = []
         self.factual_store = TantivyStore(global_factual_storage())
-        self.doc_store = TantivyStore()
         self.short_term_memories = []
         self.short_term_memories_watermark = global_clock.state
 
@@ -120,7 +119,7 @@ class MemoryBank:
             thought, significance, embed_single_sentence(thought), current_time
         )
         self.memories.append(memory_entry)
-        self.doc_store.insert(None, thought, None, memory_entry.idempotency_key())
+        self.factual_store.insert(None, thought, None, memory_entry.idempotency_key())
 
     def run_compaction(self) -> None:
         memories = [x.log for x in self.memories]
@@ -138,11 +137,8 @@ class MemoryBank:
     def recall(self, topic: str, max_recall: int = 3) -> list[str]:
         """The default recall."""
         semantic_results = self.recall_semantic(topic, max_recall)
-        docs_results = self.doc_store.recall_as_str(topic, max_recall)
-        factual_results = self.factual_store.recall_as_str(topic, 1)
-        if factual_results:
-            factual_results = [factual_results[0].to_context()]
-        return dedup(semantic_results + factual_results + docs_results)
+        docs_results = self.factual_store.recall_as_str(topic, max_recall)
+        return dedup(semantic_results + docs_results)
 
     def recall_semantic(self, topic: str, max_recall: int = 5) -> list[str]:
         if not topic:

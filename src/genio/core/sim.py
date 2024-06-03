@@ -273,14 +273,7 @@ class MemoryBankComponent(ContextComponent):
 
     def _meet_agent(self, agent: Agent) -> None:
         appearance_of = create_appearance_of(self.agent, agent)
-        self.memory_bank.memories.append(
-            MemoryEntry(
-                appearance_of.appearance,
-                5,
-                embed_single_sentence(appearance_of.appearance),
-                self.agent.clock,
-            )
-        )
+        self.memory_bank.append_entry(appearance_of.appearance, 5, self.agent.clock)
 
 
 if __name__ == "__main__":
@@ -313,6 +306,8 @@ if __name__ == "__main__":
 
     s_agent.commit_state()
     b_agent.commit_state()
+
+    breakpoint()
 
     # sim = Simulation([agent])
     # while True:
