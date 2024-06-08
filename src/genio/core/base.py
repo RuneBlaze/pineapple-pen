@@ -70,12 +70,29 @@ def paragraph_consolidate(text: str) -> str:
     return "\n\n".join(flushed_paragraphs).strip()
 
 
+def access(structure, lens: str) -> Any:
+    for key in lens.split("."):
+        structure = structure[key]
+    return structure
+
+
+def can_access(structure, lens: str) -> bool:
+    try:
+        access(structure, lens)
+        return True
+    except KeyError:
+        return False
+
+
 class TemplateRegistryLoader(BaseLoader):
     def get_source(self, environment, template):
         if template in TEMPLATE_REGISTRY:
             return TEMPLATE_REGISTRY[template], template, lambda: True
         if (target_path := Path("assets/includes") / template).exists():
             return target_path.read_text(), str(target_path), lambda: True
+        predef = slurp_toml("assets/strings.toml")
+        if can_access(predef, template):
+            return access(predef, template), template, lambda: True
         raise TemplateNotFound(template)
 
 
@@ -254,6 +271,7 @@ class RawJsonParser(BaseOutputParser):
     expected_keys: list[str] | None
 
     def parse(self, text: str) -> Any:
+        logger.info(f"Raw JSON: {text}")
         if "```" in text:
             text = pattern.search(text).group("json")
         try:
@@ -297,11 +315,11 @@ def instantiate_instance(cls: type[T], data: dict) -> T:
         buf = []
         args = docstring.args
         for arg in args:
-            buf.append(f"# {arg.name}: {arg.description}")
+            buf.append(f"// {arg.name}: {arg.description}")
             if arg.name in data:
                 buf.append(yamlize({arg.name: data[arg.name]}).strip())
             else:
-                buf.append(f"{arg.name}: UNSET # Please fill in")
+                buf.append(f"{arg.name}: UNSET // Please fill in")
         buf_joined = "\n".join(buf)
         prompt = (
             f"There is a YAML with some fields UNSET. Please fill out the UNSET fields in the YAML:\n"
@@ -320,6 +338,7 @@ class JsonParser(BaseOutputParser):
     predefined_args: dict = {}
 
     def parse(self, text: str) -> Any:
+        logger.info(f"JsonParser: {text}")
         flds = fields(self.cls)
         if "```" in text:
             text = pattern.search(text).group("json")
@@ -377,7 +396,7 @@ def generate_using_docstring(
     prompt += "\n"
     prompt += inst_for_struct(klass, ignore_set=set(predefined_args.keys()))
     template = render_template(prompt, {**args, **predefined_args})
-
+    logger.info(f"Prompt: {prompt}")
     chain = (
         template
         | llm
@@ -510,6 +529,7 @@ def promptly(f=None, demangle: bool = True):
                 **rest,
             },
         )
+        breakpoint()
         chain = prompt | llm | JsonParser(cls=return_type)
         return chain.invoke({})
 
@@ -575,6 +595,7 @@ def load_writer_archetypes() -> list[WriterArchetype]:
     return [WriterArchetype(**archetype) for archetype in parsed_data["writer"]]
 
 
+@cache
 def slurp_toml(path):
     with open(path) as f:
         return tomlkit_to_popo(tomllib.load(f))

@@ -8,7 +8,7 @@ Jon works as a junior editor at a publishing house, where he spends his days imm
 In conversation, Jon speaks with a gentle, almost lyrical cadence. His words are carefully chosen, often adorned with poetic flair, making even mundane topics sound enchanting. Jon's earnest and sincere demeanor can sometimes come off as overly sentimental, but his genuine kindness and unwavering belief in love endear him to those who take the time to know him.
 """
 
-[player.starter]
+[players.starter]
 name = "Celine, the Nekomimi Girl"
 profile = """
 Celine, the Nekomimi Girl, is a 24-year-old with a passion for storytelling. Standing at 5'1" with a petite frame, she has a pixie-like appearance that perfectly matches her whimsical personality. Her short, auburn hair playfully frames her heart-shaped face, highlighting her bright green eyes that always seem to sparkle with curiosity and creativity.
@@ -29,3 +29,32 @@ cards = [
     "Introduce (x1)",
     "Greet (x1)",
 ]
+
+[templates]
+
+form_sentence = """
+You are acting on behalf of {{ user.name }}. Your goal is to write a sentence or two connecting some words to continue an existing conversation. Words can either be an "action" or a "concept". Actions are denoted via *italics*, and concepts are denoted via 'single quotation marks'. Almost like a word game, your goal is to write a sentence or two that connects the words in a coherent way.
+
+Here is {{ user.name }}'s profile:
+
+> {{ user.profile }}
+
+Here are the words you *must* use to continue the conversation:
+
+```
+{{ words | join(", ") }}
+```
+
+Your goals are to, in decreasing priority:
+
+ 1. To adhere to the input words, in the order they are given. Adhere to the specific action. In other words, {{ user.name }} must perform the action. For example, to `*talk about* 'love' 'green tea'` means that you wrote a sentence that has {{ user.name }} talking about love and green tea, or about loving green tea, whichever seems better in your eyes. Words' variations, only up to inflections are allowed. Even if the words cannot be plausbily connected, you must still use them, and connect them in serial order. *talk about* means that the user is talking about something, and no need to reference it in the sentence. You must use the concepts in the order they are given.
+ 2. To maintain the tone and style of {{ user.name }}'s profile.
+ 3. To add a sentence or two that is coherent, and continue the context of the conversation. Act like you are a novelist, and you are continuing a story.
+ 4. Use no more than the given concepts. You should use the single action, but your sentence cannot contain more than the given concepts. Use no more and no less. For example, you *must not* talk about soccer, even in passing, if it is not in the list of concepts (as if you forgot all concepts except those given). You *must* talk about green tea, if it is in the list of concepts. If the action is given devoid of concepts, then you must not use any concepts. For example `*talk about*` devoid of concepts means that {{ user.name }} talks about nothing in particular, very vague, as if {{ user.name }} talks about nothing (most likely an ineffective continuation of the conversation). In other words, align your sentence with the given concepts, and only the given concepts.
+
+Here is the current context of the conversation. The conversation is between {{ user.name }} (you) and {{ other.name }} (the other person). The conversation is currently as follows, with the `hole` being where you must fill in the next sentence or two:
+
+{{ conversation_context }}
+
+Remember, you are {{ user.name }}. You must act as {{ user.name }} would, and continue the scenario in a way that is coherent and in line with {{ user.name }}'s profile.
+"""

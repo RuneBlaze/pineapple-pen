@@ -33,6 +33,7 @@ rocksdict = "^0.3.23"
 mistune = "^3.0.2"
 streamlit = "^1.35.0"
 watchdog = "^4.0.1"
+langchain-groq = "^0.1.5"
 
 
 [tool.poetry.group.dev.dependencies]

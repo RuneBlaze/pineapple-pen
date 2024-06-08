@@ -1,3 +1,2 @@
-from rocksdict import Rdict
-
-agent_cache = Rdict(".cache")
+# agent_cache = Rdict(".cache")
+agent_cache = {}
