@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import io
 import re
-from collections.abc import Callable, MutableMapping
+from collections.abc import Callable, Iterator, MutableMapping
 from dataclasses import dataclass, field
 from random import random, sample
-from typing import Iterator, Protocol
+from typing import Protocol
 
 import numpy as np
 from rich.prompt import Prompt

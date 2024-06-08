@@ -4,3 +4,6 @@ fix:
 
 clear:
     rm -r .cache
+
+streamlit:
+    poetry run streamlit run src/genio/game.py

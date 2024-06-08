@@ -31,6 +31,8 @@ newrelic = "^9.8.0"
 logfire = "^0.35.0"
 rocksdict = "^0.3.23"
 mistune = "^3.0.2"
+streamlit = "^1.35.0"
+watchdog = "^4.0.1"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -40,6 +42,9 @@ pytest = "^8.0.1"
 [tool.ruff.lint]
 # Add "Q" to the list of enabled codes.
 select = ["I", "UP","E4", "E7", "E9", "F", "TID252"]
+
+[tool.ruff]
+target-version = "py310"
 
 [build-system]
 requires = ["poetry-core"]

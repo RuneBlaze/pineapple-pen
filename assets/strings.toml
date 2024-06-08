@@ -1,0 +1,31 @@
+[enemies.starter]
+name = "Jon, the Hopeless Romantic"
+profile = """
+Jon, the Hopeless Romantic, is a 26-year-old, standing at 5'10" with a slender build. He is of mixed race, with a blend of Asian and Caucasian heritage that gives him a unique and captivating appearance. His dark, wavy hair often falls over his expressive brown eyes, which light up whenever he talks about his passions.
+
+Jon works as a junior editor at a publishing house, where he spends his days immersed in the world of literature. His job fuels his love for storytelling and gives him a steady supply of romantic novels to draw inspiration from. Outside of work, Jon can often be found in cozy cafes, scribbling poems in his leather-bound notebook or reciting verses at local poetry slams.
+
+In conversation, Jon speaks with a gentle, almost lyrical cadence. His words are carefully chosen, often adorned with poetic flair, making even mundane topics sound enchanting. Jon's earnest and sincere demeanor can sometimes come off as overly sentimental, but his genuine kindness and unwavering belief in love endear him to those who take the time to know him.
+"""
+
+[player.starter]
+name = "Celine, the Nekomimi Girl"
+profile = """
+Celine, the Nekomimi Girl, is a 24-year-old with a passion for storytelling. Standing at 5'1" with a petite frame, she has a pixie-like appearance that perfectly matches her whimsical personality. Her short, auburn hair playfully frames her heart-shaped face, highlighting her bright green eyes that always seem to sparkle with curiosity and creativity.
+
+Celine's love for writing is matched only by her fascination with all things fantastical, especially her beloved nekomimi aesthetic. She often incorporates feline-inspired accessories into her wardrobe, adding a touch of magic and fun to her everyday look. Her style and demeanor exude an air of enchanting charm, drawing people into her world of endless possibilities.
+"""
+
+
+[initial_deck]
+
+cards = [
+    "me (+1)",
+    "you (+1)",
+    "love (+2)",
+    "weather (+1)",
+    "book (+1)",
+    "Talk about (x1)",
+    "Introduce (x1)",
+    "Greet (x1)",
+]

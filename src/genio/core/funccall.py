@@ -3,7 +3,7 @@ import json
 import re
 import textwrap
 from datetime import time
-from typing import Annotated, Any, Literal, Type, Union, get_args, get_origin
+from typing import Annotated, Any, Literal, Union, get_args, get_origin
 
 import google.ai.generativelanguage as glm
 import google.generativeai as genai
@@ -14,7 +14,7 @@ from structlog import get_logger
 logger = get_logger()
 
 
-def dataclass_to_glm_schema(dc: Type[BaseModel]) -> glm.Schema:
+def dataclass_to_glm_schema(dc: type[BaseModel]) -> glm.Schema:
     """
     Convert a pydantic model to a Generative Language Model schema.
     """
@@ -69,7 +69,7 @@ def _field_type_to_glm_schema(field_type: FieldInfo) -> glm.Schema:
     return dataclass_to_glm_schema(field_type)
 
 
-def dataclass_to_function_declaration(dc: Type) -> glm.FunctionDeclaration:
+def dataclass_to_function_declaration(dc: type) -> glm.FunctionDeclaration:
     name = _to_snake_case(dc.__name__)
     description = inspect.getdoc(dc)  # Get the dataclass docstring
     if description:
@@ -110,7 +110,7 @@ def extract_any_function_call(response) -> Any:
     return None
 
 
-def prompt_for_structured_output(prompt: str, types: list[Type]) -> Any:
+def prompt_for_structured_output(prompt: str, types: list[type]) -> Any:
     function_decls = [dataclass_to_function_declaration(t) for t in types]
     snake2type = {_to_snake_case(t.__name__): t for t in types}
     tool = glm.Tool(function_declarations=function_decls)

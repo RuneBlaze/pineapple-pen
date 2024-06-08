@@ -70,14 +70,10 @@ class TantivyStore:
     def recall(self, topic: str, top_k: int = 1) -> list[FactualEntry]:
         self.index.reload()
         try:
-            query = self.index.parse_query(
-                topic, ["title", "body", "keywords"]
-            )
+            query = self.index.parse_query(topic, ["title", "body", "keywords"])
         except ValueError:
             topic = re.sub("[^0-9a-zA-Z]+", " ", topic)
-            query = self.index.parse_query(
-                topic, ["title", "body", "keywords"]
-            )
+            query = self.index.parse_query(topic, ["title", "body", "keywords"])
         searcher = self.index.searcher()
         hits = searcher.search(query, top_k).hits
         res = []

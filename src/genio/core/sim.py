@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import time
 from queue import PriorityQueue
-from typing import Any, Iterator, cast
+from typing import Any, cast
 
 import logfire
 from icecream import ic  # noqa
@@ -28,8 +29,7 @@ from genio.core.clock import Clock
 from genio.core.components import StudentProfileComponent
 from genio.core.global_components import GlobalComponents
 from genio.core.map import Location
-from genio.core.memory import MemoryBank, MemoryEntry, create_appearance_of
-from genio.utils.embed import embed_single_sentence
+from genio.core.memory import MemoryBank, create_appearance_of
 
 
 @promptly()
