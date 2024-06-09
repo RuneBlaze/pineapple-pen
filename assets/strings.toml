@@ -57,3 +57,10 @@ Here is the current context of the conversation. The conversation is between {{ 
 
 Remember, you are {{ user.name }}. You must act as {{ user.name }} would, and continue the scenario in a way that is coherent and in line with {{ user.name }}'s profile.
 """
+
+
+[enemies.slime]
+name = "Slime"
+hit_points = 30
+description = "A malevolent gelatinous creature, the Slime oozes malice as it shifts between offensive and defensive stances."
+pattern = ["attack for 5 damage", "block for 3 defense"]

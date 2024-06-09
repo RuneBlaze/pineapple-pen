@@ -115,21 +115,22 @@ class EnemyBattler:
             self.hp = 0
 
 
-default_conversation_context = """\
-It's a brightly lit restaurant, sparsely populated with a few patrons.
+if __name__ == '__main__':
+    default_conversation_context = """\
+    It's a brightly lit restaurant, sparsely populated with a few patrons.
 
-Jon: "I'm so glad you could make it. I've been looking forward to this all week."
-[FILL IN]
-"""
+    Jon: "I'm so glad you could make it. I've been looking forward to this all week."
+    [FILL IN]
+    """
 
-starter_enemy = PlayerProfile.from_predef("enemies.starter")
-starter_player = PlayerProfile.from_predef("players.starter")
+    starter_enemy = PlayerProfile.from_predef("enemies.starter")
+    starter_player = PlayerProfile.from_predef("players.starter")
 
-completed = _complete_sentence(
-    words=["*talk about*", "'love'", "'money'"],
-    user=starter_player,
-    other=starter_enemy,
-    conversation_context=default_conversation_context,
-)
+    completed = _complete_sentence(
+        words=["*talk about*", "'love'", "'money'"],
+        user=starter_player,
+        other=starter_enemy,
+        conversation_context=default_conversation_context,
+    )
 
-print(completed)
+    print(completed)

@@ -8,6 +8,8 @@ import pandas as pd
 import streamlit as st
 
 from genio.core.base import access, promptly, slurp_toml
+import streamlit_pydantic as sp
+from genio.tools import EnemyBattler
 
 predef = slurp_toml("assets/strings.toml")
 
@@ -130,6 +132,14 @@ Jon: "I'm so glad you could make it. I've been looking forward to this all week.
 # )
 
 # st.write(completed)
+
+enemy = EnemyBattler.from_predef('enemies.slime')
+st.json({
+    'hp': enemy.hp,
+    'max_hp': enemy.max_hp,
+    'shield_points': enemy.shield_points,
+    'name': enemy.profile.name,
+})
 
 
 @dataclass
