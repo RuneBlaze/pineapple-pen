@@ -1,4 +1,8 @@
-from dataclasses import dataclass
+from __future__ import annotations
+
+import uuid
+from dataclasses import dataclass, field
+from enum import Enum
 from typing import Annotated
 
 from genio.core.base import access, promptly, slurp_toml
@@ -6,17 +10,47 @@ from genio.core.base import access, promptly, slurp_toml
 predef = slurp_toml("assets/strings.toml")
 
 
+class CardType(Enum):
+    CONCEPT = "concept"
+    ACTION = "action"
+    SPECIAL = "special"
+
+
 @dataclass
-class CompletedSentence:
+class Card:
+    card_type: CardType
+    name: str
+    description: str | None
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+
+    def to_record(self) -> dict:
+        return {
+            "id": self.id,
+            "card_type": self.card_type.value,
+            "name": self.name,
+            "description": self.description,
+        }
+
+    def to_plaintext(self) -> str:
+        if self.description:
+            return f"{self.name} ({self.description})"
+        return self.name
+
+
+@dataclass
+class ResolvedResults:
     """A completed sentence in the game. An occurrence, a line, of the game's narrative."""
 
     reason: Annotated[
         str,
         "Justification for the completion. How the *action* connects the concepts serially.",
     ]
-    sentence: Annotated[
+    results: Annotated[
         str,
-        "A sentence or two that continues the current scenario, uses the action, and connects the concepts.",
+        (
+            "The results of the actions taken by both the player and the enemies, and the consequences of those actions. "
+            "The nuemrical deltas should be given in square brackets like [Slime: receive 5 damage]. "
+        ),
     ]
 
 
@@ -26,7 +60,7 @@ class PlayerProfile:
     profile: str
 
     @staticmethod
-    def from_predef(key: str) -> "PlayerProfile":
+    def from_predef(key: str) -> PlayerProfile:
         return PlayerProfile(**access(predef, key))
 
 
@@ -38,7 +72,7 @@ class PlayerBattler:
     shield_points: int
 
     @staticmethod
-    def from_profile(profile: PlayerProfile) -> "PlayerBattler":
+    def from_profile(profile: PlayerProfile) -> PlayerBattler:
         return PlayerBattler(
             profile=profile,
             hp=profile.hit_points,
@@ -47,7 +81,7 @@ class PlayerBattler:
         )
 
     @staticmethod
-    def from_predef(key: str) -> "PlayerBattler":
+    def from_predef(key: str) -> PlayerBattler:
         return PlayerBattler.from_profile(PlayerProfile.from_predef(key))
 
     def is_dead(self) -> bool:
@@ -60,12 +94,12 @@ class PlayerBattler:
 
 
 @promptly
-def _complete_sentence(
-    words: list[str],
-    user: PlayerProfile,
-    other: PlayerProfile,
+def _judge_results(
+    played_cards: list[Card],
+    player: PlayerBattler,
+    enemies: list[EnemyBattler],
     conversation_context: str,
-) -> CompletedSentence:
+) -> ResolvedResults:
     """\
     {% include('templates.form_sentence') %}
 
@@ -82,7 +116,7 @@ class EnemyProfile:
     pattern: list[str]
 
     @staticmethod
-    def from_predef(key: str) -> "EnemyProfile":
+    def from_predef(key: str) -> EnemyProfile:
         return EnemyProfile(**access(predef, key))
 
 
@@ -94,7 +128,7 @@ class EnemyBattler:
     shield_points: int
 
     @staticmethod
-    def from_profile(profile: EnemyProfile) -> "EnemyBattler":
+    def from_profile(profile: EnemyProfile) -> EnemyBattler:
         return EnemyBattler(
             profile=profile,
             hp=profile.hit_points,
@@ -103,7 +137,7 @@ class EnemyBattler:
         )
 
     @staticmethod
-    def from_predef(key: str) -> "EnemyBattler":
+    def from_predef(key: str) -> EnemyBattler:
         return EnemyBattler.from_profile(EnemyProfile.from_predef(key))
 
     def is_dead(self) -> bool:
@@ -115,7 +149,7 @@ class EnemyBattler:
             self.hp = 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     default_conversation_context = """\
     It's a brightly lit restaurant, sparsely populated with a few patrons.
 
@@ -126,7 +160,7 @@ if __name__ == '__main__':
     starter_enemy = PlayerProfile.from_predef("enemies.starter")
     starter_player = PlayerProfile.from_predef("players.starter")
 
-    completed = _complete_sentence(
+    completed = _judge_results(
         words=["*talk about*", "'love'", "'money'"],
         user=starter_player,
         other=starter_enemy,

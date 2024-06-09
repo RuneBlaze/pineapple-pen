@@ -40,15 +40,17 @@ Here is {{ user.name }}'s profile:
 
 > {{ user.profile }}
 
-Here are the cards that the player has played:
+Here are the cards that the player has played. In parenthesis are the effects of the actions:
 
-{{ cards }}
+{% for card in cards %}
+{{ loop.index }}. {{ card.to_plaintext() }}
+{% endfor %}
 
 
 Your goals are to:
 
 1. To interpret the input cards, and describe the action in a coherent way.
-2. Resolve the results of the actions. The resolution (the deltas) should be given in square brackets, attached to the entities. For example `Ralph attacks the Slime for 5 damage. [Slime: receive 5 damage]` or `Slime attacks Ralph for 3 damage. [Ralph: receive 3 damage]`. The allowed resolutions are as below:
+2. Resolve the results of the actions. The numerical resolutions (the deltas) should be given in square brackets, attached to the entities. For example `Ralph attacks the Slime for 5 damage. [Slime: receive 5 damage]` or `Slime attacks Ralph for 3 damage. [Ralph: receive 3 damage]`. The allowed resolutions are as below:
     a. [entity: receive damage X] - the entity receives X damage.
     b. [entity: receive healing X] - the entity receives X healing.
     c. [entity: lose shield X] - the entity loses X shield points.

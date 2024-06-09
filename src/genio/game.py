@@ -1,48 +1,23 @@
 import random
-import uuid
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
 from typing import Annotated, Literal, TypeAlias
 
 import pandas as pd
 import streamlit as st
 
 from genio.core.base import access, promptly, slurp_toml
-import streamlit_pydantic as sp
-from genio.tools import EnemyBattler
+from genio.tools import Card, CardType, EnemyBattler
 
 predef = slurp_toml("assets/strings.toml")
 
 LogType: TypeAlias = tuple[Literal["user", "them", "narrator", "system"], str]
 
 
-class CardType(Enum):
-    CONCEPT = "concept"
-    ACTION = "action"
-    SPECIAL = "special"
-
-
-@dataclass
-class Card:
-    card_type: CardType
-    name: str
-    description: str
-    id: str = field(default_factory=lambda: str(uuid.uuid4()))
-
-    def to_record(self) -> dict:
-        return {
-            "id": self.id,
-            "card_type": self.card_type.value,
-            "name": self.name,
-            "description": self.description,
-        }
-
-
 def parse_card_description(description: str) -> tuple[str, str, int]:
     # Split on the '#' to separate the main part from the description
     parts = description.split("#")
     main_part = parts[0].strip()
-    desc = parts[1].strip() if len(parts) > 1 else ""
+    desc = parts[1].strip() if len(parts) > 1 else None
 
     # Check for the '*' to determine the number of copies
     if "*" in main_part:
@@ -133,13 +108,15 @@ Jon: "I'm so glad you could make it. I've been looking forward to this all week.
 
 # st.write(completed)
 
-enemy = EnemyBattler.from_predef('enemies.slime')
-st.json({
-    'hp': enemy.hp,
-    'max_hp': enemy.max_hp,
-    'shield_points': enemy.shield_points,
-    'name': enemy.profile.name,
-})
+enemy = EnemyBattler.from_predef("enemies.slime")
+st.json(
+    {
+        "hp": enemy.hp,
+        "max_hp": enemy.max_hp,
+        "shield_points": enemy.shield_points,
+        "name": enemy.profile.name,
+    }
+)
 
 
 @dataclass
