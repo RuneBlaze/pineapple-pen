@@ -9,25 +9,24 @@ In conversation, Jon speaks with a gentle, almost lyrical cadence. His words are
 """
 
 [players.starter]
-name = "Celine, the Nekomimi Girl"
+name = "Celine, the Magical Swordswoman"
 profile = """
-Celine, the Nekomimi Girl, is a 24-year-old with a passion for storytelling. Standing at 5'1" with a petite frame, she has a pixie-like appearance that perfectly matches her whimsical personality. Her short, auburn hair playfully frames her heart-shaped face, highlighting her bright green eyes that always seem to sparkle with curiosity and creativity.
+Celine, the Magical Swordswoman, is a fierce and determined warrior with an ethereal touch. At 24 years old, she stands at 5'1", her petite frame belying the formidable strength and agility she possesses. Her short, auburn hair cascades around her heart-shaped face, and her bright green eyes, filled with a piercing intensity, reflect the fire of her unyielding spirit.
 
-Celine's love for writing is matched only by her fascination with all things fantastical, especially her beloved nekomimi aesthetic. She often incorporates feline-inspired accessories into her wardrobe, adding a touch of magic and fun to her everyday look. Her style and demeanor exude an air of enchanting charm, drawing people into her world of endless possibilities.
+Celine's mastery of both blade and magic makes her a formidable opponent in any battle. She wields an enchanted sword that shimmers with arcane energy, capable of unleashing devastating spells with every strike. Her attire, a blend of practical armor and mystical garments, is adorned with subtle feline motifs, hinting at her connection to ancient, magical traditions.
+
+Driven by a quest for justice and an insatiable curiosity, Celine ventures through treacherous dungeons and uncharted lands, her unwavering resolve guiding her through every challenge. Her enchanting charm and unwavering courage inspire those who join her on her journey, as she weaves her own legend in a world filled with danger and wonder.
 """
 
 
 [initial_deck]
 
 cards = [
-    "me (+1)",
-    "you (+1)",
-    "love (+2)",
-    "weather (+1)",
-    "book (+1)",
-    "Talk about (x1)",
-    "Introduce (x1)",
-    "Greet (x1)",
+    "left * 3",
+    "right * 3",
+    "repeat previous",
+    "Slash * 3 # Takes sword and slashes at the enemy. Deals 4 base damage.", # two copies of this card
+    "Block * 2 # Raises shield to block incoming attacks. Gains 2 shield points.",
 ]
 
 [templates]

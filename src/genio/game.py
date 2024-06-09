@@ -1,5 +1,4 @@
 import random
-import re
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
@@ -19,6 +18,59 @@ class CardType(Enum):
     CONCEPT = "concept"
     ACTION = "action"
     SPECIAL = "special"
+
+
+@dataclass
+class Card:
+    card_type: CardType
+    name: str
+    description: str
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+
+    def to_record(self) -> dict:
+        return {
+            "id": self.id,
+            "card_type": self.card_type.value,
+            "name": self.name,
+            "description": self.description,
+        }
+
+
+def parse_card_description(description: str) -> tuple[str, str, int]:
+    # Split on the '#' to separate the main part from the description
+    parts = description.split("#")
+    main_part = parts[0].strip()
+    desc = parts[1].strip() if len(parts) > 1 else ""
+
+    # Check for the '*' to determine the number of copies
+    if "*" in main_part:
+        name, copies_str = main_part.split("*")
+        name = name.strip()
+        copies = int(copies_str.strip())
+    else:
+        name = main_part
+        copies = 1
+
+    return name, desc, copies
+
+
+def determine_card_type(name: str) -> CardType:
+    if name[0].islower():
+        return CardType.CONCEPT
+    elif name[0].isupper():
+        return CardType.ACTION
+    else:
+        return CardType.SPECIAL
+
+
+def create_deck(cards: list[str]) -> list[Card]:
+    deck = []
+    for card_description in cards:
+        name, desc, copies = parse_card_description(card_description)
+        card_type = determine_card_type(name)
+        for _ in range(copies):
+            deck.append(Card(card_type=card_type, name=name, description=desc))
+    return deck
 
 
 @dataclass
@@ -67,61 +119,17 @@ Jon: "I'm so glad you could make it. I've been looking forward to this all week.
 [FILL IN]
 """
 
-starter_enemy = TalkingProfile.from_predef("enemies.starter")
-starter_player = TalkingProfile.from_predef("players.starter")
+# starter_enemy = TalkingProfile.from_predef("enemies.starter")
+# starter_player = TalkingProfile.from_predef("players.starter")
 
-completed = _complete_sentence(
-    words=["*talk about*", "'love'", "'money'"],
-    user=starter_player,
-    other=starter_enemy,
-    conversation_context=default_conversation_context,
-)
+# completed = _complete_sentence(
+#     words=["*talk about*", "'love'", "'money'"],
+#     user=starter_player,
+#     other=starter_enemy,
+#     conversation_context=default_conversation_context,
+# )
 
-st.write(completed)
-
-
-@dataclass
-class Card:
-    card_type: CardType
-    name: str
-    score: tuple[Literal["x", "+"], int] | None = None
-    id: str = field(default_factory=lambda: str(uuid.uuid4()))
-
-
-def parse_card_description(description: str) -> tuple[str, int]:
-    match = re.match(
-        r"(.*?)(?:\s*\(\+(\d+)\)|\s*\((x\d+)\))?\s*\*\s*(\d+)?", description
-    )
-    if match:
-        name = match.group(1).strip()
-        score = None
-        if match.group(2):
-            score = ("+", int(match.group(2)))
-        elif match.group(3):
-            score = ("x", int(match.group(3)[1:]))
-        copies = int(match.group(4)) if match.group(4) else 1
-        return name, score, copies
-    else:
-        return description.strip(), None, 1
-
-
-def determine_card_type(name: str) -> CardType:
-    if name[0].islower():
-        return CardType.CONCEPT
-    elif name[0].isupper():
-        return CardType.ACTION
-    else:
-        return CardType.SPECIAL
-
-
-def create_deck(cards: list[str]) -> list[Card]:
-    deck = []
-    for card_description in cards:
-        name, score, copies = parse_card_description(card_description)
-        card_type = determine_card_type(name)
-        for _ in range(copies):
-            deck.append(Card(card_type=card_type, name=name, score=score))
-    return deck
+# st.write(completed)
 
 
 @dataclass
@@ -243,18 +251,8 @@ for card in st.session_state.hand:
     )
 
 # Display deck and graveyard as dataframes
-deck_df = pd.DataFrame(
-    [
-        {"ID": card.id, "Name": card.name, "Type": card.card_type.value}
-        for card in st.session_state.deck
-    ]
-)
-graveyard_df = pd.DataFrame(
-    [
-        {"ID": card.id, "Name": card.name, "Type": card.card_type.value}
-        for card in st.session_state.graveyard
-    ]
-)
+deck_df = pd.DataFrame([card.to_record() for card in st.session_state.deck])
+graveyard_df = pd.DataFrame([card.to_record() for card in st.session_state.graveyard])
 
 with st.expander("Deck"):
     st.dataframe(deck_df)
