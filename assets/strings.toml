@@ -10,6 +10,7 @@ In conversation, Jon speaks with a gentle, almost lyrical cadence. His words are
 
 [players.starter]
 name = "Celine, the Magical Swordswoman"
+hit_points = 90
 profile = """
 Celine, the Magical Swordswoman, is a fierce and determined warrior with an ethereal touch. At 24 years old, she stands at 5'1", her petite frame belying the formidable strength and agility she possesses. Her short, auburn hair cascades around her heart-shaped face, and her bright green eyes, filled with a piercing intensity, reflect the fire of her unyielding spirit.
 
@@ -32,20 +33,15 @@ cards = [
 [templates]
 
 form_sentence = """
-You are acting on behalf of {{ user.name }}. Your goal is to act as a virtual DM to interpret the player's actions in response to the enemies' actions. The enemies intended to do something, and the player just responded. Your job is to describe what happens then, based on existing game rules, acting as both the writer and the "judge" of the game.
+You are acting on behalf of {{ user.name }}. Your goal is to act as a virtual DM to interpret the player's actions in response to the enemies' actions. The enemies intended to do something, and the player just played several cards in response. Your job is to describe what happens then, based on existing game rules, acting as both the writer and the DM of the game.
 
-The player's actions are given by a sequence of cards. There are two types of cards. The first type is "concrete" card; the second type is "abstract" card. The concrete card is a specific action that the player takes, like attacking or blocking. The abstract card are like lexemes that specifically modify the concrete card. For example, "left" and "right" are abstract cards that modify the concrete card "Slash" to "Slash left", and allows complex control such as "Slash left, then slash right, then repeat previous". The goal is to interpret the sequence of cards and describe the action in a coherent way.
+The player's actions are given by a sequence of cards. There are two types of cards, "concrete" cards and "modifier" cards. The concrete card is a specific action that the player takes, like attacking or blocking. Modifier cards are postfix modifiers to the concrete card. For example, "left" and "right" are abstract cards that modify the concrete card "Slash" to "Slash left", and allows complex control such as "Slash left, then slash right, then repeat all previous actions" (three potential points of hitting enemies). The goal is to interpret the sequence of cards and describe the action in a coherent way as a DM.
 
-Here is {{ user.name }}'s profile:
+Here is {{ user.name }}'s profile, for your background:
 
-> {{ user.profile }}
+> {{ user.profile.profile }}
 
-Here are the cards that the player has played. In parenthesis are the effects of the actions:
-
-{% for card in cards %}
-{{ loop.index }}. {{ card.to_plaintext() }}
-{% endfor %}
-
+## DM reference
 
 Your goals are to:
 
@@ -57,9 +53,27 @@ Your goals are to:
     d. [entity: gain shield X] - the entity gains X shield points.
 3. Be coherent in dealing with the enemies intents, and the player's actions. The player's actions should be interpreted in a way that makes sense in the context of the battle, concurrent with the enemy's intents. The enemies' intents are given in the `battle_context` variables.
 
-Here is the current battle context.
+## Battlefield
 
-{{ battle_context }}
+You see the following enemies on the battlefield:
+
+{%- for enemy in enemies %}
+- {{ enemy.name }} ({{ enemy.description }})
+{%- endfor %}
+
+## Enemies' intents
+
+Here are their intents, that you must resolve along with the player's actions:
+
+## Player's intents
+
+Here are the cards that the player has played. In parenthesis are the effects of the actions:
+
+{% for card in cards %}
+{{ loop.index }}. {{ card.to_plaintext() }}
+{% endfor %}
+
+In other words, the player's intent that you must incorporate along with the enemies.
 
 Remember, you are {{ user.name }}.
 """

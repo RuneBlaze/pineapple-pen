@@ -529,7 +529,6 @@ def promptly(f=None, demangle: bool = True):
                 **rest,
             },
         )
-        breakpoint()
         chain = prompt | llm | JsonParser(cls=return_type)
         return chain.invoke({})
 

@@ -15,6 +15,11 @@ class CardType(Enum):
     ACTION = "action"
     SPECIAL = "special"
 
+def humanize_card_type(card_type: CardType) -> str:
+    return {
+        CardType.CONCEPT: "modifier",
+        CardType.ACTION: "concrete",
+    }[card_type].capitalize()
 
 @dataclass
 class Card:
@@ -58,6 +63,7 @@ class ResolvedResults:
 class PlayerProfile:
     name: str
     profile: str
+    hit_points: int
 
     @staticmethod
     def from_predef(key: str) -> PlayerProfile:
@@ -96,9 +102,9 @@ class PlayerBattler:
 @promptly
 def _judge_results(
     played_cards: list[Card],
-    player: PlayerBattler,
+    user: PlayerBattler,
     enemies: list[EnemyBattler],
-    conversation_context: str,
+    battle_context: str,
 ) -> ResolvedResults:
     """\
     {% include('templates.form_sentence') %}
@@ -126,19 +132,21 @@ class EnemyBattler:
     hp: int
     max_hp: int
     shield_points: int
+    copy_number: int = 1
 
     @staticmethod
-    def from_profile(profile: EnemyProfile) -> EnemyBattler:
+    def from_profile(profile: EnemyProfile, copy_number: int = 1) -> EnemyBattler:
         return EnemyBattler(
             profile=profile,
             hp=profile.hit_points,
             max_hp=profile.hit_points,
             shield_points=0,
+            copy_number=copy_number,
         )
 
     @staticmethod
-    def from_predef(key: str) -> EnemyBattler:
-        return EnemyBattler.from_profile(EnemyProfile.from_predef(key))
+    def from_predef(key: str, copy_number: int = 1) -> EnemyBattler:
+        return EnemyBattler.from_profile(EnemyProfile.from_predef(key), copy_number)
 
     def is_dead(self) -> bool:
         return self.hp <= 0
@@ -148,23 +156,90 @@ class EnemyBattler:
         if self.hp < 0:
             self.hp = 0
 
+    @property
+    def name(self) -> str:
+        alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        return f"{self.profile.name} {alpha[self.copy_number - 1]}"
+
+
+predef = slurp_toml("assets/strings.toml")
+
+
+def parse_card_description(description: str) -> tuple[str, str, int]:
+    # Split on the '#' to separate the main part from the description
+    parts = description.split("#")
+    main_part = parts[0].strip()
+    desc = parts[1].strip() if len(parts) > 1 else None
+
+    # Check for the '*' to determine the number of copies
+    if "*" in main_part:
+        name, copies_str = main_part.split("*")
+        name = name.strip()
+        copies = int(copies_str.strip())
+    else:
+        name = main_part
+        copies = 1
+
+    return name, desc, copies
+
+
+def determine_card_type(name: str) -> CardType:
+    if name[0].islower():
+        return CardType.CONCEPT
+    elif name[0].isupper():
+        return CardType.ACTION
+    else:
+        return CardType.SPECIAL
+
+
+def create_deck(cards: list[str]) -> list[Card]:
+    deck = []
+    for card_description in cards:
+        name, desc, copies = parse_card_description(card_description)
+        card_type = determine_card_type(name)
+        for _ in range(copies):
+            deck.append(Card(card_type=card_type, name=name, description=desc))
+    return deck
 
 if __name__ == "__main__":
-    default_conversation_context = """\
-    It's a brightly lit restaurant, sparsely populated with a few patrons.
+    # default_battle_context = """\
+    # It's a brightly lit cave, with torches lining the walls.
 
-    Jon: "I'm so glad you could make it. I've been looking forward to this all week."
-    [FILL IN]
-    """
+    # Jon: "I'm so glad you could make it. I've been looking forward to this all week."
+    # [FILL IN]
+    # """
 
-    starter_enemy = PlayerProfile.from_predef("enemies.starter")
+    deck = create_deck(predef["initial_deck"]["cards"])
+
+    slash = [c for c in deck if c.name.lower() == "slash"][0]
+    left = [c for c in deck if c.name.lower() == "left"][0]
+    right = [c for c in deck if c.name.lower() == "right"][0]
+
+    default_battle_context = []
+    default_battle_context.append("It's a brightly lit cave, with torches lining the walls.")
+    default_battle_context.append("")
+    default_battle_context.append("Enemies' intents:")
+    enemies = [EnemyBattler.from_predef("enemies.slime", i + 1) for i in range(2)]
+    for e in enemies:
+        default_battle_context.append(f"{e.name}: {e.profile.pattern[0]}")
+    default_battle_context.append("The list of enemies on the battlefield:")
+    default_battle_context.append("")
+    for e in enemies:
+        default_battle_context.append(f"{e.name} ({e.profile.description})")
+
+    default_battle_context.append("[FILL IN]")
+
+    # print(default_battle_context)
+
+    # starter_enemy = PlayerProfile.from_predef("enemies.starter")
     starter_player = PlayerProfile.from_predef("players.starter")
-
+    built_context = '\n'.join(default_battle_context)
+    print(built_context)
     completed = _judge_results(
-        words=["*talk about*", "'love'", "'money'"],
-        user=starter_player,
-        other=starter_enemy,
-        conversation_context=default_conversation_context,
+        played_cards=[slash, left, right],
+        user=PlayerBattler.from_profile(starter_player),
+        enemies=enemies,
+        battle_context=built_context,
     )
 
-    print(completed)
+    # print(completed)
