@@ -134,6 +134,11 @@ class EnemyBattler:
     shield_points: int
     copy_number: int = 1
 
+    current_intent: str = field(init=False)
+
+    def __post_init__(self):
+        self.current_intent = self.profile.pattern[0]
+
     @staticmethod
     def from_profile(profile: EnemyProfile, copy_number: int = 1) -> EnemyBattler:
         return EnemyBattler(
@@ -217,17 +222,17 @@ if __name__ == "__main__":
 
     default_battle_context = []
     default_battle_context.append("It's a brightly lit cave, with torches lining the walls.")
-    default_battle_context.append("")
-    default_battle_context.append("Enemies' intents:")
+    # default_battle_context.append("")
+    # default_battle_context.append("Enemies' intents:")
     enemies = [EnemyBattler.from_predef("enemies.slime", i + 1) for i in range(2)]
-    for e in enemies:
-        default_battle_context.append(f"{e.name}: {e.profile.pattern[0]}")
-    default_battle_context.append("The list of enemies on the battlefield:")
-    default_battle_context.append("")
-    for e in enemies:
-        default_battle_context.append(f"{e.name} ({e.profile.description})")
+    # for e in enemies:
+    #     default_battle_context.append(f"{e.name}: {e.profile.pattern[0]}")
+    # default_battle_context.append("The list of enemies on the battlefield:")
+    # default_battle_context.append("")
+    # for e in enemies:
+    #     default_battle_context.append(f"{e.name} ({e.profile.description})")
 
-    default_battle_context.append("[FILL IN]")
+    # default_battle_context.append("[FILL IN]")
 
     # print(default_battle_context)
 
