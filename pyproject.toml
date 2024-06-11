@@ -35,6 +35,7 @@ streamlit = "^1.35.0"
 watchdog = "^4.0.1"
 langchain-groq = "^0.1.5"
 streamlit-pydantic = {git = "https://github.com/LukasMasuch/streamlit-pydantic.git", rev = "main"}
+boltons = "^24.0.0"
 
 
 [tool.poetry.group.dev.dependencies]

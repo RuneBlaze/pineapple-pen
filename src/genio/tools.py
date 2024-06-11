@@ -5,7 +5,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Annotated
 
-from genio.core.base import access, promptly, slurp_toml
+from genio.battler import EnemyBattler, PlayerBattler, PlayerProfile
+from genio.core.base import promptly, slurp_toml
 
 predef = slurp_toml("assets/strings.toml")
 
@@ -61,50 +62,6 @@ class ResolvedResults:
     ]
 
 
-@dataclass
-class PlayerProfile:
-    name: str
-    profile: str
-    hit_points: int
-
-    @staticmethod
-    def from_predef(key: str) -> PlayerProfile:
-        return PlayerProfile(**access(predef, key))
-
-
-@dataclass
-class PlayerBattler:
-    profile: PlayerProfile
-    hp: int
-    max_hp: int
-    shield_points: int
-
-    @staticmethod
-    def from_profile(profile: PlayerProfile) -> PlayerBattler:
-        return PlayerBattler(
-            profile=profile,
-            hp=profile.hit_points,
-            max_hp=profile.hit_points,
-            shield_points=0,
-        )
-
-    @property
-    def name(self) -> str:
-        return self.profile.name
-
-    @staticmethod
-    def from_predef(key: str) -> PlayerBattler:
-        return PlayerBattler.from_profile(PlayerProfile.from_predef(key))
-
-    def is_dead(self) -> bool:
-        return self.hp <= 0
-
-    def receive_damage(self, damage: int) -> None:
-        self.hp -= damage
-        if self.hp < 0:
-            self.hp = 0
-
-
 @promptly
 def _judge_results(
     cards: list[Card],
@@ -120,63 +77,6 @@ def _judge_results(
     Let's think step by step.
     """
     ...
-
-
-@dataclass
-class EnemyProfile:
-    name: str
-    hit_points: int
-    description: str
-    pattern: list[str]
-
-    @staticmethod
-    def from_predef(key: str) -> EnemyProfile:
-        return EnemyProfile(**access(predef, key))
-
-
-@dataclass
-class EnemyBattler:
-    profile: EnemyProfile
-    hp: int
-    max_hp: int
-    shield_points: int
-    copy_number: int = 1
-
-    current_intent: str = field(init=False)
-
-    def __post_init__(self):
-        self.current_intent = self.profile.pattern[0]
-
-    @staticmethod
-    def from_profile(profile: EnemyProfile, copy_number: int = 1) -> EnemyBattler:
-        return EnemyBattler(
-            profile=profile,
-            hp=profile.hit_points,
-            max_hp=profile.hit_points,
-            shield_points=0,
-            copy_number=copy_number,
-        )
-
-    @staticmethod
-    def from_predef(key: str, copy_number: int = 1) -> EnemyBattler:
-        return EnemyBattler.from_profile(EnemyProfile.from_predef(key), copy_number)
-
-    def is_dead(self) -> bool:
-        return self.hp <= 0
-
-    def receive_damage(self, damage: int) -> None:
-        self.hp -= damage
-        if self.hp < 0:
-            self.hp = 0
-
-    @property
-    def name(self) -> str:
-        alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        return f"{self.profile.name} {alpha[self.copy_number - 1]}"
-
-    @property
-    def description(self) -> str:
-        return self.profile.description
 
 
 predef = slurp_toml("assets/strings.toml")
