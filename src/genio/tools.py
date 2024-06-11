@@ -15,11 +15,13 @@ class CardType(Enum):
     ACTION = "action"
     SPECIAL = "special"
 
+
 def humanize_card_type(card_type: CardType) -> str:
     return {
         CardType.CONCEPT: "modifier",
         CardType.ACTION: "concrete",
     }[card_type].capitalize()
+
 
 @dataclass
 class Card:
@@ -38,8 +40,8 @@ class Card:
 
     def to_plaintext(self) -> str:
         if self.description:
-            return f"{self.name} ({self.description})"
-        return self.name
+            return f"{self.name} ({self.description}) [{humanize_card_type(self.card_type)}]"
+        return f"{self.name} [{humanize_card_type(self.card_type)}]"
 
 
 @dataclass
@@ -86,6 +88,10 @@ class PlayerBattler:
             shield_points=0,
         )
 
+    @property
+    def name(self) -> str:
+        return self.profile.name
+
     @staticmethod
     def from_predef(key: str) -> PlayerBattler:
         return PlayerBattler.from_profile(PlayerProfile.from_predef(key))
@@ -101,15 +107,17 @@ class PlayerBattler:
 
 @promptly
 def _judge_results(
-    played_cards: list[Card],
+    cards: list[Card],
     user: PlayerBattler,
     enemies: list[EnemyBattler],
     battle_context: str,
 ) -> ResolvedResults:
     """\
-    {% include('templates.form_sentence') %}
+    {% include('judge.md') %}
 
     {{ formatting_instructions }}
+
+    Let's think step by step.
     """
     ...
 
@@ -166,6 +174,10 @@ class EnemyBattler:
         alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         return f"{self.profile.name} {alpha[self.copy_number - 1]}"
 
+    @property
+    def description(self) -> str:
+        return self.profile.description
+
 
 predef = slurp_toml("assets/strings.toml")
 
@@ -206,22 +218,19 @@ def create_deck(cards: list[str]) -> list[Card]:
             deck.append(Card(card_type=card_type, name=name, description=desc))
     return deck
 
+
 if __name__ == "__main__":
-    # default_battle_context = """\
-    # It's a brightly lit cave, with torches lining the walls.
-
-    # Jon: "I'm so glad you could make it. I've been looking forward to this all week."
-    # [FILL IN]
-    # """
-
     deck = create_deck(predef["initial_deck"]["cards"])
 
     slash = [c for c in deck if c.name.lower() == "slash"][0]
     left = [c for c in deck if c.name.lower() == "left"][0]
     right = [c for c in deck if c.name.lower() == "right"][0]
+    repeat = [c for c in deck if c.name.lower() == "repeat all previous"][0]
 
     default_battle_context = []
-    default_battle_context.append("It's a brightly lit cave, with torches lining the walls.")
+    default_battle_context.append(
+        "It's a brightly lit cave, with torches lining the walls."
+    )
     # default_battle_context.append("")
     # default_battle_context.append("Enemies' intents:")
     enemies = [EnemyBattler.from_predef("enemies.slime", i + 1) for i in range(2)]
@@ -238,10 +247,11 @@ if __name__ == "__main__":
 
     # starter_enemy = PlayerProfile.from_predef("enemies.starter")
     starter_player = PlayerProfile.from_predef("players.starter")
-    built_context = '\n'.join(default_battle_context)
-    print(built_context)
+    built_context = "\n".join(default_battle_context)
+    # print(built_context)
+
     completed = _judge_results(
-        played_cards=[slash, left, right],
+        cards=[slash, left, right, repeat, left, right],
         user=PlayerBattler.from_profile(starter_player),
         enemies=enemies,
         battle_context=built_context,

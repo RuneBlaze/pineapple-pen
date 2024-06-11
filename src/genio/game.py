@@ -82,7 +82,7 @@ def _complete_sentence(
     conversation_context: str,
 ) -> CompletedSentence:
     """\
-    {% include('templates.form_sentence') %}
+    {% include('judge.md') %}
 
     {{ formatting_instructions }}
     """

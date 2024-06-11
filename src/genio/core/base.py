@@ -23,7 +23,7 @@ import tomlkit
 import tomlkit as tomllib
 import yaml
 from icecream import ic
-from jinja2 import BaseLoader, Environment, TemplateNotFound
+from jinja2 import BaseLoader, Environment, StrictUndefined, TemplateNotFound
 from langchain.output_parsers import OutputFixingParser
 from langchain_core.exceptions import OutputParserException
 from langchain_core.output_parsers import BaseOutputParser
@@ -142,6 +142,7 @@ jinja_env.globals.update(zip=zip)
 jinja_env.globals.update(naturalize=naturalize)
 jinja_env.globals.update(humanize_zscore=humanize_zscore)
 jinja_env.globals.update(humanize_height_zscore=humanize_height_zscore)
+jinja_env.undefined = StrictUndefined
 
 
 def jinja_global(func):
@@ -162,6 +163,7 @@ def render_template(template: str, context: dict[str, Any]) -> ChatPromptTemplat
     rendered_text = render_text(template, context)
     rendered_text = rendered_text.replace("{", "")
     rendered_text = rendered_text.replace("}", "")
+    logger.info(rendered_text)
     return ChatPromptTemplate.from_template(rendered_text)
 
 
@@ -529,6 +531,7 @@ def promptly(f=None, demangle: bool = True):
                 **rest,
             },
         )
+        logger.info(f"Prompt: {prompt}")
         chain = prompt | llm | JsonParser(cls=return_type)
         return chain.invoke({})
 
