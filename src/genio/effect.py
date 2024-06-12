@@ -13,6 +13,62 @@ class DamageEffect:
     accuracy: float = 1.0  # How likely are we to hit the target. if acc check failed, the effect is ignored
 
 
+class GlobalEffect:
+    pass
+
+
+@dataclass(eq=True, frozen=True)
+class DrawCardsEffect(GlobalEffect):
+    count: int
+    delay: int = 0
+
+
+@dataclass(eq=True, frozen=True)
+class DiscardCardsEffect(GlobalEffect):
+    count: int
+    delay: int = 0
+
+
+@dataclass(eq=True, frozen=True)
+class CreateCardEffect(GlobalEffect):
+    card: str
+    delay: int = 0
+
+
+def parse_global_effect(modifier: str) -> GlobalEffect:
+    # Global effects are double-bracketed, e.g. `[[draw 2 | delay 1]]`
+    import re
+    match = re.match(r"\[\[(.*)\]\]", modifier)
+    if not match:
+        raise ValueError("Invalid format")
+    effect = match.group(1).strip()
+
+    tokens = effect.split("|")
+    if "draw" in effect:
+        count = int(tokens[0].split(" ")[1])
+        delay = 0
+        for token in tokens[1:]:
+            if "delay" in token:
+                delay = int(token.split(" ")[1])
+        return DrawCardsEffect(count, delay)
+    elif "discard" in effect:
+        count = int(tokens[0].split(" ")[1])
+        delay = 0
+        for token in tokens[1:]:
+            if "delay" in token:
+                delay = int(token.split(" ")[1])
+        return DiscardCardsEffect(count, delay)
+    elif "create" in effect:
+        card = tokens[0].split(" ")[1]
+        delay = 0
+        for token in tokens[1:]:
+            if "delay" in token:
+                delay = int(token.split(" ")[1])
+        return CreateCardEffect(card, delay)
+    else:
+        raise ValueError("Invalid format")
+
+
 TargetedEffect: TypeAlias = tuple[str, DamageEffect]
 
 
@@ -23,7 +79,6 @@ def parse_targeted_effect(modifier: str) -> TargetedEffect:
     # Remove brackets and split the entity and effects
     match = re.match(r"\[(.*): (.*)\]", modifier)
     if not match:
-        breakpoint()
         raise ValueError("Invalid format")
 
     entity = match.group(1).strip()
@@ -62,8 +117,3 @@ def parse_targeted_effect(modifier: str) -> TargetedEffect:
     return entity, DamageEffect(
         delta_shield, delta_hp, critical_chance, delay, pierce, drain, accuracy
     )
-
-
-# # Example usage
-# modifier = "[entity: shield 10 | crit 0.5 | delay 1]"
-# print(parse_targeted_effect(modifier))

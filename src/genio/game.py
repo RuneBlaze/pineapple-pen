@@ -6,48 +6,11 @@ import pandas as pd
 import streamlit as st
 
 from genio.core.base import access, promptly, slurp_toml
-from genio.tools import Card, CardType, EnemyBattler
+from genio.tools import Card, EnemyBattler
 
 predef = slurp_toml("assets/strings.toml")
 
 LogType: TypeAlias = tuple[Literal["user", "them", "narrator", "system"], str]
-
-
-def parse_card_description(description: str) -> tuple[str, str, int]:
-    # Split on the '#' to separate the main part from the description
-    parts = description.split("#")
-    main_part = parts[0].strip()
-    desc = parts[1].strip() if len(parts) > 1 else None
-
-    # Check for the '*' to determine the number of copies
-    if "*" in main_part:
-        name, copies_str = main_part.split("*")
-        name = name.strip()
-        copies = int(copies_str.strip())
-    else:
-        name = main_part
-        copies = 1
-
-    return name, desc, copies
-
-
-def determine_card_type(name: str) -> CardType:
-    if name[0].islower():
-        return CardType.CONCEPT
-    elif name[0].isupper():
-        return CardType.ACTION
-    else:
-        return CardType.SPECIAL
-
-
-def create_deck(cards: list[str]) -> list[Card]:
-    deck = []
-    for card_description in cards:
-        name, desc, copies = parse_card_description(card_description)
-        card_type = determine_card_type(name)
-        for _ in range(copies):
-            deck.append(Card(card_type=card_type, name=name, description=desc))
-    return deck
 
 
 @dataclass
@@ -96,17 +59,6 @@ Jon: "I'm so glad you could make it. I've been looking forward to this all week.
 [FILL IN]
 """
 
-# starter_enemy = TalkingProfile.from_predef("enemies.starter")
-# starter_player = TalkingProfile.from_predef("players.starter")
-
-# completed = _complete_sentence(
-#     words=["*talk about*", "'love'", "'money'"],
-#     user=starter_player,
-#     other=starter_enemy,
-#     conversation_context=default_conversation_context,
-# )
-
-# st.write(completed)
 
 enemy = EnemyBattler.from_predef("enemies.slime")
 st.json(

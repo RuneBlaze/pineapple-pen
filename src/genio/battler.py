@@ -148,7 +148,7 @@ class BattlePrelude:
         return BattlePrelude("It's a brightly lit cave, with torches lining the walls.")
 
 
-class BattleManager:
+class BattleBundle:
     def __init__(
         self,
         player: PlayerBattler,
@@ -203,7 +203,6 @@ class BattleManager:
     ) -> None:
         # Check accuracy
         if rng.random() > effect.accuracy:
-            print(f"{target.name} evades the attack!")
             return
 
         # Calculate if critical hit
