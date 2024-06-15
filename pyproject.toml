@@ -39,6 +39,7 @@ boltons = "^24.0.0"
 pyxel = "^2.0.13"
 pyxelunicode = "^1.0.4"
 pillow = "9.5.0"
+smallperm = "^0.1.6"
 
 
 [tool.poetry.group.dev.dependencies]

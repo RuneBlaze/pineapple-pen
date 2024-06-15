@@ -4819,6 +4819,19 @@ files = [
 ]
 
 [[package]]
+name = "smallperm"
+version = "0.1.6"
+description = "Efficient O(1)-space pseudorandom permutation for large scale shuffling"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "smallperm-0.1.6-cp37-abi3-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:d231a89cd2a3f9d4869549bc3ed4c31f30305869ecaa3fb3a17bc58105ed1d85"},
+    {file = "smallperm-0.1.6-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0949da61d8cc2a27c5accd3e6cccb911d259dd89c056ac3ca8f61e27822208aa"},
+    {file = "smallperm-0.1.6-cp37-abi3-win_amd64.whl", hash = "sha256:94f35850fd567c281d2905a9bfc5df87206e5ed55eba0300d653b10360bbc478"},
+    {file = "smallperm-0.1.6.tar.gz", hash = "sha256:2f35a692db3d8611b00b827a6730704156553c334e6c217ac7fb3f46ea5217d5"},
+]
+
+[[package]]
 name = "smmap"
 version = "5.0.1"
 description = "A pure Python implementation of a sliding window memory map manager"
@@ -5979,4 +5992,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "jaraco.test", "more
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<=3.12"
-content-hash = "ff584784ab0ccd0f34edfbb630a15e8676f8ab4f9e2aaba605044b0d2c8282a0"
+content-hash = "b59799d0454c9f792155dc10bf5051dce6b5348f759cf0f7bdb68572bd9c920b"

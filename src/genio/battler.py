@@ -10,7 +10,16 @@ import numpy as np
 from boltons.queueutils import HeapPriorityQueue
 
 from genio.core.base import access, slurp_toml
-from genio.effect import DamageEffect, parse_targeted_effect
+from genio.effect import (
+    CreateCardEffect,
+    DamageEffect,
+    DiscardCardsEffect,
+    DrawCardsEffect,
+    GlobalEffect,
+    parse_global_effect,
+    parse_targeted_effect,
+)
+from genio.tools import CardBundle
 
 predef = slurp_toml("assets/strings.toml")
 
@@ -154,12 +163,14 @@ class BattleBundle:
         player: PlayerBattler,
         enemies: list[EnemyBattler],
         battle_prelude: BattlePrelude,
+        card_bundle: CardBundle,
     ) -> None:
         self.player = player
         self.enemies = enemies
         self.turn_counter = 0
         self.effects = HeapPriorityQueue(priority_key=lambda x: -x)
         self.battle_prelude = battle_prelude
+        self.card_bundle = card_bundle
 
     def battlers(self) -> Iterator[BattlerLike]:
         yield self.player
@@ -172,9 +183,17 @@ class BattleBundle:
         raise ValueError(f"No battler found with name '{name}'")
 
     def resolve_result(self, result: str) -> None:
-        pattern = r"(\[.*?\])"
-        substrings = re.findall(pattern, result)
+        global_pattern = r"\[\[.*?\]\]"
+        substrings = re.findall(global_pattern, result)
         for substring in substrings:
+            effect = parse_global_effect(substring)
+            queued_turn = effect.delay + self.turn_counter
+            self.effects.add((queued_turn, None, effect), queued_turn)
+        targeted_pattern = r"(\[.*?\])"
+        substrings = re.findall(targeted_pattern, result)
+        for substring in substrings:
+            if "[[" in substring:
+                continue
             target, effect = parse_targeted_effect(substring)
             battler = self.search(target)
             queued_turn = effect.delay + self.turn_counter
@@ -198,9 +217,18 @@ class BattleBundle:
         self,
         caster: Battler | None,
         target: Battler,
-        effect: DamageEffect,
+        effect: DamageEffect | GlobalEffect,
         rng: np.random.Generator,
     ) -> None:
+        if isinstance(effect, GlobalEffect):
+            match effect:
+                case DrawCardsEffect(count, _):
+                    self.card_bundle.draw_to_hand(count)
+                case DiscardCardsEffect(count, _):
+                    pass
+                case CreateCardEffect(card, _):
+                    pass
+            return
         # Check accuracy
         if rng.random() > effect.accuracy:
             return

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import TypeAlias
 
@@ -11,6 +13,9 @@ class DamageEffect:
     pierce: bool = False  # Do we ignore shield points
     drain: bool = False  # Do we heal from the damage
     accuracy: float = 1.0  # How likely are we to hit the target. if acc check failed, the effect is ignored
+
+
+TargetedEffect: TypeAlias = tuple[str, DamageEffect]
 
 
 class GlobalEffect:
@@ -38,6 +43,7 @@ class CreateCardEffect(GlobalEffect):
 def parse_global_effect(modifier: str) -> GlobalEffect:
     # Global effects are double-bracketed, e.g. `[[draw 2 | delay 1]]`
     import re
+
     match = re.match(r"\[\[(.*)\]\]", modifier)
     if not match:
         raise ValueError("Invalid format")
@@ -67,9 +73,6 @@ def parse_global_effect(modifier: str) -> GlobalEffect:
         return CreateCardEffect(card, delay)
     else:
         raise ValueError("Invalid format")
-
-
-TargetedEffect: TypeAlias = tuple[str, DamageEffect]
 
 
 def parse_targeted_effect(modifier: str) -> TargetedEffect:
@@ -117,3 +120,10 @@ def parse_targeted_effect(modifier: str) -> TargetedEffect:
     return entity, DamageEffect(
         delta_shield, delta_hp, critical_chance, delay, pierce, drain, accuracy
     )
+
+
+def parse_effect(modifier: str) -> GlobalEffect | TargetedEffect:
+    if modifier.startswith("[["):
+        return parse_global_effect(modifier)
+    else:
+        return parse_targeted_effect(modifier)

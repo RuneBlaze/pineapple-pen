@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Annotated
+
+from smallperm import shuffle
 
 from genio.battler import EnemyBattler, PlayerBattler, PlayerProfile
 from genio.core.base import promptly, slurp_toml
@@ -83,12 +86,10 @@ predef = slurp_toml("assets/strings.toml")
 
 
 def parse_card_description(description: str) -> tuple[str, str, int]:
-    # Split on the '#' to separate the main part from the description
     parts = description.split("#")
     main_part = parts[0].strip()
     desc = parts[1].strip() if len(parts) > 1 else None
 
-    # Check for the '*' to determine the number of copies
     if "*" in main_part:
         name, copies_str = main_part.split("*")
         name = name.strip()
@@ -117,6 +118,29 @@ def create_deck(cards: list[str]) -> list[Card]:
         for _ in range(copies):
             deck.append(Card(card_type=card_type, name=name, description=desc))
     return deck
+
+
+class CardBundle:
+    def __init__(self, deck: list[Card]) -> None:
+        self.deck = shuffle(deck)
+        self.hand = []
+        self.graveyard = []
+
+    @staticmethod
+    def from_predef(key: str) -> CardBundle:
+        return CardBundle(create_deck(predef[key]["cards"]))
+
+    def draw(self, count: int) -> Iterator[Card]:
+        while count > 0:
+            if len(self.deck) == 0:
+                self.deck = shuffle(self.graveyard)
+                self.graveyard = []
+            card = self.deck.pop()
+            yield card
+            count -= 1
+
+    def draw_to_hand(self, count: int) -> None:
+        self.hand.extend(self.draw(count))
 
 
 if __name__ == "__main__":

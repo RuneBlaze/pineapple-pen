@@ -5,47 +5,12 @@ from pyxelunicode import PyxelUnicode
 
 from genio.battler import BattleBundle, BattlePrelude, EnemyBattler, PlayerBattler
 from genio.core.base import slurp_toml
-from genio.tools import Card, CardType
+from genio.tools import Card
 
 predef = slurp_toml("assets/strings.toml")
 
 # Initialize pyuni at the module level
 pyuni = PyxelUnicode("assets/Roboto-Medium.ttf", 14)
-
-
-def parse_card_description(description: str) -> tuple[str, str, int]:
-    parts = description.split("#")
-    main_part = parts[0].strip()
-    desc = parts[1].strip() if len(parts) > 1 else None
-
-    if "*" in main_part:
-        name, copies_str = main_part.split("*")
-        name = name.strip()
-        copies = int(copies_str.strip())
-    else:
-        name = main_part
-        copies = 1
-
-    return name, desc, copies
-
-
-def determine_card_type(name: str) -> CardType:
-    if name[0].islower():
-        return CardType.CONCEPT
-    elif name[0].isupper():
-        return CardType.ACTION
-    else:
-        return CardType.SPECIAL
-
-
-def create_deck(cards: list[str]) -> list[Card]:
-    deck = []
-    for card_description in cards:
-        name, desc, copies = parse_card_description(card_description)
-        card_type = determine_card_type(name)
-        for _ in range(copies):
-            deck.append(Card(card_type=card_type, name=name, description=desc))
-    return deck
 
 
 class CardSprite:
