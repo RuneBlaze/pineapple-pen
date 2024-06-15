@@ -139,7 +139,6 @@ class App:
     def resolve_selected_cards(self, selected_cards: list[Card]):
         self.bundle.resolve_player_cards(selected_cards)
 
-
     def draw(self):
         pyxel.cls(0)
         for card in self.cards:

@@ -111,6 +111,7 @@ class ResolvedResults:
         ),
     ]
 
+
 @promptly
 def _judge_results(
     cards: list[Card],
@@ -127,6 +128,7 @@ def _judge_results(
     Let's think step by step.
     """
     ...
+
 
 predef = slurp_toml("assets/strings.toml")
 
@@ -346,14 +348,26 @@ class BattleBundle:
 
     def _on_turn_end(self) -> None:
         self.turn_counter += 1
-    
+
     def resolve_player_cards(self, cards: list[Card]) -> None:
-        resolved_results: ResolvedResults = _judge_results(cards, self.player, self.enemies, self.battle_prelude.description, resolve_player_actions=True)
+        resolved_results: ResolvedResults = _judge_results(
+            cards,
+            self.player,
+            self.enemies,
+            self.battle_prelude.description,
+            resolve_player_actions=True,
+        )
         self.resolve_result(resolved_results.results)
         self.flush_effects(self.rng)
 
     def resolve_enemy_actions(self) -> None:
-        resolved_results: ResolvedResults = _judge_results([], self.player, self.enemies, self.battle_prelude.description, resolve_player_actions=False)
+        resolved_results: ResolvedResults = _judge_results(
+            [],
+            self.player,
+            self.enemies,
+            self.battle_prelude.description,
+            resolve_player_actions=False,
+        )
         self.resolve_result(resolved_results.results)
         self.flush_effects(self.rng)
 

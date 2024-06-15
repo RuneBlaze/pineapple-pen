@@ -83,6 +83,7 @@ def can_access(structure, lens: str) -> bool:
     except KeyError:
         return False
 
+
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
 
@@ -90,7 +91,9 @@ class TemplateRegistryLoader(BaseLoader):
     def get_source(self, environment, template):
         if template in TEMPLATE_REGISTRY:
             return TEMPLATE_REGISTRY[template], template, lambda: True
-        if (target_path := (PROJECT_ROOT / Path("assets/includes") / template)).exists():
+        if (
+            target_path := (PROJECT_ROOT / Path("assets/includes") / template)
+        ).exists():
             return target_path.read_text(), str(target_path), lambda: True
         predef = slurp_toml("assets/strings.toml")
         if can_access(predef, template):
@@ -506,6 +509,7 @@ def promptly(f=None, demangle: bool = True):
         if return_type is inspect.Signature.empty:
             raise ValueError(f"Function {f} has no return type.")
         ctxt = []
+        ba.apply_defaults()
         args = dict(ba.arguments.items())
         if args:
             ctxt.append("```yml")
