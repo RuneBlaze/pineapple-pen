@@ -1,11 +1,15 @@
-import random
-
 import pyxel
 from pyxelunicode import PyxelUnicode
 
-from genio.battler import BattleBundle, BattlePrelude, EnemyBattler, PlayerBattler
+from genio.battler import (
+    BattleBundle,
+    BattlePrelude,
+    Card,
+    CardBundle,
+    EnemyBattler,
+    PlayerBattler,
+)
 from genio.core.base import slurp_toml
-from genio.tools import Card
 
 predef = slurp_toml("assets/strings.toml")
 
@@ -97,24 +101,21 @@ class App:
 
     def __init__(self):
         pyxel.init(320, 240)
-        self.deck = create_deck(predef["initial_deck"]["cards"])
-        self.graveyard = []
-        self.cards = []
-        self.draw_new_hand()
+        card_bundle = CardBundle.from_predef("initial_deck")
+        card_bundle.draw_to_hand()
         player = PlayerBattler.from_predef("players.starter")
         enemy1 = EnemyBattler.from_predef("enemies.slime", 1)
         enemy2 = EnemyBattler.from_predef("enemies.slime", 2)
-        self.bundle = BattleBundle(player, [enemy1, enemy2], BattlePrelude.default())
+        self.bundle = BattleBundle(
+            player, [enemy1, enemy2], BattlePrelude.default(), card_bundle
+        )
+        self.init_sprites()
         pyxel.run(self.update, self.draw)
 
-    def draw_new_hand(self):
-        if len(self.deck) < self.TOTAL_CARDS:
-            self.deck.extend(self.graveyard)
-            self.graveyard = []
-            random.shuffle(self.deck)
-
+    def init_sprites(self):
         self.cards = [
-            CardSprite(i, self.deck.pop(), self) for i in range(self.TOTAL_CARDS)
+            CardSprite(i, card, self)
+            for i, card in enumerate(self.bundle.card_bundle.hand)
         ]
 
     def update(self):
@@ -122,11 +123,15 @@ class App:
             pyxel.quit()
 
         if pyxel.btnp(pyxel.KEY_SPACE):
-            self.graveyard.extend([card.card for card in self.cards])
-            self.draw_new_hand()
+            self.play_selected()
 
         for card in self.cards:
             card.update()
+
+    def play_selected(self):
+        selected_card_sprites = [card for card in self.cards if card.selected]
+        selected_cards = [card.card for card in selected_card_sprites]
+        self.cards = [card for card in self.cards if not card.selected]
 
     def draw(self):
         pyxel.cls(0)
@@ -137,8 +142,8 @@ class App:
         pyxel.line(mx - 5, my, mx + 5, my, 7)
         pyxel.line(mx, my - 5, mx, my + 5, 7)
 
-        pyuni.text(5, 5, f"Deck: {len(self.deck)}", 7)
-        pyuni.text(5, 15, f"Graveyard: {len(self.graveyard)}", 7)
+        pyuni.text(5, 5, f"Deck: {len(self.bundle.card_bundle.deck)}", 7)
+        pyuni.text(5, 15, f"Graveyard: {len(self.bundle.card_bundle.graveyard)}", 7)
 
     def draw_bundle(self):
         ...

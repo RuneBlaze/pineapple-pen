@@ -13,11 +13,11 @@ But in this case, you are the DM and you will resolve the actions of either the 
 
 ### Card Types (for player actions):
 - **Concrete Cards**: Specific actions the player takes (e.g., attacking, blocking).
-- **Modifier Cards**: Postfix modifiers to concrete cards (e.g., "left" and "right" modifying "Slash" to "Slash left").
+- **Modifier Cards**: Postfix modifiers to concrete cards (e.g., "left" and "right" modifying "Slash" to "Slash left"). The idea is to form sentences from words (almost like a word game).
 
 **Example**:
 - Concrete Card: "Slash"
-- Modifier Cards: "left", "right"
+- Modifier Cards: "left", "right", "repeat"
 - Resulting Action: "Slash left, then Slash right, then repeat all previous actions"
 
 Other examples:
@@ -43,7 +43,7 @@ Other examples:
 
 ### Battlefield
 
-- You see the following enemies:
+- {{ user.name }} sees the following enemies:
 
 {%- for enemy in enemies %}
 - **{{ enemy.name }}** ({{ enemy.description }}). Intent: {{ enemy.current_intent }}
