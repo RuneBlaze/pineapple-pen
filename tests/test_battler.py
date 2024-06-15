@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from genio.battler import BattleBundle, BattlePrelude, EnemyBattler, PlayerBattler
+from genio.battle import BattleBundle, BattlePrelude, EnemyBattler, PlayerBattler
 
 
 def test_battlers_basic():

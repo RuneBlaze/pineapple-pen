@@ -1,7 +1,7 @@
 import pyxel
 from pyxelunicode import PyxelUnicode
 
-from genio.battler import (
+from genio.battle import (
     BattleBundle,
     BattlePrelude,
     Card,
@@ -130,8 +130,15 @@ class App:
 
     def play_selected(self):
         selected_card_sprites = [card for card in self.cards if card.selected]
+        if not selected_card_sprites:
+            return
         selected_cards = [card.card for card in selected_card_sprites]
         self.cards = [card for card in self.cards if not card.selected]
+        self.resolve_selected_cards(selected_cards)
+
+    def resolve_selected_cards(self, selected_cards: list[Card]):
+        self.bundle.resolve_player_cards(selected_cards)
+
 
     def draw(self):
         pyxel.cls(0)

@@ -304,6 +304,7 @@ class BattleBundle:
         self.effects = HeapPriorityQueue(priority_key=lambda x: -x)
         self.battle_prelude = battle_prelude
         self.card_bundle = card_bundle
+        self.rng = np.random.default_rng()
 
     def battlers(self) -> Iterator[BattlerLike]:
         yield self.player
@@ -347,14 +348,14 @@ class BattleBundle:
         self.turn_counter += 1
     
     def resolve_player_cards(self, cards: list[Card]) -> None:
-        resolved_results: ResolvedResults = _judge_results(cards, self.player, self.enemies, self.battle_prelude.description)
+        resolved_results: ResolvedResults = _judge_results(cards, self.player, self.enemies, self.battle_prelude.description, resolve_player_actions=True)
         self.resolve_result(resolved_results.results)
-        self.flush_effects()
+        self.flush_effects(self.rng)
 
     def resolve_enemy_actions(self) -> None:
         resolved_results: ResolvedResults = _judge_results([], self.player, self.enemies, self.battle_prelude.description, resolve_player_actions=False)
         self.resolve_result(resolved_results.results)
-        self.flush_effects()
+        self.flush_effects(self.rng)
 
     def apply_effect(
         self,

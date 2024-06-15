@@ -83,12 +83,14 @@ def can_access(structure, lens: str) -> bool:
     except KeyError:
         return False
 
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+
 
 class TemplateRegistryLoader(BaseLoader):
     def get_source(self, environment, template):
         if template in TEMPLATE_REGISTRY:
             return TEMPLATE_REGISTRY[template], template, lambda: True
-        if (target_path := Path("assets/includes") / template).exists():
+        if (target_path := (PROJECT_ROOT / Path("assets/includes") / template)).exists():
             return target_path.read_text(), str(target_path), lambda: True
         predef = slurp_toml("assets/strings.toml")
         if can_access(predef, template):
@@ -208,8 +210,6 @@ def get_docstrings(cls: type) -> DocStrings:
     main_description = inspect.getdoc(cls)
     args = []
     for field in fields(cls):
-        from genio.concepts.geo import ScheduleEntry  # noqa
-
         typ = eval(field.type) if isinstance(field.type, str) else field.type
         if get_origin(typ) is Annotated:
             typ, metadata = get_args(typ)
