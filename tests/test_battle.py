@@ -10,14 +10,21 @@ from genio.battle import (
     PlayerBattler,
     PlayerProfile,
 )
-from genio.effect import DamageEffect
+from genio.effect import SinglePointEffect
 
 
-def test_battlers_basic():
+@pytest.fixture
+def card_bundle():
+    return CardBundle.from_predef("initial_deck")
+
+
+def test_battlers_basic(card_bundle):
     player = PlayerBattler.from_predef("players.starter")
     enemy1 = EnemyBattler.from_predef("enemies.slime")
     enemy2 = EnemyBattler.from_predef("enemies.slime")
-    manager = BattleBundle(player, [enemy1, enemy2], BattlePrelude.default())
+    manager = BattleBundle(
+        player, [enemy1, enemy2], BattlePrelude.default(), card_bundle
+    )
 
     battlers = list(manager.battlers())
 
@@ -30,25 +37,31 @@ def test_search_existing_battler():
     player = PlayerBattler.from_predef("players.starter")
     enemy1 = EnemyBattler.from_predef("enemies.slime")
     enemy2 = EnemyBattler.from_predef("enemies.slime")
-    manager = BattleBundle(player, [enemy1, enemy2], BattlePrelude.default())
+    manager = BattleBundle(
+        player, [enemy1, enemy2], BattlePrelude.default(), card_bundle
+    )
     battler = manager.search(player.name)
     assert battler == player
 
 
-def test_search_non_existing_battler():
+def test_search_non_existing_battler(card_bundle):
     player = PlayerBattler.from_predef("players.starter")
     enemy1 = EnemyBattler.from_predef("enemies.slime")
     enemy2 = EnemyBattler.from_predef("enemies.slime")
-    manager = BattleBundle(player, [enemy1, enemy2], BattlePrelude.default())
+    manager = BattleBundle(
+        player, [enemy1, enemy2], BattlePrelude.default(), card_bundle
+    )
     with pytest.raises(ValueError):
         manager.search("NonExistingBattler")
 
 
-def test_resolve_result():
+def test_resolve_result(card_bundle):
     player = PlayerBattler.from_predef("players.starter")
     enemy1 = EnemyBattler.from_predef("enemies.slime")
     enemy2 = EnemyBattler.from_predef("enemies.slime")
-    manager = BattleBundle(player, [enemy1, enemy2], BattlePrelude.default())
+    manager = BattleBundle(
+        player, [enemy1, enemy2], BattlePrelude.default(), card_bundle
+    )
     result = "[celine: damaged 10]"
     manager.resolve_result(result)
     manager.flush_effects(np.random.default_rng())
@@ -63,7 +76,6 @@ def test_apply_damage_with_shield():
     )
     enemy = Battler(profile=enemy_profile, hp=20, max_hp=20, shield_points=0)
     battle_prelude = BattlePrelude(description="An epic battle")
-    card_bundle = CardBundle.from_predef("initial_deck")
 
     battle_bundle = BattleBundle(
         player=player,
@@ -72,14 +84,7 @@ def test_apply_damage_with_shield():
         card_bundle=card_bundle,
     )
 
-    damage_effect = DamageEffect(
-        delta_hp=-9,
-        delta_shield=0,
-        accuracy=1.0,
-        pierce=False,
-        critical_chance=0.0,
-        drain=False,
-    )
+    damage_effect = SinglePointEffect.from_damage(9)
     rng = np.random.default_rng(42)
     battle_bundle.apply_effect(None, player, damage_effect, rng)
 
@@ -104,14 +109,7 @@ def test_apply_piercing_damage():
         card_bundle=card_bundle,
     )
 
-    damage_effect = DamageEffect(
-        delta_hp=-9,
-        delta_shield=0,
-        accuracy=1.0,
-        pierce=True,
-        critical_chance=0.0,
-        drain=False,
-    )
+    damage_effect = SinglePointEffect.from_damage(9, pierce=True)
     rng = np.random.default_rng(42)
     battle_bundle.apply_effect(None, player, damage_effect, rng)
 
@@ -136,14 +134,7 @@ def test_apply_healing():
         card_bundle=card_bundle,
     )
 
-    healing_effect = DamageEffect(
-        delta_hp=15,
-        delta_shield=0,
-        accuracy=1.0,
-        pierce=False,
-        critical_chance=0.0,
-        drain=False,
-    )
+    healing_effect = SinglePointEffect.from_heal(10)
     rng = np.random.default_rng(42)
     battle_bundle.apply_effect(None, player, healing_effect, rng)
 

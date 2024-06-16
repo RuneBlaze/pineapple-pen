@@ -15,7 +15,7 @@ from structlog import get_logger
 from genio.core.base import access, promptly, slurp_toml
 from genio.effect import (
     CreateCardEffect,
-    DamageEffect,
+    SinglePointEffect,
     DiscardCardsEffect,
     DrawCardsEffect,
     GlobalEffect,
@@ -432,7 +432,7 @@ class BattleBundle:
         self,
         caster: Battler | None,
         target: Battler,
-        effect: DamageEffect | GlobalEffect,
+        effect: SinglePointEffect | GlobalEffect,
         rng: np.random.Generator,
     ) -> None:
         if isinstance(effect, GlobalEffect):
@@ -453,7 +453,7 @@ class BattleBundle:
         self,
         caster: Battler | None,
         target: Battler,
-        effect: DamageEffect,
+        effect: SinglePointEffect,
         rng: np.random.Generator,
     ) -> None:
         if rng.random() > effect.accuracy:
@@ -468,35 +468,23 @@ class BattleBundle:
         target.shield_points += delta_shield
 
         if delta_hp < 0:
-            self._apply_damage(target, effect, delta_hp)
+            self._apply_damage(caster, target, effect, delta_hp)
         else:
             self._apply_healing(target, delta_hp)
 
-        if effect.drain and caster:
-            self._apply_drain(caster, delta_hp)
-
     def _apply_damage(
-        self, target: Battler, effect: DamageEffect, delta_hp: float
+        self,
+        caster: Battler | None,
+        target: Battler,
+        effect: SinglePointEffect,
+        delta_hp: float,
     ) -> None:
-        if effect.pierce:
-            target.hp += delta_hp
-        else:
-            remaining_damage = delta_hp + target.shield_points
-            if target.shield_points < 0:
-                target.shield_points = 0
-
-            if remaining_damage < 0:
-                target.hp += remaining_damage
-
-        if target.hp < 0:
-            target.hp = 0
+        if delta_hp > 0:
+            raise ValueError("delta_hp for damage must be a negative number")
+        damage = -delta_hp
+        damage_result = target.receive_damage(damage, effect.pierce)
+        if effect.drain and caster:
+            caster.receive_heal(damage_result.damage_dealt)
 
     def _apply_healing(self, target: Battler, delta_hp: float) -> None:
-        target.hp += delta_hp
-        if target.hp > target.max_hp:
-            target.hp = target.max_hp
-
-    def _apply_drain(self, caster: Battler, delta_hp: float) -> None:
-        caster.hp -= delta_hp
-        if caster.hp > caster.max_hp:
-            caster.hp = caster.max_hp
+        target.receive_heal(delta_hp)

@@ -6,7 +6,7 @@ from uuid import uuid4
 
 
 @dataclass(eq=True, frozen=True)
-class DamageEffect:
+class SinglePointEffect:
     delta_shield: int  # How are we changing the shield points
     delta_hp: int
     critical_chance: float = 0.0  # If critical, we multiply the effect by 2
@@ -17,8 +17,16 @@ class DamageEffect:
 
     _uuid: str = field(default_factory=lambda: uuid4().hex)
 
+    @staticmethod
+    def from_plain_damage(damage: int) -> SinglePointEffect:
+        return SinglePointEffect(delta_hp=-damage)
+    
+    @staticmethod
+    def from_heal(heal: int) -> SinglePointEffect:
+        return SinglePointEffect(delta_hp=heal)
 
-TargetedEffect: TypeAlias = tuple[str, DamageEffect]
+
+TargetedEffect: TypeAlias = tuple[str, SinglePointEffect]
 
 
 class GlobalEffect:
@@ -120,7 +128,7 @@ def parse_targeted_effect(modifier: str) -> TargetedEffect:
         elif "drain" in effect:
             drain = True
 
-    return entity, DamageEffect(
+    return entity, SinglePointEffect(
         delta_shield, delta_hp, critical_chance, delay, pierce, drain, accuracy
     )
 
