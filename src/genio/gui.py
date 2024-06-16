@@ -23,8 +23,7 @@ logtext = PyxelUnicode("assets/Roboto-Medium.ttf", 12)
 class CardSprite:
     def __init__(self, index, card: Card, app: App, selected=False):
         self.index = index
-        self.target_x = app.GRID_X_START + index * app.GRID_SPACING_X
-        self.target_y = app.GRID_Y_START
+        self.change_index(index)
         self.x = self.target_x
         self.y = self.target_y
         self.card = card
@@ -86,9 +85,12 @@ class CardSprite:
         self.app.card_sprites.insert(new_index, self)
 
         for i, card in enumerate(self.app.card_sprites):
-            card.index = i
-            card.target_x = self.app.GRID_X_START + i * self.app.GRID_SPACING_X
-            card.target_y = self.app.GRID_Y_START
+            card.change_index(i)
+
+    def change_index(self, new_index: int):
+        self.index = new_index
+        self.target_x = self.app.GRID_X_START + new_index * self.app.GRID_SPACING_X
+        self.target_y = self.app.GRID_Y_START
 
 
 class App:
@@ -119,26 +121,28 @@ class App:
         pyxel.run(self.update, self.draw)
 
     def sync_sprites(self):
-        existing_card_sprites = {card_sprite.card.id: card_sprite for card_sprite in self.card_sprites}
+        existing_card_sprites = {
+            card_sprite.card.id: card_sprite for card_sprite in self.card_sprites
+        }
         self.card_sprites = [
             existing_card_sprites.get(card.id, CardSprite(i, card, self))
             for i, card in enumerate(self.bundle.card_bundle.hand)
         ]
 
         for i, card_sprite in enumerate(self.card_sprites):
-            card_sprite.index = i
-            card_sprite.target_x = self.GRID_X_START + i * self.GRID_SPACING_X
-            card_sprite.target_y = self.GRID_Y_START
+            card_sprite.change_index(i)
 
     def reorder_card_as_sprites(self):
         # sprites might be reordered, so we reorder the cards too
-        self.bundle.card_bundle.hand = [card_sprite.card for card_sprite in self.card_sprites]
+        self.bundle.card_bundle.hand = [
+            card_sprite.card for card_sprite in self.card_sprites
+        ]
 
     def update(self):
         while self.bundle.card_bundle.events:
             _ev = self.bundle.card_bundle.events.pop()
             self.sync_sprites()
-        
+
         if pyxel.btnp(pyxel.KEY_Q):
             pyxel.quit()
 
@@ -186,5 +190,6 @@ class App:
         self.bundle.card_bundle.flush_hand_to_graveyard()
         self.bundle.resolve_enemy_actions()
         self.bundle.card_bundle.draw_to_hand()
+
 
 app = App()

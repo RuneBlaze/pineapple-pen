@@ -161,6 +161,24 @@ class EnemyProfile(Profile):
         return EnemyProfile(**access(predef, key))
 
 
+@dataclass(frozen=True, eq=True)
+class DamageResult:
+    damage_dealt: int
+
+    @staticmethod
+    def default() -> DamageResult:
+        return DamageResult(0)
+
+
+@dataclass(frozen=True, eq=True)
+class HealResult:
+    heal_done: int
+
+    @staticmethod
+    def default() -> HealResult:
+        return HealResult(0)
+
+
 @dataclass(eq=True)
 class Battler:
     profile: Profile
@@ -186,10 +204,26 @@ class Battler:
     def is_dead(self) -> bool:
         return self.hp <= 0
 
-    def receive_damage(self, damage: int) -> None:
-        self.hp -= damage
+    def receive_damage(self, damage: int, pierce: bool = False) -> DamageResult:
+        if damage < 0:
+            raise ValueError("Damage must be a positive integer")
+        if pierce:
+            self.hp -= damage
+            return DamageResult.default()
+        shield_damage = min(self.shield_points, damage)
+        rest_damage = max(damage - shield_damage, 0)
+        self.shield_points -= shield_damage
+        self.hp -= rest_damage
         if self.hp < 0:
             self.hp = 0
+        return DamageResult(rest_damage)
+
+    def receive_heal(self, heal: int) -> HealResult:
+        if heal < 0:
+            raise ValueError("Heal must be a positive integer")
+        actual_heal = min(self.max_hp - self.hp, heal)
+        self.hp += actual_heal
+        return HealResult(actual_heal)
 
     def __hash__(self) -> int:
         return hash(self.uuid)
@@ -350,7 +384,9 @@ class BattleBundle:
                 queued_turn=queued_turn,
             )
 
-    def flush_effects(self, rng: np.random.Generator) -> None:
+    def flush_effects(self, rng: np.random.Generator | None = None) -> None:
+        if rng is None:
+            rng = np.random.default_rng()
         while self.effects and self.effects.peek()[0] <= self.turn_counter:
             _, battler, effect = self.effects.pop()
             self.apply_effect(None, battler, effect, rng)
@@ -400,52 +436,67 @@ class BattleBundle:
         rng: np.random.Generator,
     ) -> None:
         if isinstance(effect, GlobalEffect):
-            match effect:
-                case DrawCardsEffect(count, _):
-                    self.card_bundle.draw_to_hand(count)
-                case DiscardCardsEffect(count, _):
-                    pass
-                case CreateCardEffect(card, _):
-                    pass
-            return
-        # Check accuracy
+            self._apply_global_effect(effect)
+        else:
+            self._apply_targeted_effect(caster, target, effect, rng)
+
+    def _apply_global_effect(self, effect: GlobalEffect) -> None:
+        match effect:
+            case DrawCardsEffect(count, _):
+                self.card_bundle.draw_to_hand(count)
+            case DiscardCardsEffect(count, _):
+                pass
+            case CreateCardEffect(card, _):
+                pass
+
+    def _apply_targeted_effect(
+        self,
+        caster: Battler | None,
+        target: Battler,
+        effect: DamageEffect,
+        rng: np.random.Generator,
+    ) -> None:
         if rng.random() > effect.accuracy:
             return
 
-        # Calculate if critical hit
         is_critical = rng.random() < effect.critical_chance
         multiplier = 2 if is_critical else 1
 
-        # Calculate actual damage and shield reduction
         delta_hp = effect.delta_hp * multiplier
         delta_shield = effect.delta_shield * multiplier
 
         target.shield_points += delta_shield
 
         if delta_hp < 0:
-            if effect.pierce:
-                # Ignore shield, apply all damage to HP
-                target.hp += delta_hp
-            else:
-                # Reduce shield points first
-                remaining_damage = delta_hp + target.shield_points
-                if target.shield_points < 0:
-                    target.shield_points = 0
-
-                # Apply remaining damage to HP
-                if remaining_damage < 0:
-                    target.hp += remaining_damage
+            self._apply_damage(target, effect, delta_hp)
         else:
-            # Healing effect
+            self._apply_healing(target, delta_hp)
+
+        if effect.drain and caster:
+            self._apply_drain(caster, delta_hp)
+
+    def _apply_damage(
+        self, target: Battler, effect: DamageEffect, delta_hp: float
+    ) -> None:
+        if effect.pierce:
             target.hp += delta_hp
-            if target.hp > target.max_hp:
-                target.hp = target.max_hp
+        else:
+            remaining_damage = delta_hp + target.shield_points
+            if target.shield_points < 0:
+                target.shield_points = 0
+
+            if remaining_damage < 0:
+                target.hp += remaining_damage
 
         if target.hp < 0:
             target.hp = 0
 
-        # Drain effect: heal the caster if applicable
-        if effect.drain and caster:
-            caster.hp -= delta_hp
-            if caster.hp > caster.max_hp:
-                caster.hp = caster.max_hp
+    def _apply_healing(self, target: Battler, delta_hp: float) -> None:
+        target.hp += delta_hp
+        if target.hp > target.max_hp:
+            target.hp = target.max_hp
+
+    def _apply_drain(self, caster: Battler, delta_hp: float) -> None:
+        caster.hp -= delta_hp
+        if caster.hp > caster.max_hp:
+            caster.hp = caster.max_hp
