@@ -101,6 +101,7 @@ def create_deck(cards: list[str]) -> list[Card]:
 @dataclass
 class ResolvedResults:
     """A completed sentence in the game. An occurrence, a line, of the game's narrative."""
+
     reason: Annotated[
         str,
         "Justification for the completion. How the *action* connects the concepts serially. If we are resolving a player's action, connect the cards that the player has played in sequence almost like a literary game. Do not include results in reason.",
@@ -266,6 +267,7 @@ class CardBundle:
         self.hand = []
         self.graveyard = []
         self.hand_limit = hand_limit
+        self.events = []
 
     @staticmethod
     def from_predef(key: str) -> CardBundle:
@@ -279,11 +281,24 @@ class CardBundle:
             card = self.deck.pop()
             yield card
             count -= 1
+        self.events.append("draw")
 
     def draw_to_hand(self, count: int | None = None) -> None:
         if count is None:
             count = self.hand_limit - len(self.hand)
         self.hand.extend(self.draw(count))
+        self.events.append("draw_to_hand")
+
+    def hand_to_graveyard(self, cards: list[Card]) -> None:
+        remove_card_uuids = {card.id for card in cards}
+        self.graveyard.extend(cards)
+        self.hand = [card for card in self.hand if card.id not in remove_card_uuids]
+        self.events.append("hand_to_graveyard")
+
+    def flush_hand_to_graveyard(self) -> None:
+        self.graveyard.extend(self.hand)
+        self.hand = []
+        self.events.append("flush_hand_to_graveyard")
 
 
 class BattleBundle:

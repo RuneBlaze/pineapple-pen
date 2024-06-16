@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pyxel
 from pyxelunicode import PyxelUnicode
 
@@ -19,7 +21,7 @@ logtext = PyxelUnicode("assets/Roboto-Medium.ttf", 12)
 
 
 class CardSprite:
-    def __init__(self, index, card: Card, app, selected=False):
+    def __init__(self, index, card: Card, app: App, selected=False):
         self.index = index
         self.target_x = app.GRID_X_START + index * app.GRID_SPACING_X
         self.target_y = app.GRID_Y_START
@@ -80,10 +82,10 @@ class CardSprite:
         ) // self.app.GRID_SPACING_X
         new_index = max(0, min(self.app.TOTAL_CARDS - 1, new_index))
 
-        self.app.cards.remove(self)
-        self.app.cards.insert(new_index, self)
+        self.app.card_sprites.remove(self)
+        self.app.card_sprites.insert(new_index, self)
 
-        for i, card in enumerate(self.app.cards):
+        for i, card in enumerate(self.app.card_sprites):
             card.index = i
             card.target_x = self.app.GRID_X_START + i * self.app.GRID_SPACING_X
             card.target_y = self.app.GRID_Y_START
@@ -100,6 +102,8 @@ class App:
     TOTAL_CARDS = 6
     TWEEN_SPEED = 0.2
 
+    card_bundle: CardBundle
+
     def __init__(self):
         pyxel.init(320, 240)
         card_bundle = CardBundle.from_predef("initial_deck")
@@ -110,31 +114,49 @@ class App:
         self.bundle = BattleBundle(
             player, [enemy1, enemy2], BattlePrelude.default(), card_bundle
         )
-        self.init_sprites()
+        self.card_sprites = []
+        self.sync_sprites()
         pyxel.run(self.update, self.draw)
 
-    def init_sprites(self):
-        self.cards = [
-            CardSprite(i, card, self)
+    def sync_sprites(self):
+        existing_card_sprites = {card_sprite.card.id: card_sprite for card_sprite in self.card_sprites}
+        self.card_sprites = [
+            existing_card_sprites.get(card.id, CardSprite(i, card, self))
             for i, card in enumerate(self.bundle.card_bundle.hand)
         ]
 
+        for i, card_sprite in enumerate(self.card_sprites):
+            card_sprite.index = i
+            card_sprite.target_x = self.GRID_X_START + i * self.GRID_SPACING_X
+            card_sprite.target_y = self.GRID_Y_START
+
+    def reorder_card_as_sprites(self):
+        # sprites might be reordered, so we reorder the cards too
+        self.bundle.card_bundle.hand = [card_sprite.card for card_sprite in self.card_sprites]
+
     def update(self):
+        while self.bundle.card_bundle.events:
+            _ev = self.bundle.card_bundle.events.pop()
+            self.sync_sprites()
+        
         if pyxel.btnp(pyxel.KEY_Q):
             pyxel.quit()
 
         if pyxel.btnp(pyxel.KEY_SPACE):
             self.play_selected()
 
-        for card in self.cards:
+        if pyxel.btnp(pyxel.KEY_Z):
+            self.end_player_turn()
+
+        for card in self.card_sprites:
             card.update()
 
     def play_selected(self):
-        selected_card_sprites = [card for card in self.cards if card.selected]
+        selected_card_sprites = [card for card in self.card_sprites if card.selected]
         if not selected_card_sprites:
             return
         selected_cards = [card.card for card in selected_card_sprites]
-        self.cards = [card for card in self.cards if not card.selected]
+        self.bundle.card_bundle.hand_to_graveyard(selected_cards)
         self.resolve_selected_cards(selected_cards)
 
     def resolve_selected_cards(self, selected_cards: list[Card]):
@@ -142,7 +164,7 @@ class App:
 
     def draw(self):
         pyxel.cls(0)
-        for card in self.cards:
+        for card in self.card_sprites:
             card.draw()
 
         mx, my = pyxel.mouse_x, pyxel.mouse_y
@@ -160,8 +182,9 @@ class App:
                 7,
             )
 
-    def draw_bundle(self):
-        ...
-
+    def end_player_turn(self):
+        self.bundle.card_bundle.flush_hand_to_graveyard()
+        self.bundle.resolve_enemy_actions()
+        self.bundle.card_bundle.draw_to_hand()
 
 app = App()
