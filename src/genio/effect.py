@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TypeAlias
+from uuid import uuid4
 
 
 @dataclass(eq=True, frozen=True)
@@ -13,6 +14,8 @@ class DamageEffect:
     pierce: bool = False  # Do we ignore shield points
     drain: bool = False  # Do we heal from the damage
     accuracy: float = 1.0  # How likely are we to hit the target. if acc check failed, the effect is ignored
+
+    _uuid: str = field(default_factory=lambda: uuid4().hex)
 
 
 TargetedEffect: TypeAlias = tuple[str, DamageEffect]

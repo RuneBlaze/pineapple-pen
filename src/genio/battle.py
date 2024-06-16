@@ -5,11 +5,12 @@ import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Annotated, Protocol
+from typing import Annotated
 
 import numpy as np
 from boltons.queueutils import HeapPriorityQueue
 from smallperm import shuffle
+from structlog import get_logger
 
 from genio.core.base import access, promptly, slurp_toml
 from genio.effect import (
@@ -21,6 +22,8 @@ from genio.effect import (
     parse_global_effect,
     parse_targeted_effect,
 )
+
+logger = get_logger()
 
 
 class CardType(Enum):
@@ -98,16 +101,15 @@ def create_deck(cards: list[str]) -> list[Card]:
 @dataclass
 class ResolvedResults:
     """A completed sentence in the game. An occurrence, a line, of the game's narrative."""
-
     reason: Annotated[
         str,
-        "Justification for the completion. How the *action* connects the concepts serially.",
+        "Justification for the completion. How the *action* connects the concepts serially. If we are resolving a player's action, connect the cards that the player has played in sequence almost like a literary game. Do not include results in reason.",
     ]
     results: Annotated[
         str,
         (
-            "The results of the actions taken by both the player and the enemies, and the consequences of those actions. "
-            "The nuemrical deltas should be given in square brackets like [Slime: receive 5 damage]. "
+            "The results of the actions taken by either the player or the enemies, and the consequences of those actions. "
+            "The nuemrical deltas should be given in square brackets like [Slime: damaged 5]. "
         ),
     ]
 
@@ -156,14 +158,6 @@ class EnemyProfile(Profile):
     @staticmethod
     def from_predef(key: str) -> EnemyProfile:
         return EnemyProfile(**access(predef, key))
-
-
-class BattlerLike(Protocol):
-    def is_dead(self) -> bool:
-        ...
-
-    def receive_damage(self, damage: int) -> None:
-        ...
 
 
 @dataclass(eq=True)
@@ -308,11 +302,11 @@ class BattleBundle:
         self.card_bundle = card_bundle
         self.rng = np.random.default_rng()
 
-    def battlers(self) -> Iterator[BattlerLike]:
+    def battlers(self) -> Iterator[Battler]:
         yield self.player
         yield from self.enemies
 
-    def search(self, name: str) -> BattlerLike:
+    def search(self, name: str) -> Battler:
         for battler in self.battlers():
             if name.lower() in battler.name.lower():
                 return battler
@@ -334,11 +328,23 @@ class BattleBundle:
             battler = self.search(target)
             queued_turn = effect.delay + self.turn_counter
             self.effects.add((queued_turn, battler, effect), queued_turn)
+            logger.info(
+                "Effect queued",
+                target=target,
+                effect=effect,
+                queued_turn=queued_turn,
+            )
 
     def flush_effects(self, rng: np.random.Generator) -> None:
         while self.effects and self.effects.peek()[0] <= self.turn_counter:
             _, battler, effect = self.effects.pop()
             self.apply_effect(None, battler, effect, rng)
+            logger.info(
+                "Effect applied",
+                battler=battler,
+                effect=effect,
+                turn_counter=self.turn_counter,
+            )
 
     def _on_turn_start(self) -> None:
         for enemy in self.enemies:
@@ -399,6 +405,8 @@ class BattleBundle:
         delta_hp = effect.delta_hp * multiplier
         delta_shield = effect.delta_shield * multiplier
 
+        target.shield_points += delta_shield
+
         if delta_hp < 0:
             if effect.pierce:
                 # Ignore shield, apply all damage to HP
@@ -406,7 +414,6 @@ class BattleBundle:
             else:
                 # Reduce shield points first
                 remaining_damage = delta_hp + target.shield_points
-                target.shield_points += delta_shield
                 if target.shield_points < 0:
                     target.shield_points = 0
 

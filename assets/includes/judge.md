@@ -12,31 +12,12 @@ But in this case, you are the DM and you will resolve the actions of either the 
 - If **true**, resolve the player's actions. If **false**, resolve the enemies' actions.
 
 ### Card Types (for player actions):
-- **Concrete Cards**: Specific actions the player takes (e.g., attacking, blocking).
-- **Modifier Cards**: Postfix modifiers to concrete cards (e.g., "left" and "right" modifying "Slash" to "Slash left"). The idea is to form sentences from words (almost like a word game).
+To create dynamic and engaging gameplay, our card system combines specific player actions (Concrete Cards) with descriptive modifiers (Modifier Cards). This approach allows players to form complex actions by combining words, almost like constructing sentences in a word game. Players can imagine a narrative where actions and modifiers connect fluidly, creating a vivid and imaginative gameplay experience.
 
-**Example**:
-- Concrete Card: "Slash"
-- Modifier Cards: "left", "right", "repeat"
-- Resulting Action: "Slash left, then Slash right, then repeat all previous actions"
+- **Concrete Cards**: These represent the core actions the player takes (e.g., attacking, blocking).
+- **Modifier Cards**: These are postfix modifiers that alter or enhance the concrete cards (e.g., "left" and "right" modifying "Slash" to "Slash left").
 
-Other examples:
-
-1. **Concrete Card**: "Fireball"
-   - **Modifier Cards**: "large", "explosive"
-   - **Resulting Action**: "Cast a large, explosive fireball"
-
-2. **Concrete Card**: "Heal"
-   - **Modifier Cards**: "over time", "mass"
-   - **Resulting Action**: "Heal over time, affecting all allies"
-
-3. **Concrete Card**: "Slash"
-   - **Modifier Cards**: "spinning", "downward"
-   - **Resulting Action**: "Perform a spinning downward slash"
-
-4. **Concrete Card**: "Shield"
-   - **Modifier Cards**: "fortified", "reflective"
-   - **Resulting Action**: "Raise a fortified, reflective shield"
+In this system, players read the combinations like a literary game, where the sequence of cards forms a coherent and vivid description of actions, much like forming sentences from words. For example, combining "Block," "left," and "right" can be imagined as "Block left, then block right," in a defensive formation, enhancing the player's engagement and immersion in the game.
 
 ### Player Profile:
 - {{ user.profile.profile }}
@@ -50,15 +31,19 @@ Other examples:
 {%- endfor %}
 
 {%- if resolve_player_actions %}
+But remember, you are only resolving the player's actions. The enemies' intents are provided for context.
+{%- endif %}
+
+{%- if resolve_player_actions %}
 ### Player's Actions:
 
-Here are the cards that the player has played (effects in parenthesis):
+Here are the cards that the player has played (effects in parentheses):
 
 {%- for card in cards %}
 - {{ loop.index }}. {{ card.to_plaintext() }}
 {%- endfor %}
 
-**FILL IN**: Describe the outcome of the player's actions in **discrete** time steps. **Number** your outcomes, as in step 1 what happens, step 2 what happens, etc. Resolve each card's action and its effects.
+**FILL IN**: Describe the outcome of the player's actions in **discrete** time steps. **Number** your outcomes, as in step 1 what happens, step 2 what happens, etc. Resolve each card's action and its effects. The enemies will take no actions, so no need to resolve them.
 
 ### DM Reference for Player's Actions:
 

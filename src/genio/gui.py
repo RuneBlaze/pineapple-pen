@@ -15,6 +15,7 @@ predef = slurp_toml("assets/strings.toml")
 
 # Initialize pyuni at the module level
 pyuni = PyxelUnicode("assets/Roboto-Medium.ttf", 14)
+logtext = PyxelUnicode("assets/Roboto-Medium.ttf", 12)
 
 
 class CardSprite:
@@ -150,6 +151,14 @@ class App:
 
         pyuni.text(5, 5, f"Deck: {len(self.bundle.card_bundle.deck)}", 7)
         pyuni.text(5, 15, f"Graveyard: {len(self.bundle.card_bundle.graveyard)}", 7)
+
+        for i, battler in enumerate(self.bundle.battlers()):
+            logtext.text(
+                5,
+                30 + i * 12,
+                f"{battler.name}: HP {battler.hp} S {battler.shield_points}",
+                7,
+            )
 
     def draw_bundle(self):
         ...
