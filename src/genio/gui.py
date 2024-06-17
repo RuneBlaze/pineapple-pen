@@ -23,6 +23,7 @@ logtext = PyxelUnicode("assets/Roboto-Medium.ttf", 12)
 class CardSprite:
     def __init__(self, index, card: Card, app: App, selected=False):
         self.index = index
+        self.app = app
         self.change_index(index)
         self.x = self.target_x
         self.y = self.target_y
@@ -34,7 +35,6 @@ class CardSprite:
         self.dragging = False
         self.drag_offset_x = 0
         self.drag_offset_y = 0
-        self.app = app
 
     def draw(self):
         if self.selected:
@@ -179,17 +179,21 @@ class App:
         pyuni.text(5, 15, f"Graveyard: {len(self.bundle.card_bundle.graveyard)}", 7)
 
         for i, battler in enumerate(self.bundle.battlers()):
+            if isinstance(battler, PlayerBattler):
+                str_repr = f"{battler.name}: HP {battler.hp} S {battler.shield_points}"
+            elif isinstance(battler, EnemyBattler):
+                str_repr = f"{battler.name}: HP {battler.hp} S {battler.shield_points} Intent: {battler.current_intent}"
+            else:
+                str_repr = f"{battler.name}"
             logtext.text(
                 5,
                 30 + i * 12,
-                f"{battler.name}: HP {battler.hp} S {battler.shield_points}",
+                str_repr,
                 7,
             )
 
     def end_player_turn(self):
-        self.bundle.card_bundle.flush_hand_to_graveyard()
-        self.bundle.resolve_enemy_actions()
-        self.bundle.card_bundle.draw_to_hand()
+        self.bundle.end_player_turn()
 
 
 app = App()

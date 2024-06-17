@@ -34,6 +34,32 @@ In this system, players read the combinations like a literary game, where the se
 But remember, you are only resolving the player's actions. The enemies' intents are provided for context.
 {%- endif %}
 
+{% macro actions_description(title, resolve_goal, interpret_goal) %}
+### {{ title }}
+
+**FILL IN**: Describe the outcome of the {{ title | lower }} in **discrete** time steps. **Number** your outcomes, as in step 1 what happens, step 2 what happens, etc. Resolve each action and its effects.
+
+### DM Reference for {{ title }}:
+
+Your goals for filling in are:
+1. **{{ interpret_goal }}**: Describe the actions in a coherent way.
+2. **{{ resolve_goal }}**: Provide numerical resolutions for the actions, with the results given in square brackets, attached to the entities.
+    - Examples:
+      - `Ralph attacks the Slime for 5 damage. [Slime: damaged 5]`
+      - `Ralph blocks and gains 5 shield points. [Ralph: shield +5]`
+3. **Blocking and Shield Points**:
+    - When blocking, the entity should gain shield points to absorb damage.
+    - Example: `Slime blocks and gains 5 shield points. [Slime: shield +5]`
+4. **Allowed Resolutions**:
+    - `[entity: damaged X]` - The entity receives X damage.
+    - `[entity: healed X]` - The entity receives X healing.
+    - `[entity: shield -X]` - The entity loses X shield points.
+    - `[entity: shield X]` - The entity gains X shield points.
+5. **Coherence**: Ensure the actions make sense in the battle context, considering the opposing side's actions and intents.
+6. **Separate Hits**: If the entity deals damage multiple times, do not merge them. Write them separately so that they are properly registered as multiple hits. E.g., if dealing `2 x 4` damage, write `[entity: damaged 4]` twice.
+7. **Textual Support**: Ensure all actions have corresponding textual support.
+{% endmacro %}
+
 {%- if resolve_player_actions %}
 ### Player's Actions:
 
@@ -43,49 +69,8 @@ Here are the cards that the player has played (effects in parentheses):
 - {{ loop.index }}. {{ card.to_plaintext() }}
 {%- endfor %}
 
-**FILL IN**: Describe the outcome of the player's actions in **discrete** time steps. **Number** your outcomes, as in step 1 what happens, step 2 what happens, etc. Resolve each card's action and its effects. The enemies will take no actions, so no need to resolve them.
+{{ actions_description('Player\'s Actions', 'Resolve Player\'s Actions', 'Interpret the Cards') }}
 
-### DM Reference for Player's Actions:
-
-Your goals for filling in are:
-1. **Interpret the Cards**: Describe the player's actions in a coherent way.
-2. **Resolve Player's Actions**: Provide numerical resolutions for the player's actions, with the results given in square brackets, attached to the entities.
-    - Examples:
-      - `Ralph attacks the Slime for 5 damage. [Slime: damaged 5]`
-      - `Ralph blocks and gains 5 shield points. [Ralph: shield +5]`
-3. **Blocking and Shield Points**:
-    - When blocking, the player should gain shield points to absorb damage.
-    - Example: `Ralph blocks and gains 5 shield points. [Ralph: shield +5]`
-4. **Allowed Resolutions**:
-    - `[entity: damaged X]` - The entity receives X damage.
-    - `[entity: healed X]` - The entity receives X healing.
-    - `[entity: shield -X]` - The entity loses X shield points.
-    - `[entity: shield X]` - The entity gains X shield points.
-5. **Coherence**: Ensure the player's actions make sense in the battle context, considering the enemies' intents.
-6. **Separate Hits**: If the player deals damage multiple times, do not merge them. Write them separately so that they are properly registered as multiple hits. E.g., if dealing `2 x 4` damage, write `[entity: damaged 4]` twice.
-7. **Textual Support**: Ensure all actions have corresponding textual support.
 {%- else %}
-### Enemies' Actions:
-
-**FILL IN**: Describe the outcome of the enemies' actions in **discrete** time steps. **Number** your outcomes, as in step 1 what happens, step 2 what happens, etc. Resolve each enemy's action and its effects.
-
-### DM Reference for Enemies' Actions:
-
-Your goals for filling in are:
-1. **Resolve Enemies' Actions**: Describe and resolve each enemy's actions in a coherent way.
-2. **Numerical Resolutions**: Provide numerical resolutions for the enemies' actions, with the results given in square brackets, attached to the entities.
-    - Examples:
-      - `Slime attacks Ralph for 3 damage. [Ralph: damaged 3]`
-      - `Orc blocks and gains 5 shield points. [Orc: shield +5]`
-3. **Blocking and Shield Points**:
-    - When blocking, the enemy should gain shield points to absorb damage.
-    - Example: `Orc blocks and gains 5 shield points. [Orc: shield +5]`
-4. **Allowed Resolutions**:
-    - `[entity: damaged X]` - The entity receives X damage.
-    - `[entity: healed X]` - The entity receives X healing.
-    - `[entity: shield -X]` - The entity loses X shield points.
-    - `[entity: shield X]` - The entity gains X shield points.
-5. **Coherence**: Ensure the enemies' actions make sense in the battle context, considering the player's previous actions.
-6. **Separate Hits**: If an enemy deals damage multiple times, do not merge them. Write them separately so that they are properly registered as multiple hits. E.g., if dealing `2 x 4` damage, write `[entity: damaged 4]` twice.
-7. **Textual Support**: Ensure all actions have corresponding textual support.
+{{ actions_description('Enemies\' Actions', 'Resolve Enemies\' Actions', 'Resolve Enemies\' Actions') }}
 {%- endif %}

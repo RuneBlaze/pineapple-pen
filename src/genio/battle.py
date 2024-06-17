@@ -15,10 +15,10 @@ from structlog import get_logger
 from genio.core.base import access, promptly, slurp_toml
 from genio.effect import (
     CreateCardEffect,
-    SinglePointEffect,
     DiscardCardsEffect,
     DrawCardsEffect,
     GlobalEffect,
+    SinglePointEffect,
     parse_global_effect,
     parse_targeted_effect,
 )
@@ -396,6 +396,7 @@ class BattleBundle:
                 effect=effect,
                 turn_counter=self.turn_counter,
             )
+        self.clear_dead()
 
     def _on_turn_start(self) -> None:
         for enemy in self.enemies:
@@ -488,3 +489,17 @@ class BattleBundle:
 
     def _apply_healing(self, target: Battler, delta_hp: float) -> None:
         target.receive_heal(delta_hp)
+
+    def end_player_turn(self) -> None:
+        self.card_bundle.flush_hand_to_graveyard()
+        self.resolve_enemy_actions()
+        self._on_turn_end()
+        self.card_bundle.draw_to_hand()
+        self._on_turn_start()
+    
+    def clear_dead(self) -> None:
+        if self.player.is_dead():
+            raise ValueError("Player is dead")
+        self.enemies = [enemy for enemy in self.enemies if not enemy.is_dead()]
+        if not self.enemies:
+            raise ValueError("All enemies are dead")

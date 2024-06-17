@@ -20,7 +20,7 @@ class SinglePointEffect:
     @staticmethod
     def from_plain_damage(damage: int) -> SinglePointEffect:
         return SinglePointEffect(delta_hp=-damage)
-    
+
     @staticmethod
     def from_heal(heal: int) -> SinglePointEffect:
         return SinglePointEffect(delta_hp=heal)
