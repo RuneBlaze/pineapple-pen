@@ -6,16 +6,19 @@ from uuid import uuid4
 
 
 @dataclass(eq=True, frozen=True)
-class SinglePointEffect:
-    delta_shield: int  # How are we changing the shield points
-    delta_hp: int
-    critical_chance: float = 0.0  # If critical, we multiply the effect by 2
-    delay: int = 0  # How many turns to wait
-    pierce: bool = False  # Do we ignore shield points
-    drain: bool = False  # Do we heal from the damage
-    accuracy: float = 1.0  # How likely are we to hit the target. if acc check failed, the effect is ignored
-
+class Effect:
+    delay: int = 0
+    critical_chance: float = 0.0
+    pierce: bool = False
+    drain: bool = False
+    accuracy: float = 1.0
     _uuid: str = field(default_factory=lambda: uuid4().hex)
+
+
+@dataclass(eq=True, frozen=True)
+class SinglePointEffect(Effect):
+    delta_shield: int = 0
+    delta_hp: int = 0
 
     @staticmethod
     def from_plain_damage(damage: int) -> SinglePointEffect:
@@ -26,33 +29,31 @@ class SinglePointEffect:
         return SinglePointEffect(delta_hp=heal)
 
 
-TargetedEffect: TypeAlias = tuple[str, SinglePointEffect]
-
-
-class GlobalEffect:
+@dataclass(eq=True, frozen=True)
+class GlobalEffect(Effect):
     pass
 
 
 @dataclass(eq=True, frozen=True)
 class DrawCardsEffect(GlobalEffect):
-    count: int
-    delay: int = 0
+    count: int = 1
 
 
 @dataclass(eq=True, frozen=True)
 class DiscardCardsEffect(GlobalEffect):
-    count: int
-    delay: int = 0
+    count: int = 1
 
 
 @dataclass(eq=True, frozen=True)
 class CreateCardEffect(GlobalEffect):
-    card: str
-    delay: int = 0
+    card: str = ""
+
+
+TargetedEffect: TypeAlias = tuple[str, SinglePointEffect]
+EffectType: TypeAlias = GlobalEffect | TargetedEffect
 
 
 def parse_global_effect(modifier: str) -> GlobalEffect:
-    # Global effects are double-bracketed, e.g. `[[draw 2 | delay 1]]`
     import re
 
     match = re.match(r"\[\[(.*)\]\]", modifier)
@@ -61,36 +62,24 @@ def parse_global_effect(modifier: str) -> GlobalEffect:
     effect = match.group(1).strip()
 
     tokens = effect.split("|")
+    common_modifiers = parse_common_modifiers(tokens)
+
     if "draw" in effect:
         count = int(tokens[0].split(" ")[1])
-        delay = 0
-        for token in tokens[1:]:
-            if "delay" in token:
-                delay = int(token.split(" ")[1])
-        return DrawCardsEffect(count, delay)
+        return DrawCardsEffect(count, **common_modifiers)
     elif "discard" in effect:
         count = int(tokens[0].split(" ")[1])
-        delay = 0
-        for token in tokens[1:]:
-            if "delay" in token:
-                delay = int(token.split(" ")[1])
-        return DiscardCardsEffect(count, delay)
+        return DiscardCardsEffect(count, **common_modifiers)
     elif "create" in effect:
         card = tokens[0].split(" ")[1]
-        delay = 0
-        for token in tokens[1:]:
-            if "delay" in token:
-                delay = int(token.split(" ")[1])
-        return CreateCardEffect(card, delay)
+        return CreateCardEffect(card, **common_modifiers)
     else:
         raise ValueError("Invalid format")
 
 
 def parse_targeted_effect(modifier: str) -> TargetedEffect:
-    # Example input: `[entity: shield X | crit 0.5 | delay 1]`
     import re
 
-    # Remove brackets and split the entity and effects
     match = re.match(r"\[(.*): (.*)\]", modifier)
     if not match:
         raise ValueError("Invalid format")
@@ -98,42 +87,49 @@ def parse_targeted_effect(modifier: str) -> TargetedEffect:
     entity = match.group(1).strip()
     effects = match.group(2).split("|")
 
-    # Initialize default values
     delta_shield = 0
     delta_hp = 0
-    critical_chance = 0.0
-    delay = 0
-    pierce = False
-    accuracy = 1.0
-    drain = False
 
-    # Parse each effect
     for effect in effects:
         effect = effect.strip()
         if "shield" in effect:
-            value = int(effect.split(" ")[1])
-            delta_shield = value
+            delta_shield = int(effect.split(" ")[1])
         elif "damaged" in effect or "healed" in effect:
             delta_hp = int(effect.split(" ")[1])
             if "damaged" in effect:
                 delta_hp *= -1
-        elif "crit" in effect:
-            critical_chance = float(effect.split(" ")[1])
-        elif "acc" in effect:
-            accuracy = float(effect.split(" ")[1])
-        elif "delay" in effect:
-            delay = int(effect.split(" ")[1])
-        elif "pierce" in effect:
-            pierce = True
-        elif "drain" in effect:
-            drain = True
 
-    return entity, SinglePointEffect(
-        delta_shield, delta_hp, critical_chance, delay, pierce, drain, accuracy
-    )
+    common_modifiers = parse_common_modifiers(effects)
+    print(common_modifiers)
+    return entity, SinglePointEffect(delta_shield=delta_shield, delta_hp=delta_hp, **common_modifiers)
 
 
-def parse_effect(modifier: str) -> GlobalEffect | TargetedEffect:
+def parse_common_modifiers(tokens: list[str]) -> dict:
+    modifiers = {
+        "delay": 0,
+        "critical_chance": 0.0,
+        "pierce": False,
+        "drain": False,
+        "accuracy": 1.0,
+    }
+
+    for token in tokens:
+        token = token.strip()
+        if "crit" in token:
+            modifiers["critical_chance"] = float(token.split(" ")[1])
+        elif "acc" in token:
+            modifiers["accuracy"] = float(token.split(" ")[1])
+        elif "delay" in token:
+            modifiers["delay"] = int(token.split(" ")[1])
+        elif "pierce" in token:
+            modifiers["pierce"] = True
+        elif "drain" in token:
+            modifiers["drain"] = True
+
+    return modifiers
+
+
+def parse_effect(modifier: str) -> EffectType:
     if modifier.startswith("[["):
         return parse_global_effect(modifier)
     else:

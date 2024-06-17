@@ -496,7 +496,7 @@ class BattleBundle:
         self._on_turn_end()
         self.card_bundle.draw_to_hand()
         self._on_turn_start()
-    
+
     def clear_dead(self) -> None:
         if self.player.is_dead():
             raise ValueError("Player is dead")

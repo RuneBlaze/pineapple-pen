@@ -50,14 +50,31 @@ Your goals for filling in are:
 3. **Blocking and Shield Points**:
     - When blocking, the entity should gain shield points to absorb damage.
     - Example: `Slime blocks and gains 5 shield points. [Slime: shield +5]`
-4. **Allowed Resolutions**:
+4. **Entity Effects**:
     - `[entity: damaged X]` - The entity receives X damage.
     - `[entity: healed X]` - The entity receives X healing.
     - `[entity: shield -X]` - The entity loses X shield points.
     - `[entity: shield X]` - The entity gains X shield points.
-5. **Coherence**: Ensure the actions make sense in the battle context, considering the opposing side's actions and intents.
-6. **Separate Hits**: If the entity deals damage multiple times, do not merge them. Write them separately so that they are properly registered as multiple hits. E.g., if dealing `2 x 4` damage, write `[entity: damaged 4]` twice.
-7. **Textual Support**: Ensure all actions have corresponding textual support.
+5. **Global Effects**:
+    - `[[draw X]]` - The player draws X cards.
+    - `[[discard X]]` - The player discards X cards.
+    - `[[create card "card description"]]` - A specified card is created.
+6. **Effect Modifiers**:
+   - **Critical Chance (crit X)**: Chance of double damage/healing.
+       - `[entity: damaged 10 | crit 0.5]`
+   - **Delay (delay X)**: Effect delayed by X turns.
+       - `[entity: damaged 10 | delay 2]`
+   - **Pierce (pierce)**: Ignores shield points.
+       - `[entity: damaged 10 | pierce]`
+   - **Drain (drain)**: Heals entity by damage dealt.
+       - `[entity: damaged 10 | drain]`
+   - **Accuracy (acc X)**: Probability of effect success.
+       - `[entity: damaged 10 | acc 0.8]`
+   - **Multiple Modifiers Example**: `[entity: damaged 10 | crit 0.5 | delay 2 | pierce | drain | acc 0.8]`
+   - **Global Effects**: Modifiers also apply, e.g., `[[draw 2 | delay 1 | acc 0.9]]`
+7. **Coherence**: Ensure the actions make sense in the battle context, considering the opposing side's actions and intents.
+8. **Separate Hits**: If the entity deals damage multiple times, do not merge them. Write them separately so that they are properly registered as multiple hits. E.g., if dealing `2 x 4` damage, write `[entity: damaged 4]` twice.
+9.  **Textual Support**: Ensure all actions have corresponding textual support.
 {% endmacro %}
 
 {%- if resolve_player_actions %}
