@@ -14,6 +14,9 @@ class Effect:
     accuracy: float = 1.0
     _uuid: str = field(default_factory=lambda: uuid4().hex)
 
+    def equals_except_uuid(self, other: Effect) -> bool:
+        return self.__dict__ | {"_uuid": None} == other.__dict__ | {"_uuid": None}
+
 
 @dataclass(eq=True, frozen=True)
 class SinglePointEffect(Effect):
@@ -21,8 +24,8 @@ class SinglePointEffect(Effect):
     delta_hp: int = 0
 
     @staticmethod
-    def from_plain_damage(damage: int) -> SinglePointEffect:
-        return SinglePointEffect(delta_hp=-damage)
+    def from_damage(damage: int, pierce: bool = False) -> SinglePointEffect:
+        return SinglePointEffect(delta_hp=-damage, pierce=pierce)
 
     @staticmethod
     def from_heal(heal: int) -> SinglePointEffect:
@@ -100,8 +103,9 @@ def parse_targeted_effect(modifier: str) -> TargetedEffect:
                 delta_hp *= -1
 
     common_modifiers = parse_common_modifiers(effects)
-    print(common_modifiers)
-    return entity, SinglePointEffect(delta_shield=delta_shield, delta_hp=delta_hp, **common_modifiers)
+    return entity, SinglePointEffect(
+        delta_shield=delta_shield, delta_hp=delta_hp, **common_modifiers
+    )
 
 
 def parse_common_modifiers(tokens: list[str]) -> dict:

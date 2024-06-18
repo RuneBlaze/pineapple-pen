@@ -145,6 +145,7 @@ class Profile:
 @dataclass(eq=True)
 class PlayerProfile(Profile):
     profile: str
+    mp: int = 1
 
     @staticmethod
     def from_predef(key: str) -> PlayerProfile:
@@ -185,8 +186,7 @@ class Battler:
     hp: int
     max_hp: int
     shield_points: int
-
-    uuid: str = field(default_factory=lambda: str(uuid.uuid4()))
+    # uuid: str
 
     @staticmethod
     def from_profile(profile: Profile) -> Battler:
@@ -225,6 +225,9 @@ class Battler:
         self.hp += actual_heal
         return HealResult(actual_heal)
 
+    def on_turn_start(self) -> None:
+        self.shield_points = 0
+
     def __hash__(self) -> int:
         return hash(self.uuid)
 
@@ -232,6 +235,10 @@ class Battler:
 @dataclass
 class PlayerBattler(Battler):
     profile: PlayerProfile
+    mp: int
+    max_mp: int
+
+    uuid: str = field(default_factory=lambda: str(uuid.uuid4()))
 
     @staticmethod
     def from_predef(key: str) -> PlayerBattler:
@@ -244,6 +251,8 @@ class PlayerBattler(Battler):
             hp=profile.hit_points,
             max_hp=profile.hit_points,
             shield_points=0,
+            mp=profile.mp,
+            max_mp=profile.mp,
         )
 
     def __hash__(self) -> int:
@@ -255,6 +264,8 @@ class EnemyBattler(Battler):
     profile: EnemyProfile
     copy_number: int = 1
     current_intent: str = field(init=False)
+
+    uuid: str = field(default_factory=lambda: str(uuid.uuid4()))
 
     def __post_init__(self):
         self.current_intent = self.profile.pattern[0]
@@ -492,10 +503,13 @@ class BattleBundle:
 
     def end_player_turn(self) -> None:
         self.card_bundle.flush_hand_to_graveyard()
+        for enemy in self.enemies:
+            enemy.on_turn_start()
         self.resolve_enemy_actions()
         self._on_turn_end()
         self.card_bundle.draw_to_hand()
         self._on_turn_start()
+        self.player.on_turn_start()
 
     def clear_dead(self) -> None:
         if self.player.is_dead():

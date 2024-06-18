@@ -11,6 +11,7 @@ In conversation, Jon speaks with a gentle, almost lyrical cadence. His words are
 [players.starter]
 name = "Celine, the Magical Swordswoman"
 hit_points = 90
+mp = 6
 profile = """
 Celine, the Magical Swordswoman, is a fierce and determined warrior with an ethereal touch. At 24 years old, she stands at 5'1", her petite frame belying the formidable strength and agility she possesses. Her short, auburn hair cascades around her heart-shaped face, and her bright green eyes, filled with a piercing intensity, reflect the fire of her unyielding spirit.
 

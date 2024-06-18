@@ -1,4 +1,10 @@
-from genio.effect import SinglePointEffect, parse_targeted_effect
+from genio.effect import SinglePointEffect, TargetedEffect, parse_targeted_effect
+
+
+def targeted_effect_equals_except_uuid(
+    lhs: TargetedEffect, rhs: TargetedEffect
+) -> bool:
+    return lhs[1].equals_except_uuid(rhs[1]) and lhs[0] == rhs[0]
 
 
 def test_parse_targeted_effect():
@@ -15,7 +21,9 @@ def test_parse_targeted_effect():
             accuracy=1.0,
         ),
     )
-    assert parse_targeted_effect(modifier) == expected_result
+    assert targeted_effect_equals_except_uuid(
+        parse_targeted_effect(modifier), expected_result
+    )
 
     modifier = "[entity: damaged 5 | acc 0.8 | delay 2 | pierce | drain]"
     expected_result = (
@@ -30,7 +38,9 @@ def test_parse_targeted_effect():
             accuracy=0.8,
         ),
     )
-    assert parse_targeted_effect(modifier) == expected_result
+    assert targeted_effect_equals_except_uuid(
+        parse_targeted_effect(modifier), expected_result
+    )
 
     modifier = "[entity: healed 3 | crit 0.2 | delay 0]"
     expected_result = (
@@ -45,4 +55,6 @@ def test_parse_targeted_effect():
             accuracy=1.0,
         ),
     )
-    assert parse_targeted_effect(modifier) == expected_result
+    assert targeted_effect_equals_except_uuid(
+        parse_targeted_effect(modifier), expected_result
+    )
