@@ -346,6 +346,35 @@ class CardBundle:
         self.events.append("flush_hand_to_graveyard")
 
 
+@dataclass
+class EffectGroup:
+    parent: BattleBundle
+    inner: list[
+        tuple[tuple[int, Battler | None, SinglePointEffect | GlobalEffect], int]
+    ] = field(default_factory=list)
+    enqueued = False
+
+    def enqueue(self) -> None:
+        if self.enqueued:
+            raise ValueError("EffectGroup already enqueued")
+        for effect in self.inner:
+            self.parent.effects.add(*effect)
+            logger.info(
+                "Effect queued",
+                target=effect[0][1],
+                effect=effect[0][2],
+                queued_turn=effect[1],
+            )
+        self.enqueued = True
+
+    def __add__(self, other: EffectGroup) -> EffectGroup:
+        if self.parent != other.parent:
+            raise ValueError("Cannot add EffectGroups from different BattleBundles")
+        if self.enqueued or other.enqueued:
+            raise ValueError("Cannot add enqueued EffectGroups")
+        return EffectGroup(self.parent, self.inner + other.inner)
+
+
 class BattleBundle:
     def __init__(
         self,
@@ -361,6 +390,7 @@ class BattleBundle:
         self.battle_prelude = battle_prelude
         self.card_bundle = card_bundle
         self.rng = np.random.default_rng()
+        self.event_listeners = []  # remember to use weakrefs
 
     def battlers(self) -> Iterator[Battler]:
         yield self.player
@@ -372,7 +402,7 @@ class BattleBundle:
                 return battler
         raise ValueError(f"No battler found with name '{name}'")
 
-    def resolve_result(self, result: str) -> None:
+    def resolve_result(self, result: str, autoflush: bool = True) -> EffectGroup:
         global_pattern = r"\[\[.*?\]\]"
         substrings = re.findall(global_pattern, result)
         for substring in substrings:
@@ -381,25 +411,38 @@ class BattleBundle:
             self.effects.add((queued_turn, None, effect), queued_turn)
         targeted_pattern = r"(\[.*?\])"
         substrings = re.findall(targeted_pattern, result)
+        buffer = []
         for substring in substrings:
             if "[[" in substring:
                 continue
             target, effect = parse_targeted_effect(substring)
             battler = self.search(target)
             queued_turn = effect.delay + self.turn_counter
-            self.effects.add((queued_turn, battler, effect), queued_turn)
-            logger.info(
-                "Effect queued",
-                target=target,
-                effect=effect,
-                queued_turn=queued_turn,
-            )
+            buffer.append(((queued_turn, battler, effect), queued_turn))
+        group = EffectGroup(self)
+        group.inner = buffer
+        if autoflush:
+            group.enqueue()
+        return group
 
     def flush_effects(self, rng: np.random.Generator | None = None) -> None:
         if rng is None:
             rng = np.random.default_rng()
         while self.effects and self.effects.peek()[0] <= self.turn_counter:
             _, battler, effect = self.effects.pop()
+            canceled = False
+            new_effects = EffectGroup(self)
+            for listener in self.event_listeners:
+                listener_response = listener(effect)
+                if listener_response == "cancel":
+                    canceled = True
+                    break
+                elif listener_response:
+                    new_effects += self.resolve_result(
+                        listener_response, autoflush=False
+                    )
+            if canceled:
+                continue
             self.apply_effect(None, battler, effect, rng)
             logger.info(
                 "Effect applied",
@@ -407,6 +450,7 @@ class BattleBundle:
                 effect=effect,
                 turn_counter=self.turn_counter,
             )
+            new_effects.enqueue()
         self.clear_dead()
 
     def _on_turn_start(self) -> None:
