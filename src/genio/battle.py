@@ -19,6 +19,7 @@ from genio.effect import (
     DrawCardsEffect,
     GlobalEffect,
     SinglePointEffect,
+    parse_effect,
     parse_global_effect,
     parse_targeted_effect,
 )
@@ -375,6 +376,25 @@ class EffectGroup:
         return EffectGroup(self.parent, self.inner + other.inner)
 
 
+def parse_top_level_brackets(s: str) -> list[str]:
+    result = []
+    stack = []
+    start_idx = -1
+    
+    for i, char in enumerate(s):
+        if char == '[':
+            stack.append(char)
+            if len(stack) == 1:
+                start_idx = i
+        elif char == ']':
+            if stack:
+                stack.pop()
+                if len(stack) == 0 and start_idx != -1:
+                    result.append(s[start_idx:i+1])
+                    start_idx = -1
+    
+    return result
+
 class BattleBundle:
     def __init__(
         self,
@@ -403,22 +423,18 @@ class BattleBundle:
         raise ValueError(f"No battler found with name '{name}'")
 
     def resolve_result(self, result: str, autoflush: bool = True) -> EffectGroup:
-        global_pattern = r"\[\[.*?\]\]"
-        substrings = re.findall(global_pattern, result)
-        for substring in substrings:
-            effect = parse_global_effect(substring)
-            queued_turn = effect.delay + self.turn_counter
-            self.effects.add((queued_turn, None, effect), queued_turn)
-        targeted_pattern = r"(\[.*?\])"
-        substrings = re.findall(targeted_pattern, result)
+        substrings = parse_top_level_brackets(result)
         buffer = []
         for substring in substrings:
-            if "[[" in substring:
-                continue
-            target, effect = parse_targeted_effect(substring)
-            battler = self.search(target)
-            queued_turn = effect.delay + self.turn_counter
-            buffer.append(((queued_turn, battler, effect), queued_turn))
+            parsed = parse_effect(substring)
+            match parsed:
+                case (target, effect):
+                    battler = self.search(target)
+                    queued_turn = effect.delay + self.turn_counter
+                    buffer.append(((queued_turn, battler, effect), queued_turn))
+                case (effect):
+                    queued_turn = effect.delay + self.turn_counter
+                    buffer.append(((queued_turn, None, effect), queued_turn))
         group = EffectGroup(self)
         group.inner = buffer
         if autoflush:

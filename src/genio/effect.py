@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
-from typing import TypeAlias
+from typing import Literal, TypeAlias
 from uuid import uuid4
+
+from parse import search
+
+from genio.imply import Subst
 
 
 @dataclass(eq=True, frozen=True)
@@ -18,10 +23,19 @@ class Effect:
         return self.__dict__ | {"_uuid": None} == other.__dict__ | {"_uuid": None}
 
 
+@dataclass
+class StatusDefinition:
+    name: str
+    subst: Subst
+    counter_type: Literal["turns", "times"]
+
+
 @dataclass(eq=True, frozen=True)
 class SinglePointEffect(Effect):
     delta_shield: int = 0
     delta_hp: int = 0
+    add_status: tuple[StatusDefinition, int] | None = None
+    remove_status: str | None = None
 
     @staticmethod
     def from_damage(damage: int, pierce: bool = False) -> SinglePointEffect:
@@ -57,9 +71,7 @@ EffectType: TypeAlias = GlobalEffect | TargetedEffect
 
 
 def parse_global_effect(modifier: str) -> GlobalEffect:
-    import re
-
-    match = re.match(r"\[\[(.*)\]\]", modifier)
+    match = re.match(r"\[(.*)\]", modifier)
     if not match:
         raise ValueError("Invalid format")
     effect = match.group(1).strip()
@@ -81,8 +93,16 @@ def parse_global_effect(modifier: str) -> GlobalEffect:
 
 
 def parse_targeted_effect(modifier: str) -> TargetedEffect:
-    import re
-
+    pat = "[{:w}: +{:w} [{:d} {:w}] {};]"
+    if match := search(pat, modifier):
+        entity, name, counter, counter_type, effects = match.fixed
+        tokens = effects.split("|")
+        common_modifiers = parse_common_modifiers(tokens[1:])
+        subst = tokens[0]
+        status_def = StatusDefinition(name, Subst.parse(subst + ";"), counter_type)
+        return entity, SinglePointEffect(
+            add_status=(status_def, counter), **common_modifiers
+        )
     match = re.match(r"\[(.*): (.*)\]", modifier)
     if not match:
         raise ValueError("Invalid format")
@@ -134,7 +154,7 @@ def parse_common_modifiers(tokens: list[str]) -> dict:
 
 
 def parse_effect(modifier: str) -> EffectType:
-    if modifier.startswith("[["):
+    if ':' not in modifier:
         return parse_global_effect(modifier)
     else:
         return parse_targeted_effect(modifier)

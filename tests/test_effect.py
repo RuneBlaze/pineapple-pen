@@ -58,3 +58,14 @@ def test_parse_targeted_effect():
     assert targeted_effect_equals_except_uuid(
         parse_targeted_effect(modifier), expected_result
     )
+
+
+def test_parse_targeted_effect_status_effect():
+    _, effect = parse_targeted_effect(
+        "[entity: +vulnerable [3 turns] [foo: {:d}] -> [foo: {{m[0] + 2}}];]"
+    )
+    defn, counter = effect.add_status
+    assert defn.counter_type == "turns"
+    assert counter == 3
+    assert defn.name == "vulnerable"
+    assert defn.subst.pattern == "[foo: {:d}]"
