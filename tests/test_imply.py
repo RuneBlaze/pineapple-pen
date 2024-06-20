@@ -7,6 +7,11 @@ def test_subst_trivial():
     assert subst.apply("[foo: 5]") == "[foo: 7]"
 
 
+def test_subst_multiple():
+    subst = Subst.parse("[foo: {:d}] -> [foo: {{m[0] + 2}}];")
+    assert subst.apply("[foo: 5][foo: 6]") == "[foo: 7][foo: 8]"
+
+
 def test_subst_condition():
     subst = Subst.parse("[foo: {:d}] if m[0] > 5 -> [foo: {{m[0] + 2}}];")
     assert subst.apply("[foo: 5]") == "[foo: 5]"

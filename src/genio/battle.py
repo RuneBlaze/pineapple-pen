@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass, field
@@ -19,9 +18,8 @@ from genio.effect import (
     DrawCardsEffect,
     GlobalEffect,
     SinglePointEffect,
+    StatusDefinition,
     parse_effect,
-    parse_global_effect,
-    parse_targeted_effect,
 )
 
 logger = get_logger()
@@ -187,7 +185,6 @@ class Battler:
     hp: int
     max_hp: int
     shield_points: int
-    # uuid: str
 
     @staticmethod
     def from_profile(profile: Profile) -> Battler:
@@ -238,6 +235,7 @@ class PlayerBattler(Battler):
     profile: PlayerProfile
     mp: int
     max_mp: int
+    status_effects: list[StatusEffect] = field(default_factory=list)
 
     uuid: str = field(default_factory=lambda: str(uuid.uuid4()))
 
@@ -265,6 +263,7 @@ class EnemyBattler(Battler):
     profile: EnemyProfile
     copy_number: int = 1
     current_intent: str = field(init=False)
+    status_effects: list[StatusEffect] = field(default_factory=list)
 
     uuid: str = field(default_factory=lambda: str(uuid.uuid4()))
 
@@ -380,20 +379,31 @@ def parse_top_level_brackets(s: str) -> list[str]:
     result = []
     stack = []
     start_idx = -1
-    
+
     for i, char in enumerate(s):
-        if char == '[':
+        if char == "[":
             stack.append(char)
             if len(stack) == 1:
                 start_idx = i
-        elif char == ']':
+        elif char == "]":
             if stack:
                 stack.pop()
                 if len(stack) == 0 and start_idx != -1:
-                    result.append(s[start_idx:i+1])
+                    result.append(s[start_idx : i + 1])
                     start_idx = -1
-    
+
     return result
+
+
+@dataclass
+class StatusEffect:
+    defn: StatusDefinition
+    counter: int
+    owner: Battler
+
+    def apply(self, results: str) -> str:
+        return self.defn.subst.apply(results, {"counter": self.counter})
+
 
 class BattleBundle:
     def __init__(
@@ -432,7 +442,7 @@ class BattleBundle:
                     battler = self.search(target)
                     queued_turn = effect.delay + self.turn_counter
                     buffer.append(((queued_turn, battler, effect), queued_turn))
-                case (effect):
+                case effect:
                     queued_turn = effect.delay + self.turn_counter
                     buffer.append(((queued_turn, None, effect), queued_turn))
         group = EffectGroup(self)
@@ -543,6 +553,16 @@ class BattleBundle:
             self._apply_damage(caster, target, effect, delta_hp)
         else:
             self._apply_healing(target, delta_hp)
+
+        if effect.add_status:
+            self._apply_add_status(target, effect.add_status)
+
+    def _apply_add_status(
+        self,
+        target: Battler,
+        status: tuple[StatusDefinition, int],
+    ) -> None:
+        ...
 
     def _apply_damage(
         self,

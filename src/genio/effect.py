@@ -154,7 +154,7 @@ def parse_common_modifiers(tokens: list[str]) -> dict:
 
 
 def parse_effect(modifier: str) -> EffectType:
-    if ':' not in modifier:
+    if ":" not in modifier:
         return parse_global_effect(modifier)
     else:
         return parse_targeted_effect(modifier)

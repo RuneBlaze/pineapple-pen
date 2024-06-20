@@ -21,16 +21,26 @@ class Subst:
         pattern, replacement = search("{} -> {};", s).fixed
         return Subst(pattern, replacement)
 
-    def apply(self, s: str, extra_context: dict | None = None) -> str:
+    def apply(
+        self, s: str, extra_context: dict | None = None, num_matches: int = 0
+    ) -> str:
         extra_context = extra_context or {}
         # Create a parser based on the specified pattern
         parser = Parser(self.pattern)
-        result = parser.parse(s)
-        if not result:
-            raise ValueError(f"Pattern {self.pattern} did not match the string {s}")
+        match = parser.search(s, evaluate_result=False)
+        if not match:
+            if num_matches <= 0:
+                raise ValueError(f"Pattern {self.pattern} did not match the string {s}")
+            return s
+        result = parser.evaluate_result(match.match)
+        st, ed = match.match.span(0)
         context = {"m": result.fixed, **extra_context}
         if self.condition:
             if not eval(self.condition, {}, context):
                 return s
         template = Template(self.replacement)
-        return template.render(context)
+        return (
+            s[:st]
+            + template.render(context)
+            + self.apply(s[ed:], extra_context, num_matches + 1)
+        )
