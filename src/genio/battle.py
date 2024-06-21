@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import uuid
+import weakref
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Annotated
+from typing import Annotated, Literal
 
 import numpy as np
 from boltons.queueutils import HeapPriorityQueue
@@ -21,6 +22,7 @@ from genio.effect import (
     StatusDefinition,
     parse_effect,
 )
+from genio.imply import Subst
 
 logger = get_logger()
 
@@ -137,13 +139,13 @@ predef = slurp_toml("assets/strings.toml")
 
 @dataclass(eq=True)
 class Profile:
-    name: str
-    hit_points: int
+    name: str = ""
+    hit_points: int = 0
 
 
 @dataclass(eq=True)
 class PlayerProfile(Profile):
-    profile: str
+    profile: str = ""
     mp: int = 1
 
     @staticmethod
@@ -153,8 +155,8 @@ class PlayerProfile(Profile):
 
 @dataclass(eq=True)
 class EnemyProfile(Profile):
-    description: str
-    pattern: list[str]
+    description: str = ""
+    pattern: list[str] = field(default_factory=list)
 
     @staticmethod
     def from_predef(key: str) -> EnemyProfile:
@@ -181,10 +183,13 @@ class HealResult:
 
 @dataclass(eq=True)
 class Battler:
-    profile: Profile
-    hp: int
-    max_hp: int
-    shield_points: int
+    profile: Profile = field(default_factory=Profile)
+    hp: int = 0
+    max_hp: int = 0
+    shield_points: int = 0
+    status_effects: list[StatusEffect] = field(default_factory=list)
+
+    uuid: str = field(default_factory=lambda: str(uuid.uuid4()))
 
     @staticmethod
     def from_profile(profile: Profile) -> Battler:
@@ -203,6 +208,7 @@ class Battler:
         return self.hp <= 0
 
     def receive_damage(self, damage: int, pierce: bool = False) -> DamageResult:
+        damage = int(damage)
         if damage < 0:
             raise ValueError("Damage must be a positive integer")
         if pierce:
@@ -217,6 +223,7 @@ class Battler:
         return DamageResult(rest_damage)
 
     def receive_heal(self, heal: int) -> HealResult:
+        heal = int(heal)
         if heal < 0:
             raise ValueError("Heal must be a positive integer")
         actual_heal = min(self.max_hp - self.hp, heal)
@@ -232,12 +239,9 @@ class Battler:
 
 @dataclass
 class PlayerBattler(Battler):
-    profile: PlayerProfile
-    mp: int
-    max_mp: int
-    status_effects: list[StatusEffect] = field(default_factory=list)
-
-    uuid: str = field(default_factory=lambda: str(uuid.uuid4()))
+    profile: PlayerProfile = field(default_factory=PlayerProfile)
+    mp: int = 0
+    max_mp: int = 0
 
     @staticmethod
     def from_predef(key: str) -> PlayerBattler:
@@ -260,12 +264,9 @@ class PlayerBattler(Battler):
 
 @dataclass
 class EnemyBattler(Battler):
-    profile: EnemyProfile
+    profile: EnemyProfile = field(default_factory=EnemyProfile)
     copy_number: int = 1
     current_intent: str = field(init=False)
-    status_effects: list[StatusEffect] = field(default_factory=list)
-
-    uuid: str = field(default_factory=lambda: str(uuid.uuid4()))
 
     def __post_init__(self):
         self.current_intent = self.profile.pattern[0]
@@ -401,8 +402,22 @@ class StatusEffect:
     counter: int
     owner: Battler
 
+    _subst: Subst = field(init=False)
+
+    def __post_init__(self):
+        self._subst = self.defn.subst.replace("ME", self.owner.name)
+
     def apply(self, results: str) -> str:
-        return self.defn.subst.apply(results, {"counter": self.counter})
+        matches, modified = self._subst.apply(
+            results, {"counter": self.counter}, allow_zero_matches=True
+        )
+        if self.counter_type == "times":
+            self.counter -= matches
+        return modified
+
+    @property
+    def counter_type(self) -> Literal["turns", "times"]:
+        return self.defn.counter_type
 
 
 class BattleBundle:
@@ -420,6 +435,7 @@ class BattleBundle:
         self.battle_prelude = battle_prelude
         self.card_bundle = card_bundle
         self.rng = np.random.default_rng()
+        self.postprocessors = []
         self.event_listeners = []  # remember to use weakrefs
 
     def battlers(self) -> Iterator[Battler]:
@@ -459,14 +475,12 @@ class BattleBundle:
             canceled = False
             new_effects = EffectGroup(self)
             for listener in self.event_listeners:
-                listener_response = listener(effect)
-                if listener_response == "cancel":
+                response = listener(effect)
+                if response == "cancel":
                     canceled = True
                     break
-                elif listener_response:
-                    new_effects += self.resolve_result(
-                        listener_response, autoflush=False
-                    )
+                elif response:
+                    new_effects += self.resolve_result(response, autoflush=False)
             if canceled:
                 continue
             self.apply_effect(None, battler, effect, rng)
@@ -524,8 +538,8 @@ class BattleBundle:
 
     def _apply_global_effect(self, effect: GlobalEffect) -> None:
         match effect:
-            case DrawCardsEffect(count, _):
-                self.card_bundle.draw_to_hand(count)
+            case DrawCardsEffect(_):
+                self.card_bundle.draw_to_hand(effect.count)
             case DiscardCardsEffect(count, _):
                 pass
             case CreateCardEffect(card, _):
@@ -562,7 +576,9 @@ class BattleBundle:
         target: Battler,
         status: tuple[StatusDefinition, int],
     ) -> None:
-        ...
+        realized = StatusEffect(status[0], status[1], target)
+        target.status_effects.append(realized)
+        self.postprocessors.append(weakref.WeakMethod(realized.apply))
 
     def _apply_damage(
         self,

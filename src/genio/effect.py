@@ -67,7 +67,7 @@ class CreateCardEffect(GlobalEffect):
 
 
 TargetedEffect: TypeAlias = tuple[str, SinglePointEffect]
-EffectType: TypeAlias = GlobalEffect | TargetedEffect
+Effect: TypeAlias = GlobalEffect | TargetedEffect
 
 
 def parse_global_effect(modifier: str) -> GlobalEffect:
@@ -81,13 +81,13 @@ def parse_global_effect(modifier: str) -> GlobalEffect:
 
     if "draw" in effect:
         count = int(tokens[0].split(" ")[1])
-        return DrawCardsEffect(count, **common_modifiers)
+        return DrawCardsEffect(count=count, **common_modifiers)
     elif "discard" in effect:
         count = int(tokens[0].split(" ")[1])
-        return DiscardCardsEffect(count, **common_modifiers)
+        return DiscardCardsEffect(count=count, **common_modifiers)
     elif "create" in effect:
         card = tokens[0].split(" ")[1]
-        return CreateCardEffect(card, **common_modifiers)
+        return CreateCardEffect(card=card, **common_modifiers)
     else:
         raise ValueError("Invalid format")
 
@@ -153,7 +153,7 @@ def parse_common_modifiers(tokens: list[str]) -> dict:
     return modifiers
 
 
-def parse_effect(modifier: str) -> EffectType:
+def parse_effect(modifier: str) -> Effect:
     if ":" not in modifier:
         return parse_global_effect(modifier)
     else:

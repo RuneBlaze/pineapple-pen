@@ -62,7 +62,7 @@ def test_parse_targeted_effect():
 
 def test_parse_targeted_effect_status_effect():
     _, effect = parse_targeted_effect(
-        "[entity: +vulnerable [3 turns] [foo: {:d}] -> [foo: {{m[0] + 2}}];]"
+        "[entity: +vulnerable [3 turns] [foo: {:d}] -> [foo: {{m[0] * 1.5}}];]"
     )
     defn, counter = effect.add_status
     assert defn.counter_type == "turns"

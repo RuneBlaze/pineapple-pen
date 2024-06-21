@@ -29,6 +29,7 @@ cards = [
     "repeat all previous",
     "Slash * 3 # Takes sword and slashes at the enemy. Deals 2 times 4 base damage.", # two copies of this card
     "Block * 2 # Raises shield to block incoming attacks. Gains 2 shield points.",
+    "Backflip * 10 # Draw 2 cards. Gain 2 shield points.",
 ]
 
 
