@@ -9,7 +9,7 @@ def test_subst_trivial():
 
 def test_subst_multiple():
     subst = Subst.parse("[foo: {:d}] -> [foo: {{m[0] + 2}}];")
-    assert subst.apply("[foo: 5][foo: 6]")[1] == "[foo: 7][foo: 8]"
+    assert subst.apply("[foo: 5][foo: 6]") == (2, "[foo: 7][foo: 8]")
 
 
 def test_subst_condition():

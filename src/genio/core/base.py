@@ -166,8 +166,12 @@ def render_text(
 
 def render_template(template: str, context: dict[str, Any]) -> ChatPromptTemplate:
     rendered_text = render_text(template, context)
+    rendered_text = rendered_text.replace("{{", "TOK1")
+    rendered_text = rendered_text.replace("}}", "TOK2")
     rendered_text = rendered_text.replace("{", "")
     rendered_text = rendered_text.replace("}", "")
+    rendered_text = rendered_text.replace("TOK1", "{{")
+    rendered_text = rendered_text.replace("TOK2", "}}")
     logger.info(rendered_text)
     return ChatPromptTemplate.from_template(rendered_text)
 

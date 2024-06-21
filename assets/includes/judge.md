@@ -19,6 +19,30 @@ To create dynamic and engaging gameplay, our card system combines specific playe
 
 In this system, players read the combinations like a literary game, where the sequence of cards forms a coherent and vivid description of actions, much like forming sentences from words. For example, combining "Block," "left," and "right" can be imagined as "Block left, then block right," in a defensive formation, enhancing the player's engagement and immersion in the game.
 
+### Status Effects Notation:
+- **General Form**: `[entity: +effect [duration times|turns] [pattern] (optional condition) -> [replacement];]`
+  - **entity**: Target entity.
+  - **effect**: Name of the effect.
+  - **duration**: Duration in "times" or "turns".
+  - **pattern**: Trigger event (e.g., "damaged {:d}").
+    - **Pattern Matches**: The pattern uses placeholders similar to Python’s format syntax.
+      - `{:d}`: Pattern for a numerical value.
+      - `m[0]`: First match, `m[1]`: Second match, etc.
+  - **optional condition**: Condition for the effect.
+    - **Syntax**: `(if condition)`
+      - **condition**: Logical statement that must be true for the effect to trigger.
+  - **replacement**: Action when the pattern matches.
+
+### Examples:
+1. **Frail**: Reduces block gain by 25% for 3 turns.
+  - Notation: {% raw %}`[entity: +frail [3 turns] [ME: block {:b}] -> [ME: block {{m[0] * 0.75}}];]`{% endraw %}. `ME` is a special form that will always be replaced by the entity's name.
+2. **Intangible**: Reduces all damage to 1 for 1 turn.
+  - Notation: `[entity: +intangible [1 turn] [ME: damaged {:d}] -> [ME: damaged 1];]`
+3. **Burn**: Deals 2 damage at end of turn for 3 turns.
+  - Notation: `[entity: +burn [3 turns] [end of turn] -> [ME: damaged 2];]`
+4. **Diamond Shield**: Cancels damage <= 2 for 2 times.
+  - Notation: {% raw %}`[entity: +diamond shield [2 times] [ME: damaged {:d}] (if m[0] <= 2) -> [ME: damaged {{0}}];]`{% endraw %}
+
 ### Player Profile:
 - {{ user.profile.profile }}
 
@@ -55,6 +79,7 @@ Your goals for filling in are:
     - `[entity: healed X]` - The entity receives X healing.
     - `[entity: shield -X]` - The entity loses X shield points.
     - `[entity: shield X]` - The entity gains X shield points.
+    - `[entity: +effect [duration times|turns] [pattern] (optional condition) -> [replacement];]` - Status effect. See the notation above.
 5. **Global Effects**:
     - `[draw X]` - The player draws X cards.
     - `[discard X]` - The player discards X cards.
