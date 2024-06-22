@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from collections import Counter
 import uuid
 import weakref
+from collections import Counter
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from enum import Enum
@@ -469,6 +469,7 @@ class SortedList(Generic[T]):
 
 class BattleBundle:
     effects: SortedList[tuple[Battler | None, SinglePointEffect | GlobalEffect]]
+    postprocessors: list[weakref.WeakMethod]
 
     def __init__(
         self,
@@ -497,24 +498,29 @@ class BattleBundle:
                 return battler
         raise ValueError(f"No battler found with name '{name}'")
 
-    def resolve_result(self, result: str, autoflush: bool = True) -> EffectGroup:
+    def process_effects(self, result: str, autoenqueue: bool = True) -> EffectGroup:
+        result = self.postprocess_result(result)
         substrings = parse_top_level_brackets(result)
         group = EffectGroup(self)
         for substring in substrings:
             parsed = parse_effect(substring)
             match parsed:
                 case (target, effect):
+                    if effect.noop:
+                        continue
                     battler = self.search(target)
                     queued_turn = effect.delay + self.turn_counter
                     group.append((battler, effect, queued_turn))
                 case effect:
                     queued_turn = effect.delay + self.turn_counter
                     group.append((None, effect, queued_turn))
-        if autoflush:
+        if autoenqueue:
             group.enqueue()
         return group
 
-    def flush_effects(self, rng: np.random.Generator | None = None) -> list[tuple[Battler, SinglePointEffect | GlobalEffect]]:
+    def flush_expired_effects(
+        self, rng: np.random.Generator | None = None
+    ) -> list[tuple[Battler, SinglePointEffect | GlobalEffect]]:
         flushed = []
         if rng is None:
             rng = np.random.default_rng()
@@ -528,7 +534,7 @@ class BattleBundle:
                     canceled = True
                     break
                 elif response:
-                    new_effects += self.resolve_result(response, autoflush=False)
+                    new_effects += self.process_effects(response, autoenqueue=False)
             if canceled:
                 continue
             self.apply_effect(None, battler, effect, rng)
@@ -542,6 +548,10 @@ class BattleBundle:
             new_effects.enqueue()
         self.clear_dead()
         return flushed
+    
+    def process_and_flush_effects(self, result: str) -> list[tuple[Battler, SinglePointEffect | GlobalEffect]]:
+        self.process_effects(result)
+        return self.flush_expired_effects(self.rng)
 
     def _on_turn_start(self) -> None:
         for enemy in self.enemies:
@@ -549,8 +559,14 @@ class BattleBundle:
                 self.turn_counter % len(enemy.profile.pattern)
             ]
 
+    def emit_battler_event(self, battler: Battler, event: str) -> None:
+        self.process_effects(f"[{battler.name}: {event}]")
+
+
     def _on_turn_end(self) -> None:
         self.turn_counter += 1
+        for battler in self.battlers():
+            self.emit_battler_event(battler, "end of turn")
 
     def resolve_player_cards(self, cards: list[Card]) -> None:
         resolved_results: ResolvedResults = _judge_results(
@@ -560,8 +576,8 @@ class BattleBundle:
             self.battle_prelude.description,
             resolve_player_actions=True,
         )
-        self.resolve_result(resolved_results.results)
-        self.flush_effects(self.rng)
+        self.process_effects(resolved_results.results)
+        self.flush_expired_effects(self.rng)
 
     def resolve_enemy_actions(self) -> None:
         resolved_results: ResolvedResults = _judge_results(
@@ -571,8 +587,8 @@ class BattleBundle:
             self.battle_prelude.description,
             resolve_player_actions=False,
         )
-        self.resolve_result(resolved_results.results)
-        self.flush_effects(self.rng)
+        self.process_effects(resolved_results.results)
+        self.flush_expired_effects(self.rng)
 
     def apply_effect(
         self,
@@ -630,6 +646,14 @@ class BattleBundle:
         target.status_effects.append(realized)
         self.postprocessors.append(weakref.WeakMethod(realized.apply))
 
+    def postprocess_result(self, result: str, aggregate_mode: bool = False) -> str:
+        self.postprocessors = [fn for fn in self.postprocessors if fn()]
+        if aggregate_mode:
+            return "\n".join([fn()(result) for fn in self.postprocessors])
+        for fn in self.postprocessors:
+            result = fn()(result)
+        return result
+
     def _apply_damage(
         self,
         caster: Battler | None,
@@ -672,10 +696,10 @@ def setup_battle_bundle(
 ) -> BattleBundle:
     card_bundle = CardBundle.from_predef(deck)
     card_bundle.draw_to_hand()
-    player = PlayerBattler.from_predef(player)
-    enemies = []
+    player_instance = PlayerBattler.from_predef(player)
+    enemy_instances = []
     enemies_with_count = Counter(enemies)
     for e, e_count in enemies_with_count.items():
         for i in range(e_count):
-            enemies.append(EnemyBattler.from_predef(e, i + 1))
-    return BattleBundle(player, enemies, BattlePrelude.default(), card_bundle)
+            enemy_instances.append(EnemyBattler.from_predef(e, i + 1))
+    return BattleBundle(player_instance, enemy_instances, BattlePrelude.default(), card_bundle)

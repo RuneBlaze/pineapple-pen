@@ -39,7 +39,7 @@ In this system, players read the combinations like a literary game, where the se
 2. **Intangible**: Reduces all damage to 1 for 1 turn.
   - Notation: `[entity: +intangible [1 turn] [ME: damaged {:d}] -> [ME: damaged 1];]`
 3. **Burn**: Deals 2 damage at end of turn for 3 turns.
-  - Notation: `[entity: +burn [3 turns] [end of turn] -> [ME: damaged 2];]`
+  - Notation: `[entity: +burn [3 turns] [ME: end of turn] -> [ME: damaged 2];]`
 4. **Diamond Shield**: Cancels damage <= 2 for 2 times.
   - Notation: {% raw %}`[entity: +diamond shield [2 times] [ME: damaged {:d}] (if m[0] <= 2) -> [ME: damaged {{0}}];]`{% endraw %}
 

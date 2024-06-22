@@ -63,8 +63,8 @@ def test_resolve_result(card_bundle):
         player, [enemy1, enemy2], BattlePrelude.default(), card_bundle
     )
     result = "[celine: damaged 10]"
-    manager.resolve_result(result)
-    manager.flush_effects(np.random.default_rng())
+    manager.process_effects(result)
+    manager.flush_expired_effects(np.random.default_rng())
     assert player.hp == player.max_hp - 10
 
 

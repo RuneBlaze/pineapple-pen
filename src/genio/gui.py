@@ -8,9 +8,9 @@ from genio.battle import (
     CardBundle,
     EnemyBattler,
     PlayerBattler,
+    setup_battle_bundle,
 )
 from genio.core.base import slurp_toml
-from genio.utils import setup_battle_bundle
 
 predef = slurp_toml("assets/strings.toml")
 
