@@ -166,12 +166,6 @@ def render_text(
 
 def render_template(template: str, context: dict[str, Any]) -> ChatPromptTemplate:
     rendered_text = render_text(template, context)
-    rendered_text = rendered_text.replace("{{", "TOK1")
-    rendered_text = rendered_text.replace("}}", "TOK2")
-    rendered_text = rendered_text.replace("{", "")
-    rendered_text = rendered_text.replace("}", "")
-    rendered_text = rendered_text.replace("TOK1", "{{")
-    rendered_text = rendered_text.replace("TOK2", "}}")
     logger.info(rendered_text)
     return ChatPromptTemplate.from_template(rendered_text)
 
@@ -531,7 +525,7 @@ def promptly(f=None, demangle: bool = True):
                 **{k: v for k, v in args.items()},
             }
         )
-        prompt = render_template(
+        prompt = render_text(
             doc,
             {
                 "input_yaml": input_str,
@@ -540,9 +534,8 @@ def promptly(f=None, demangle: bool = True):
             },
         )
         logger.info(f"Prompt: {prompt}")
-        chain = prompt | llm | JsonParser(cls=return_type)
-        return chain.invoke({})
-
+        chain = llm | JsonParser(cls=return_type)
+        return chain.invoke([("human", prompt)])
     return wrapper
 
 

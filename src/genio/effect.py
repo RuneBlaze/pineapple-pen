@@ -93,7 +93,7 @@ def parse_global_effect(modifier: str) -> GlobalEffect:
 
 
 def parse_targeted_effect(modifier: str) -> TargetedEffect:
-    pat = "[{:w}: +{:w} [{:d} {:w}] {};]"
+    pat = "[{}: +{} [{:d} {:w}] {};]"
     if match := search(pat, modifier):
         entity, name, counter, counter_type, effects = match.fixed
         tokens = effects.split("|")
