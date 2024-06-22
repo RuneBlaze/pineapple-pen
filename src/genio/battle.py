@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 import weakref
 from collections import Counter
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from heapq import heappop, heappush
@@ -427,6 +427,8 @@ class StatusEffect:
         self._subst = self.defn.subst.replace("ME", self.owner.name)
 
     def apply(self, results: str) -> str:
+        if self.is_expired():
+            return results
         matches, modified = self._subst.apply(
             results, {"counter": self.counter}, allow_zero_matches=True
         )
@@ -479,6 +481,44 @@ class SortedList(Generic[T]):
 
     def __len__(self) -> int:
         return len(self.data)
+
+
+@dataclass
+class ResolvedEffects(
+    Sequence[tuple[Battler | None, SinglePointEffect | GlobalEffect]]
+):
+    inner: list[tuple[Battler | None, SinglePointEffect | GlobalEffect]]
+
+    def __getitem__(
+        self, index: int
+    ) -> tuple[Battler | None, SinglePointEffect | GlobalEffect]:
+        return self.inner[index]
+
+    def __len__(self) -> int:
+        return len(self.inner)
+
+    def effects(self) -> Iterator[SinglePointEffect | GlobalEffect]:
+        for _, effect in self:
+            yield effect
+
+    def _total_attribute(self, attribute: str) -> int:
+        return sum(
+            getattr(effect, attribute)
+            for effect in self.effects()
+            if isinstance(effect, SinglePointEffect)
+        )
+
+    def total_damage(self) -> int:
+        return self._total_attribute("damage")
+
+    def total_heal(self) -> int:
+        return self._total_attribute("heal")
+
+    def total_shield_gain(self) -> int:
+        return self._total_attribute("shield_gain")
+
+    def total_shield_loss(self) -> int:
+        return self._total_attribute("shield_loss")
 
 
 class BattleBundle:
@@ -536,7 +576,7 @@ class BattleBundle:
 
     def flush_expired_effects(
         self, rng: np.random.Generator | None = None
-    ) -> list[tuple[Battler, SinglePointEffect | GlobalEffect]]:
+    ) -> ResolvedEffects:
         flushed = []
         if rng is None:
             rng = np.random.default_rng()
@@ -563,11 +603,9 @@ class BattleBundle:
             )
             new_effects.enqueue()
         self.clear_dead()
-        return flushed
+        return ResolvedEffects(flushed)
 
-    def process_and_flush_effects(
-        self, result: str
-    ) -> list[tuple[Battler, SinglePointEffect | GlobalEffect]]:
+    def process_and_flush_effects(self, result: str) -> ResolvedEffects:
         self.process_effects(result)
         return self.flush_expired_effects(self.rng)
 

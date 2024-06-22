@@ -29,3 +29,15 @@ def test_end_of_turn_damages_correctly():
 
     slime = bundle.search("Slime A")
     assert slime.hp == slime.max_hp - 4
+
+
+def test_counter_based_correctly():
+    bundle = setup_battle_bundle("initial_deck", "players.starter", ["enemies.slime"])
+    assert bundle.process_and_flush_effects("[Slime A: damaged 3]").total_damage() == 3
+    bundle.process_and_flush_effects(
+        "[Slime A: +diamond block [2 times] [ME: damaged {:d}] if m[0] <= 2 -> [ME: damaged 0];]"
+    )
+    assert bundle.process_and_flush_effects("[Slime A: damaged 3]").total_damage() == 3
+    assert bundle.process_and_flush_effects("[Slime A: damaged 1]").total_damage() == 0
+    assert bundle.process_and_flush_effects("[Slime A: damaged 1]").total_damage() == 0
+    assert bundle.process_and_flush_effects("[Slime A: damaged 1]").total_damage() == 1

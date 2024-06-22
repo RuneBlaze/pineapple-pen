@@ -54,6 +54,18 @@ class SinglePointEffect(BaseEffect):
     def damage(self) -> int:
         return max(-self.delta_hp, 0)
 
+    @property
+    def heal(self) -> int:
+        return max(self.delta_hp, 0)
+
+    @property
+    def shield_gain(self) -> int:
+        return max(self.delta_shield, 0)
+
+    @property
+    def shield_loss(self) -> int:
+        return max(-self.delta_shield, 0)
+
 
 @dataclass(eq=True, frozen=True)
 class GlobalEffect(BaseEffect):
