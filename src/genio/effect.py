@@ -45,7 +45,7 @@ class SinglePointEffect(BaseEffect):
     @staticmethod
     def from_heal(heal: int) -> SinglePointEffect:
         return SinglePointEffect(delta_hp=heal)
-    
+
     @staticmethod
     def noop_effect() -> SinglePointEffect:
         return SinglePointEffect(noop=True)

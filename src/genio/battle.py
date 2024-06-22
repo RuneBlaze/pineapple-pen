@@ -234,6 +234,17 @@ class Battler:
     def on_turn_start(self) -> None:
         self.shield_points = 0
 
+    def on_turn_end(self) -> None:
+        for effect in self.status_effects:
+            if effect.counter_type == "turns":
+                effect.counter -= 1
+        self.remove_dead_status_effects()
+
+    def remove_dead_status_effects(self) -> None:
+        self.status_effects = [
+            effect for effect in self.status_effects if not effect.is_expired()
+        ]
+
     def __hash__(self) -> int:
         return hash(self.uuid)
 
@@ -427,6 +438,9 @@ class StatusEffect:
     def counter_type(self) -> Literal["turns", "times"]:
         return self.defn.counter_type
 
+    def is_expired(self) -> bool:
+        return self.counter <= 0
+
 
 T = TypeVar("T")
 
@@ -498,8 +512,10 @@ class BattleBundle:
                 return battler
         raise ValueError(f"No battler found with name '{name}'")
 
-    def process_effects(self, result: str, autoenqueue: bool = True) -> EffectGroup:
-        result = self.postprocess_result(result)
+    def process_effects(
+        self, result: str, autoenqueue: bool = True, aggregate_mode: bool = False
+    ) -> EffectGroup:
+        result = self.postprocess_result(result, aggregate_mode=aggregate_mode)
         substrings = parse_top_level_brackets(result)
         group = EffectGroup(self)
         for substring in substrings:
@@ -548,8 +564,10 @@ class BattleBundle:
             new_effects.enqueue()
         self.clear_dead()
         return flushed
-    
-    def process_and_flush_effects(self, result: str) -> list[tuple[Battler, SinglePointEffect | GlobalEffect]]:
+
+    def process_and_flush_effects(
+        self, result: str
+    ) -> list[tuple[Battler, SinglePointEffect | GlobalEffect]]:
         self.process_effects(result)
         return self.flush_expired_effects(self.rng)
 
@@ -560,10 +578,10 @@ class BattleBundle:
             ]
 
     def emit_battler_event(self, battler: Battler, event: str) -> None:
-        self.process_effects(f"[{battler.name}: {event}]")
+        self.process_effects(f"[{battler.name}: {event}]", aggregate_mode=True)
+        self.flush_expired_effects(self.rng)
 
-
-    def _on_turn_end(self) -> None:
+    def on_turn_end(self) -> None:
         self.turn_counter += 1
         for battler in self.battlers():
             self.emit_battler_event(battler, "end of turn")
@@ -676,7 +694,7 @@ class BattleBundle:
         for enemy in self.enemies:
             enemy.on_turn_start()
         self.resolve_enemy_actions()
-        self._on_turn_end()
+        self.on_turn_end()
         self.card_bundle.draw_to_hand()
         self._on_turn_start()
         self.player.on_turn_start()
@@ -702,4 +720,6 @@ def setup_battle_bundle(
     for e, e_count in enemies_with_count.items():
         for i in range(e_count):
             enemy_instances.append(EnemyBattler.from_predef(e, i + 1))
-    return BattleBundle(player_instance, enemy_instances, BattlePrelude.default(), card_bundle)
+    return BattleBundle(
+        player_instance, enemy_instances, BattlePrelude.default(), card_bundle
+    )
