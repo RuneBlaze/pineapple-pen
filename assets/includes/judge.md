@@ -79,7 +79,7 @@ Your goals for filling in are:
     - `[entity: healed X]` - The entity receives X healing.
     - `[entity: shield -X]` - The entity loses X shield points.
     - `[entity: shield X]` - The entity gains X shield points.
-    - `[entity: +effect [duration times|turns] [pattern] (optional condition) -> [replacement];]` - Status effect. See the notation above.
+    - `[entity: +effect [duration times|turns] [pattern] (optional condition) -> [replacement];]` - Status effect. See the notation above. You must define the effect of the status effect yourself.
 5. **Global Effects**:
     - `[draw X]` - The player draws X cards.
     - `[discard X]` - The player discards X cards.
