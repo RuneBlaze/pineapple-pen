@@ -4,14 +4,13 @@ import pyxel
 from pyxelunicode import PyxelUnicode
 
 from genio.battle import (
-    BattleBundle,
-    BattlePrelude,
     Card,
     CardBundle,
     EnemyBattler,
     PlayerBattler,
 )
 from genio.core.base import slurp_toml
+from genio.utils import setup_battle_bundle
 
 predef = slurp_toml("assets/strings.toml")
 
@@ -108,13 +107,8 @@ class App:
 
     def __init__(self):
         pyxel.init(320, 240)
-        card_bundle = CardBundle.from_predef("initial_deck")
-        card_bundle.draw_to_hand()
-        player = PlayerBattler.from_predef("players.starter")
-        enemy1 = EnemyBattler.from_predef("enemies.slime", 1)
-        enemy2 = EnemyBattler.from_predef("enemies.slime", 2)
-        self.bundle = BattleBundle(
-            player, [enemy1, enemy2], BattlePrelude.default(), card_bundle
+        self.bundle = setup_battle_bundle(
+            "initial_deck", "players.starter", ["enemies.slime"] * 2
         )
         self.card_sprites = []
         self.sync_sprites()

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 import uuid
 import weakref
 from collections.abc import Iterator
@@ -513,7 +514,8 @@ class BattleBundle:
             group.enqueue()
         return group
 
-    def flush_effects(self, rng: np.random.Generator | None = None) -> None:
+    def flush_effects(self, rng: np.random.Generator | None = None) -> list[tuple[Battler, SinglePointEffect | GlobalEffect]]:
+        flushed = []
         if rng is None:
             rng = np.random.default_rng()
         while self.effects and self.effects.peek_with_key()[0] <= self.turn_counter:
@@ -530,6 +532,7 @@ class BattleBundle:
             if canceled:
                 continue
             self.apply_effect(None, battler, effect, rng)
+            flushed.append((battler, effect))
             logger.info(
                 "Effect applied",
                 battler=battler,
@@ -538,6 +541,7 @@ class BattleBundle:
             )
             new_effects.enqueue()
         self.clear_dead()
+        return flushed
 
     def _on_turn_start(self) -> None:
         for enemy in self.enemies:
@@ -659,3 +663,19 @@ class BattleBundle:
         self.enemies = [enemy for enemy in self.enemies if not enemy.is_dead()]
         if not self.enemies:
             raise ValueError("All enemies are dead")
+
+
+def setup_battle_bundle(
+    deck: str,
+    player: str,
+    enemies: list[str],
+) -> BattleBundle:
+    card_bundle = CardBundle.from_predef(deck)
+    card_bundle.draw_to_hand()
+    player = PlayerBattler.from_predef(player)
+    enemies = []
+    enemies_with_count = Counter(enemies)
+    for e, e_count in enemies_with_count.items():
+        for i in range(e_count):
+            enemies.append(EnemyBattler.from_predef(e, i + 1))
+    return BattleBundle(player, enemies, BattlePrelude.default(), card_bundle)

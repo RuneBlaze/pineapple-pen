@@ -44,6 +44,10 @@ class SinglePointEffect(Effect):
     @staticmethod
     def from_heal(heal: int) -> SinglePointEffect:
         return SinglePointEffect(delta_hp=heal)
+    
+    @property
+    def damage(self) -> int:
+        return max(-self.delta_hp, 0)
 
 
 @dataclass(eq=True, frozen=True)
