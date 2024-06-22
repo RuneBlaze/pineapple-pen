@@ -5,10 +5,10 @@ import weakref
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Annotated, Literal
+from heapq import heappop, heappush
+from typing import Annotated, Generic, Literal, TypeVar
 
 import numpy as np
-from boltons.queueutils import HeapPriorityQueue
 from smallperm import shuffle
 from structlog import get_logger
 
@@ -350,23 +350,30 @@ class CardBundle:
 @dataclass
 class EffectGroup:
     parent: BattleBundle
-    inner: list[
-        tuple[tuple[int, Battler | None, SinglePointEffect | GlobalEffect], int]
-    ] = field(default_factory=list)
+    inner: list[tuple[Battler | None, SinglePointEffect | GlobalEffect, int]] = field(
+        default_factory=list
+    )
     enqueued = False
 
     def enqueue(self) -> None:
         if self.enqueued:
             raise ValueError("EffectGroup already enqueued")
         for effect in self.inner:
-            self.parent.effects.add(*effect)
+            self.parent.effects.append(key=effect[2], item=(effect[0], effect[1]))
             logger.info(
                 "Effect queued",
-                target=effect[0][1],
-                effect=effect[0][2],
-                queued_turn=effect[1],
+                target=effect[0],
+                effect=effect[1],
+                queued_turn=effect[2],
             )
         self.enqueued = True
+
+    def append(
+        self, element: tuple[Battler | None, SinglePointEffect | GlobalEffect, int]
+    ) -> None:
+        if self.enqueued:
+            raise ValueError("Cannot append to enqueued EffectGroup")
+        self.inner.append(element)
 
     def __add__(self, other: EffectGroup) -> EffectGroup:
         if self.parent != other.parent:
@@ -420,7 +427,48 @@ class StatusEffect:
         return self.defn.counter_type
 
 
+T = TypeVar("T")
+
+
+@dataclass(frozen=True)
+class SortedListItem(Generic[T]):
+    key: float | int
+    item: T
+
+    def __lt__(self, other: SortedListItem) -> bool:
+        return self.key < other.key
+
+
+class SortedList(Generic[T]):
+    def __init__(self):
+        self.data = []
+
+    def append(self, key: float | int, item: T) -> None:
+        heappush(self.data, SortedListItem(key, item))
+
+    def peek(self) -> T | None:
+        if self.data:
+            return self.data[0].item
+        return None
+
+    def pop(self) -> T:
+        return heappop(self.data).item
+
+    def peek_with_key(self) -> tuple[float | int, T] | None:
+        if self.data:
+            return self.data[0].key, self.data[0].item
+        return None
+
+    def pop_with_key(self) -> tuple[float | int, T]:
+        return heappop(self.data).key, self.data[0].item
+
+    def __len__(self) -> int:
+        return len(self.data)
+
+
 class BattleBundle:
+    effects: SortedList[tuple[Battler | None, SinglePointEffect | GlobalEffect]]
+
     def __init__(
         self,
         player: PlayerBattler,
@@ -431,7 +479,7 @@ class BattleBundle:
         self.player = player
         self.enemies = enemies
         self.turn_counter = 0
-        self.effects = HeapPriorityQueue(priority_key=lambda x: -x)
+        self.effects = SortedList()
         self.battle_prelude = battle_prelude
         self.card_bundle = card_bundle
         self.rng = np.random.default_rng()
@@ -450,19 +498,17 @@ class BattleBundle:
 
     def resolve_result(self, result: str, autoflush: bool = True) -> EffectGroup:
         substrings = parse_top_level_brackets(result)
-        buffer = []
+        group = EffectGroup(self)
         for substring in substrings:
             parsed = parse_effect(substring)
             match parsed:
                 case (target, effect):
                     battler = self.search(target)
                     queued_turn = effect.delay + self.turn_counter
-                    buffer.append(((queued_turn, battler, effect), queued_turn))
+                    group.append((battler, effect, queued_turn))
                 case effect:
                     queued_turn = effect.delay + self.turn_counter
-                    buffer.append(((queued_turn, None, effect), queued_turn))
-        group = EffectGroup(self)
-        group.inner = buffer
+                    group.append((None, effect, queued_turn))
         if autoflush:
             group.enqueue()
         return group
@@ -470,8 +516,8 @@ class BattleBundle:
     def flush_effects(self, rng: np.random.Generator | None = None) -> None:
         if rng is None:
             rng = np.random.default_rng()
-        while self.effects and self.effects.peek()[0] <= self.turn_counter:
-            _, battler, effect = self.effects.pop()
+        while self.effects and self.effects.peek_with_key()[0] <= self.turn_counter:
+            battler, effect = self.effects.pop()
             canceled = False
             new_effects = EffectGroup(self)
             for listener in self.event_listeners:

@@ -536,6 +536,7 @@ def promptly(f=None, demangle: bool = True):
         logger.info(f"Prompt: {prompt}")
         chain = llm | JsonParser(cls=return_type)
         return chain.invoke([("human", prompt)])
+
     return wrapper
 
 
