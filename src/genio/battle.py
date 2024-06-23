@@ -292,7 +292,7 @@ class CardBundle:
 
         self.events = []
 
-    def search_card(self, expr: str) -> Card:
+    def seek_card(self, expr: str) -> Card:
         if match := parse(expr, "#{:d}"):
             card_number = match.fixed[0]
             return self.deck[card_number]
@@ -601,7 +601,7 @@ class BattleBundle:
         substrings = parse_top_level_brackets(result)
         group = EffectGroup(self)
         for substring in substrings:
-            parsed = parse_effect(substring)
+            parsed = parse_effect(substring, self.card_bundle)
             match parsed:
                 case (target, effect):
                     if effect.noop:
@@ -708,10 +708,19 @@ class BattleBundle:
             case DrawCardsEffect(_):
                 self.card_bundle.draw_to_hand(effect.count)
             case DiscardCardsEffect(_) as discard:
-                to_be_discarded_count = min(discard.count, len(self.card_bundle.hand))
-                to_be_discarded = sample(
-                    self.card_bundle.hand, to_be_discarded_count, seed=self._next_seed()
-                )
+                if discard.count:
+                    to_be_discarded_count = min(
+                        discard.count, len(self.card_bundle.hand)
+                    )
+                    to_be_discarded = sample(
+                        self.card_bundle.hand,
+                        to_be_discarded_count,
+                        seed=self._next_seed(),
+                    )
+                elif discard.specifics:
+                    to_be_discarded = discard.specifics
+                else:
+                    to_be_discarded = []
                 self.card_bundle.hand_to_graveyard(to_be_discarded)
             case CreateCardEffect(_) as create_card:
                 cards = [

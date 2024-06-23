@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Literal, TypeAlias
+from typing import Literal, Protocol, TypeAlias
 from uuid import uuid4
 
 from parse import search
@@ -81,7 +81,7 @@ class DrawCardsEffect(GlobalEffect):
 @dataclass(eq=True, frozen=True)
 class DiscardCardsEffect(GlobalEffect):
     count: int = 0
-    specifics: list[str] = field(default_factory=list)
+    specifics: list[Card] = field(default_factory=list)
 
 
 @dataclass(eq=True, frozen=True)
@@ -95,7 +95,7 @@ TargetedEffect: TypeAlias = tuple[str, SinglePointEffect]
 Effect: TypeAlias = GlobalEffect | TargetedEffect
 
 
-def parse_global_effect(modifier: str) -> GlobalEffect:
+def parse_global_effect(modifier: str, context: CardContext) -> GlobalEffect:
     match = re.match(r"\[(.*)\]", modifier)
     if not match:
         raise ValueError("Invalid format")
@@ -108,8 +108,25 @@ def parse_global_effect(modifier: str) -> GlobalEffect:
         count = int(tokens[0].split(" ")[1])
         return DrawCardsEffect(count=count, **common_modifiers)
     elif "discard" in effect:
-        count = int(tokens[0].split(" ")[1])
-        return DiscardCardsEffect(count=count, **common_modifiers)
+        to_discard = tokens[0].split(" ")
+        parsed_tokens = []
+        has_int = False
+        for c in to_discard:
+            if len(c) < 3:
+                if c.startswith("#"):
+                    parsed_tokens.append(c)
+                else:
+                    parsed_tokens.append(int(c))
+                    has_int = True
+            else:
+                parsed_tokens.append(c)
+        if has_int:
+            count = parsed_tokens[0]
+            return DiscardCardsEffect(count=count, **common_modifiers)
+        return DiscardCardsEffect(
+            specifics=[context.seek_card(expr) for expr in parsed_tokens],
+            **common_modifiers,
+        )
     elif "create" in effect:
         card_desc, postfix, where = search("[create <{}>{}in {:w}", modifier).fixed
         card_desc = f"<{card_desc}>"
@@ -122,7 +139,7 @@ def parse_global_effect(modifier: str) -> GlobalEffect:
         raise ValueError(f"Invalid format: {effect}")
 
 
-def parse_targeted_effect(modifier: str) -> TargetedEffect:
+def parse_targeted_effect(modifier: str, context: CardContext) -> TargetedEffect:
     status_effect_pat = "[{}: +{} [{:d} {:w}] {};]"
     if match := search(status_effect_pat, modifier):
         entity, name, counter, counter_type, effects = match.fixed
@@ -186,7 +203,12 @@ def parse_common_modifiers(tokens: list[str]) -> dict:
     return modifiers
 
 
-def parse_effect(bracket_expr: str) -> Effect:
+def parse_effect(bracket_expr: str, context: CardContext) -> Effect:
     if re.match(r"^\[[\w\s,]*:", bracket_expr):
-        return parse_targeted_effect(bracket_expr)
-    return parse_global_effect(bracket_expr)
+        return parse_targeted_effect(bracket_expr, context)
+    return parse_global_effect(bracket_expr, context)
+
+
+class CardContext(Protocol):
+    def seek_card(self, card_expr: str) -> Card:
+        ...
