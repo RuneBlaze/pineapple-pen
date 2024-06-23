@@ -9,7 +9,8 @@ from heapq import heappop, heappush
 from typing import Annotated, Generic, Literal, TypeVar
 
 import numpy as np
-from smallperm import shuffle
+from parse import parse
+from smallperm import sample, shuffle
 from structlog import get_logger
 
 from genio.card import Card
@@ -281,12 +282,26 @@ class BattlePrelude:
 
 class CardBundle:
     def __init__(self, deck: list[Card], hand_limit: int = 10) -> None:
+        self.hand_limit = hand_limit
+        self.default_draw_count = 6
+
         self.deck = shuffle(deck)
         self.hand = []
         self.graveyard = []
-        self.hand_limit = hand_limit
-        self.default_draw_count = 6
+        self.resolving = []
+
         self.events = []
+
+    def search_card(self, expr: str) -> Card:
+        if match := parse(expr, "#{:d}"):
+            card_number = match.fixed[0]
+            return self.deck[card_number]
+        for card in self.deck:
+            if card.name.lower() == expr.lower():
+                return card
+            if card.short_id() == expr:
+                return card
+        raise ValueError(f"No card found with name '{expr}'")
 
     @staticmethod
     def from_predef(key: str) -> CardBundle:
@@ -314,10 +329,18 @@ class CardBundle:
         self.hand = [card for card in self.hand if card.id not in remove_card_uuids]
         self.events.append("hand_to_graveyard")
 
-    def flush_hand_to_graveyard(self) -> None:
+    def hand_to_resolving(self, cards: list[Card]) -> None:
+        remove_card_uuids = {card.id for card in cards}
+        self.resolving.extend(cards)
+        self.hand = [card for card in self.hand if card.id not in remove_card_uuids]
+        self.events.append("hand_to_resolving")
+
+    def flush_hand_resolving_to_graveyard(self) -> None:
         self.graveyard.extend(self.hand)
+        self.graveyard.extend(self.resolving)
         self.hand = []
-        self.events.append("flush_hand_to_graveyard")
+        self.resolving = []
+        self.events.append("flush_hand_resolving_to_graveyard")
 
     def add_to_hand(self, card: Card | list[Card]) -> None:
         if isinstance(card, Sequence):
@@ -677,12 +700,19 @@ class BattleBundle:
         else:
             self._apply_targeted_effect(caster, target, effect, rng)
 
+    def _next_seed(self) -> int:
+        return self.rng.integers(2**32)
+
     def _apply_global_effect(self, effect: GlobalEffect) -> None:
         match effect:
             case DrawCardsEffect(_):
                 self.card_bundle.draw_to_hand(effect.count)
-            case DiscardCardsEffect(count, _):
-                pass
+            case DiscardCardsEffect(_) as discard:
+                to_be_discarded_count = min(discard.count, len(self.card_bundle.hand))
+                to_be_discarded = sample(
+                    self.card_bundle.hand, to_be_discarded_count, seed=self._next_seed()
+                )
+                self.card_bundle.hand_to_graveyard(to_be_discarded)
             case CreateCardEffect(_) as create_card:
                 cards = [
                     create_card.card.duplicate() for _ in range(create_card.copies)
@@ -758,7 +788,7 @@ class BattleBundle:
         target.receive_heal(delta_hp)
 
     def end_player_turn(self) -> None:
-        self.card_bundle.flush_hand_to_graveyard()
+        self.card_bundle.flush_hand_resolving_to_graveyard()
         for enemy in self.enemies:
             enemy.on_turn_start()
         self.resolve_enemy_actions()

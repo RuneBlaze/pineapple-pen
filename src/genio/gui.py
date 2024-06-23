@@ -154,7 +154,7 @@ class App:
         if not selected_card_sprites:
             return
         selected_cards = [card.card for card in selected_card_sprites]
-        self.bundle.card_bundle.hand_to_graveyard(selected_cards)
+        self.bundle.card_bundle.hand_to_resolving(selected_cards)
         self.resolve_selected_cards(selected_cards)
 
     def resolve_selected_cards(self, selected_cards: list[Card]):

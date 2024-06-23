@@ -80,7 +80,8 @@ class DrawCardsEffect(GlobalEffect):
 
 @dataclass(eq=True, frozen=True)
 class DiscardCardsEffect(GlobalEffect):
-    count: int = 1
+    count: int = 0
+    specifics: list[str] = field(default_factory=list)
 
 
 @dataclass(eq=True, frozen=True)
@@ -92,8 +93,6 @@ class CreateCardEffect(GlobalEffect):
 
 TargetedEffect: TypeAlias = tuple[str, SinglePointEffect]
 Effect: TypeAlias = GlobalEffect | TargetedEffect
-
-# [create <> * 3 in ]
 
 
 def parse_global_effect(modifier: str) -> GlobalEffect:
