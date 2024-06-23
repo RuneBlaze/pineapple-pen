@@ -7,6 +7,7 @@ from uuid import uuid4
 
 from parse import search
 
+from genio.card import Card
 from genio.subst import Subst
 
 
@@ -84,11 +85,15 @@ class DiscardCardsEffect(GlobalEffect):
 
 @dataclass(eq=True, frozen=True)
 class CreateCardEffect(GlobalEffect):
-    card: str = ""
+    card: Card = field(default_factory=Card)
+    where: Literal["deck_top", "deck", "hand", "graveyard"] = "hand"
+    copies: int = 1
 
 
 TargetedEffect: TypeAlias = tuple[str, SinglePointEffect]
 Effect: TypeAlias = GlobalEffect | TargetedEffect
+
+# [create <> * 3 in ]
 
 
 def parse_global_effect(modifier: str) -> GlobalEffect:
@@ -107,10 +112,15 @@ def parse_global_effect(modifier: str) -> GlobalEffect:
         count = int(tokens[0].split(" ")[1])
         return DiscardCardsEffect(count=count, **common_modifiers)
     elif "create" in effect:
-        card = tokens[0].split(" ")[1]
-        return CreateCardEffect(card=card, **common_modifiers)
+        card_desc, postfix, where = search("[create <{}>{}in {:w}", modifier).fixed
+        card_desc = f"<{card_desc}>"
+        mult = 1
+        if mult_expr := postfix.replace(" ", ""):
+            mult = search("*{:d}", mult_expr).fixed[0]
+        card = Card.parse(card_desc)
+        return CreateCardEffect(card=card, where=where, copies=mult, **common_modifiers)
     else:
-        raise ValueError("Invalid format")
+        raise ValueError(f"Invalid format: {effect}")
 
 
 def parse_targeted_effect(modifier: str) -> TargetedEffect:
@@ -177,8 +187,7 @@ def parse_common_modifiers(tokens: list[str]) -> dict:
     return modifiers
 
 
-def parse_effect(modifier: str) -> Effect:
-    if ":" not in modifier:
-        return parse_global_effect(modifier)
-    else:
-        return parse_targeted_effect(modifier)
+def parse_effect(bracket_expr: str) -> Effect:
+    if re.match(r"^\[[\w\s,]*:", bracket_expr):
+        return parse_targeted_effect(bracket_expr)
+    return parse_global_effect(bracket_expr)

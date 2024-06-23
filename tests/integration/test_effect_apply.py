@@ -54,3 +54,21 @@ def test_damage_by_correctly():
         ).total_damage()
         == 5
     )
+
+
+def test_create_card_correctly():
+    bundle = setup_battle_bundle("initial_deck", "players.starter", ["enemies.slime"])
+    bundle.process_and_flush_effects(
+        "[create <shiv: applies 1 damage randomly> in hand]"
+    )
+    assert bundle.card_bundle.has_card("shiv") == "hand"
+    assert bundle.card_bundle.count_cards("shiv") == 1
+
+
+def test_create_card_multicopy_correctly():
+    bundle = setup_battle_bundle("initial_deck", "players.starter", ["enemies.slime"])
+    bundle.process_and_flush_effects(
+        "[create <shiv: applies 1 damage randomly> * 3 in hand]"
+    )
+    assert bundle.card_bundle.has_card("shiv") == "hand"
+    assert bundle.card_bundle.count_cards("shiv") == 3

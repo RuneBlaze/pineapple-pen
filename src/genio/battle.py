@@ -2,11 +2,9 @@ from __future__ import annotations
 
 import uuid
 import weakref
-from base64 import b32encode
 from collections import Counter
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
-from enum import Enum
 from heapq import heappop, heappush
 from typing import Annotated, Generic, Literal, TypeVar
 
@@ -14,6 +12,7 @@ import numpy as np
 from smallperm import shuffle
 from structlog import get_logger
 
+from genio.card import Card
 from genio.core.base import access, promptly, slurp_toml
 from genio.effect import (
     CreateCardEffect,
@@ -27,47 +26,6 @@ from genio.effect import (
 from genio.subst import Subst
 
 logger = get_logger()
-
-
-class CardType(Enum):
-    CONCEPT = "concept"
-    ACTION = "action"
-    SPECIAL = "special"
-
-
-def humanize_card_type(card_type: CardType) -> str:
-    return {
-        CardType.CONCEPT: "modifier",
-        CardType.ACTION: "concrete",
-    }[card_type].capitalize()
-
-
-@dataclass
-class Card:
-    card_type: CardType
-    name: str
-    description: str | None
-    id: str = field(default_factory=lambda: str(uuid.uuid4()))
-
-    def to_record(self) -> dict:
-        return {
-            "id": self.id,
-            "card_type": self.card_type.value,
-            "name": self.name,
-            "description": self.description,
-        }
-
-    def to_plaintext(self) -> str:
-        if self.description:
-            return f"<{self.name} {self.short_id()}: {self.description}>"
-        return f"<{self.name} {self.short_id()}>"
-
-    def short_id(self) -> str:
-        return b32encode(bytes.fromhex(self.id[:8])).decode().lower()[:4]
-
-    @staticmethod
-    def parse(s: str) -> Card:
-        ...
 
 
 predef = slurp_toml("assets/strings.toml")
@@ -89,22 +47,12 @@ def parse_card_description(description: str) -> tuple[str, str, int]:
     return name, desc, copies
 
 
-def determine_card_type(name: str) -> CardType:
-    if name[0].islower():
-        return CardType.CONCEPT
-    elif name[0].isupper():
-        return CardType.ACTION
-    else:
-        return CardType.SPECIAL
-
-
 def create_deck(cards: list[str]) -> list[Card]:
     deck = []
     for card_description in cards:
         name, desc, copies = parse_card_description(card_description)
-        card_type = determine_card_type(name)
         for _ in range(copies):
-            deck.append(Card(card_type=card_type, name=name, description=desc))
+            deck.append(Card(name=name, description=desc))
     return deck
 
 
@@ -332,11 +280,12 @@ class BattlePrelude:
 
 
 class CardBundle:
-    def __init__(self, deck: list[Card], hand_limit: int = 6) -> None:
+    def __init__(self, deck: list[Card], hand_limit: int = 10) -> None:
         self.deck = shuffle(deck)
         self.hand = []
         self.graveyard = []
         self.hand_limit = hand_limit
+        self.default_draw_count = 6
         self.events = []
 
     @staticmethod
@@ -355,7 +304,7 @@ class CardBundle:
 
     def draw_to_hand(self, count: int | None = None) -> None:
         if count is None:
-            count = self.hand_limit - len(self.hand)
+            count = self.default_draw_count - len(self.hand)
         self.hand.extend(self.draw(count))
         self.events.append("draw_to_hand")
 
@@ -369,6 +318,64 @@ class CardBundle:
         self.graveyard.extend(self.hand)
         self.hand = []
         self.events.append("flush_hand_to_graveyard")
+
+    def add_to_hand(self, card: Card | list[Card]) -> None:
+        if isinstance(card, Sequence):
+            for c in card:
+                self.add_to_hand(c)
+            return
+        if len(self.hand) >= self.hand_limit:
+            self.graveyard.append(card)
+        else:
+            self.hand.append(card)
+        self.events.append("add_to_hand")
+
+    def add_to_graveyard(self, card: Card | list[Card]) -> None:
+        if isinstance(card, Sequence):
+            for c in card:
+                self.add_to_graveyard(c)
+            return
+        self.graveyard.append(card)
+        self.events.append("add_to_graveyard")
+
+    def shuffle_into_deck(self, card: Card | list[Card]) -> None:
+        if isinstance(card, Sequence):
+            for c in card:
+                self.shuffle_into_deck(c)
+            return
+        ix = self.rng.integers(len(self.deck) + 1)
+        self.deck.insert(ix, card)
+
+    def add_into_deck_top(self, card: Card | list[Card]) -> None:
+        if isinstance(card, Sequence):
+            for c in card:
+                self.add_into_deck_top(c)
+            return
+        self.deck.append(card)
+
+    def has_card(self, card_name: str) -> Literal["deck", "hand", "graveyard"] | None:
+        for card in self.deck:
+            if card.name.lower() == card_name.lower():
+                return "deck"
+        for card in self.hand:
+            if card.name.lower() == card_name.lower():
+                return "hand"
+        for card in self.graveyard:
+            if card.name.lower() == card_name.lower():
+                return "graveyard"
+        return None
+
+    def count_cards(self, card_name: str, granular: bool = False) -> Counter[str] | int:
+        counter = Counter(
+            [
+                card.name.lower()
+                for card in self.deck + self.hand + self.graveyard
+                if card.name.lower() == card_name.lower()
+            ]
+        )
+        if not granular:
+            return sum(counter.values())
+        return counter
 
 
 @dataclass
@@ -676,8 +683,19 @@ class BattleBundle:
                 self.card_bundle.draw_to_hand(effect.count)
             case DiscardCardsEffect(count, _):
                 pass
-            case CreateCardEffect(card, _):
-                pass
+            case CreateCardEffect(_) as create_card:
+                cards = [
+                    create_card.card.duplicate() for _ in range(create_card.copies)
+                ]
+                match create_card.where:
+                    case "deck_top":
+                        self.card_bundle.add_into_deck_top(cards)
+                    case "deck":
+                        self.card_bundle.shuffle_into_deck(cards)
+                    case "hand":
+                        self.card_bundle.add_to_hand(cards)
+                    case "graveyard":
+                        self.card_bundle.add_to_graveyard(cards)
 
     def _apply_targeted_effect(
         self,

@@ -4,12 +4,12 @@ import pyxel
 from pyxelunicode import PyxelUnicode
 
 from genio.battle import (
-    Card,
     CardBundle,
     EnemyBattler,
     PlayerBattler,
     setup_battle_bundle,
 )
+from genio.Card import Card
 from genio.core.base import slurp_toml
 
 predef = slurp_toml("assets/strings.toml")
