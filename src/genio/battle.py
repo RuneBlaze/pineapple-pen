@@ -6,8 +6,8 @@ from collections import Counter
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from heapq import heappop, heappush
-from typing import Annotated, Generic, Literal, TypeVar
 from itertools import chain
+from typing import Annotated, Generic, Literal, TypeVar
 
 import numpy as np
 from parse import parse
@@ -738,9 +738,7 @@ class BattleBundle:
                     case "graveyard":
                         self.card_bundle.add_to_graveyard(cards)
             case DuplicateCardEffect(_) as duplicate:
-                cards = [
-                    duplicate.card.duplicate() for _ in range(duplicate.copies)
-                ]
+                cards = [duplicate.card.duplicate() for _ in range(duplicate.copies)]
                 match duplicate.where:
                     case "deck_top":
                         self.card_bundle.add_into_deck_top(cards)

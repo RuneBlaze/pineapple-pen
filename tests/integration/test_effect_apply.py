@@ -80,6 +80,7 @@ def test_discard_card_trivial_effect():
     bundle.process_and_flush_effects("[discard 1]")
     assert len(bundle.card_bundle.hand) == current_hand_size - 1
 
+
 def test_discard_card_specific_effect():
     bundle = setup_battle_bundle("initial_deck", "players.starter", ["enemies.slime"])
     first_card_id = bundle.card_bundle.hand[0].short_id()
