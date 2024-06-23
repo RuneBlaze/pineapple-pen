@@ -1,11 +1,10 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from jinja2 import Template
 from parse import Parser, search
-
-import re
 
 
 @dataclass(eq=True, frozen=True)
@@ -25,8 +24,8 @@ class Subst:
 
     def replace(self, pat: str, rep: str) -> Subst:
         return Subst(
-            re.sub(r'\b' + re.escape(pat) + r'\b', rep, self.pattern),
-            re.sub(r'\b' + re.escape(pat) + r'\b', rep, self.replacement),
+            re.sub(r"\b" + re.escape(pat) + r"\b", rep, self.pattern),
+            re.sub(r"\b" + re.escape(pat) + r"\b", rep, self.replacement),
             self.condition,
         )
 

@@ -48,4 +48,9 @@ def test_damage_by_correctly():
     bundle.process_and_flush_effects(
         "[Celine: +strength [3 times] [{}: damaged {:d} by ME] -> [{{m[0]}}: damaged {{m[1] * 1.25}} by ME];]"
     )
-    assert bundle.process_and_flush_effects("[Slime A: damaged 4 by celine]").total_damage() == 5
+    assert (
+        bundle.process_and_flush_effects(
+            "[Slime A: damaged 4 by celine]"
+        ).total_damage()
+        == 5
+    )

@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import uuid
 import weakref
+from base64 import b32encode
 from collections import Counter
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from heapq import heappop, heappush
 from typing import Annotated, Generic, Literal, TypeVar
-from base64 import b32encode
 
 import numpy as np
 from smallperm import shuffle
@@ -64,6 +64,10 @@ class Card:
 
     def short_id(self) -> str:
         return b32encode(bytes.fromhex(self.id[:8])).decode().lower()[:4]
+
+    @staticmethod
+    def parse(s: str) -> Card:
+        ...
 
 
 predef = slurp_toml("assets/strings.toml")
@@ -208,10 +212,10 @@ class Battler:
     @property
     def name(self) -> str:
         return self.profile.name
-    
+
     @property
     def name_stem(self) -> str:
-        return self.name.split(',')[0]
+        return self.name.split(",")[0]
 
     def is_dead(self) -> bool:
         return self.hp <= 0
@@ -421,6 +425,7 @@ def parse_top_level_brackets(s: str) -> list[str]:
                     start_idx = -1
 
     return result
+
 
 @dataclass
 class StatusEffect:
