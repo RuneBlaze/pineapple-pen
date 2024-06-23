@@ -1,5 +1,5 @@
 import pytest
-from genio.imply import Subst
+from genio.subst import Subst
 
 
 def test_subst_trivial():

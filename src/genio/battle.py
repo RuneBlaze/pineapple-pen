@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from heapq import heappop, heappush
 from typing import Annotated, Generic, Literal, TypeVar
+from base64 import b32encode
 
 import numpy as np
 from smallperm import shuffle
@@ -23,7 +24,7 @@ from genio.effect import (
     StatusDefinition,
     parse_effect,
 )
-from genio.imply import Subst
+from genio.subst import Subst
 
 logger = get_logger()
 
@@ -58,8 +59,11 @@ class Card:
 
     def to_plaintext(self) -> str:
         if self.description:
-            return f"{self.name} ({self.description}) [{humanize_card_type(self.card_type)}]"
-        return f"{self.name} [{humanize_card_type(self.card_type)}]"
+            return f"<{self.name} {self.short_id()}: {self.description}>"
+        return f"<{self.name} {self.short_id()}>"
+
+    def short_id(self) -> str:
+        return b32encode(bytes.fromhex(self.id[:8])).decode().lower()[:4]
 
 
 predef = slurp_toml("assets/strings.toml")
@@ -204,6 +208,10 @@ class Battler:
     @property
     def name(self) -> str:
         return self.profile.name
+    
+    @property
+    def name_stem(self) -> str:
+        return self.name.split(',')[0]
 
     def is_dead(self) -> bool:
         return self.hp <= 0
@@ -414,7 +422,6 @@ def parse_top_level_brackets(s: str) -> list[str]:
 
     return result
 
-
 @dataclass
 class StatusEffect:
     defn: StatusDefinition
@@ -424,7 +431,7 @@ class StatusEffect:
     _subst: Subst = field(init=False)
 
     def __post_init__(self):
-        self._subst = self.defn.subst.replace("ME", self.owner.name)
+        self._subst = self.defn.subst.replace("me", self.owner.name_stem)
 
     def apply(self, results: str) -> str:
         if self.is_expired():

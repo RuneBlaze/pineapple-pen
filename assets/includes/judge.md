@@ -26,7 +26,7 @@ In this system, players read the combinations like a literary game, where the se
   - **duration**: Duration in "times" or "turns".
   - **pattern**: Trigger event (e.g., "damaged {:d}").
     - **Pattern Matches**: The pattern uses placeholders similar to Python’s format syntax.
-      - `{:d}`: Pattern for a numerical value.
+      - `{:d}`: Pattern for a numerical value. `{}`: Generic pattern.
       - `m[0]`: First match, `m[1]`: Second match, etc.
   - **optional condition**: Condition for the effect.
     - **Syntax**: `(if condition)`

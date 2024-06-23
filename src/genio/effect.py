@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from parse import search
 
-from genio.imply import Subst
+from genio.subst import Subst
 
 
 @dataclass(eq=True, frozen=True)

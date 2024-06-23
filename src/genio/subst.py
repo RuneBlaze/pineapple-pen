@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from jinja2 import Template
 from parse import Parser, search
 
+import re
+
 
 @dataclass(eq=True, frozen=True)
 class Subst:
@@ -17,14 +19,14 @@ class Subst:
     def parse(s: str) -> Subst:
         if "if" in s:
             pattern, condition, replacement = search("{} if {} -> {};", s).fixed
-            return Subst(pattern, replacement, condition)
+            return Subst(pattern.lower(), replacement.lower(), condition.lower())
         pattern, replacement = search("{} -> {};", s).fixed
-        return Subst(pattern, replacement)
+        return Subst(pattern.lower(), replacement.lower())
 
     def replace(self, pat: str, rep: str) -> Subst:
         return Subst(
-            self.pattern.replace(pat, rep),
-            self.replacement.replace(pat, rep),
+            re.sub(r'\b' + re.escape(pat) + r'\b', rep, self.pattern),
+            re.sub(r'\b' + re.escape(pat) + r'\b', rep, self.replacement),
             self.condition,
         )
 
@@ -36,6 +38,7 @@ class Subst:
         allow_zero_matches: bool = False,
         limit_num_matches: int | None = None,
     ) -> tuple[int, str]:
+        s = s.lower()
         if limit_num_matches is not None and num_matches >= limit_num_matches:
             return num_matches, s
         extra_context = extra_context or {}
