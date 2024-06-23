@@ -7,6 +7,7 @@ from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from heapq import heappop, heappush
 from typing import Annotated, Generic, Literal, TypeVar
+from itertools import chain
 
 import numpy as np
 from parse import parse
@@ -19,6 +20,7 @@ from genio.effect import (
     CreateCardEffect,
     DiscardCardsEffect,
     DrawCardsEffect,
+    DuplicateCardEffect,
     GlobalEffect,
     SinglePointEffect,
     StatusDefinition,
@@ -296,10 +298,10 @@ class CardBundle:
         if match := parse(expr, "#{:d}"):
             card_number = match.fixed[0]
             return self.deck[card_number]
-        for card in self.deck:
+        for card in chain(self.deck, self.hand, self.graveyard):
             if card.name.lower() == expr.lower():
                 return card
-            if card.short_id() == expr:
+            if card.short_id() == expr.lower():
                 return card
         raise ValueError(f"No card found with name '{expr}'")
 
@@ -727,6 +729,19 @@ class BattleBundle:
                     create_card.card.duplicate() for _ in range(create_card.copies)
                 ]
                 match create_card.where:
+                    case "deck_top":
+                        self.card_bundle.add_into_deck_top(cards)
+                    case "deck":
+                        self.card_bundle.shuffle_into_deck(cards)
+                    case "hand":
+                        self.card_bundle.add_to_hand(cards)
+                    case "graveyard":
+                        self.card_bundle.add_to_graveyard(cards)
+            case DuplicateCardEffect(_) as duplicate:
+                cards = [
+                    duplicate.card.duplicate() for _ in range(duplicate.copies)
+                ]
+                match duplicate.where:
                     case "deck_top":
                         self.card_bundle.add_into_deck_top(cards)
                     case "deck":

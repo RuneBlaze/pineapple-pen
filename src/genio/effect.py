@@ -90,6 +90,11 @@ class CreateCardEffect(GlobalEffect):
     where: Literal["deck_top", "deck", "hand", "graveyard"] = "hand"
     copies: int = 1
 
+@dataclass(eq=True, frozen=True)
+class DuplicateCardEffect(GlobalEffect):
+    card: Card = field(default_factory=Card)
+    copies: int = 1
+    where: Literal["deck_top", "deck", "hand", "graveyard"] = "hand"
 
 TargetedEffect: TypeAlias = tuple[str, SinglePointEffect]
 Effect: TypeAlias = GlobalEffect | TargetedEffect
@@ -108,7 +113,7 @@ def parse_global_effect(modifier: str, context: CardContext) -> GlobalEffect:
         count = int(tokens[0].split(" ")[1])
         return DrawCardsEffect(count=count, **common_modifiers)
     elif "discard" in effect:
-        to_discard = tokens[0].split(" ")
+        to_discard = tokens[0].split(" ")[1:]
         parsed_tokens = []
         has_int = False
         for c in to_discard:
@@ -127,6 +132,13 @@ def parse_global_effect(modifier: str, context: CardContext) -> GlobalEffect:
             specifics=[context.seek_card(expr) for expr in parsed_tokens],
             **common_modifiers,
         )
+    elif "duplicate" in effect:
+        card_specifier, postfix, where = search("[duplicate {} {}in {:w}", modifier).fixed
+        mult = 1
+        if mult_expr := postfix.replace(" ", ""):
+            mult = search("*{:d}", mult_expr).fixed[0]
+        card = context.seek_card(card_specifier)
+        return DuplicateCardEffect(card=card, where=where, copies=mult, **common_modifiers)
     elif "create" in effect:
         card_desc, postfix, where = search("[create <{}>{}in {:w}", modifier).fixed
         card_desc = f"<{card_desc}>"
@@ -139,7 +151,7 @@ def parse_global_effect(modifier: str, context: CardContext) -> GlobalEffect:
         raise ValueError(f"Invalid format: {effect}")
 
 
-def parse_targeted_effect(modifier: str, context: CardContext) -> TargetedEffect:
+def parse_targeted_effect(modifier: str, context: CardContext | None = None) -> TargetedEffect:
     status_effect_pat = "[{}: +{} [{:d} {:w}] {};]"
     if match := search(status_effect_pat, modifier):
         entity, name, counter, counter_type, effects = match.fixed
