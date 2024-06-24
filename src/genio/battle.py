@@ -215,8 +215,8 @@ class Battler:
 @dataclass
 class PlayerBattler(Battler):
     profile: PlayerProfile = field(default_factory=PlayerProfile)
-    mp: int = 0
-    max_mp: int = 0
+    mp: int = 10
+    max_mp: int = 10
 
     @staticmethod
     def from_predef(key: str) -> PlayerBattler:
@@ -483,6 +483,10 @@ class StatusEffect:
     @property
     def counter_type(self) -> Literal["turns", "times"]:
         return self.defn.counter_type
+
+    @property
+    def name(self) -> str:
+        return self.defn.name
 
     def is_expired(self) -> bool:
         return self.counter <= 0

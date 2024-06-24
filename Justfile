@@ -7,3 +7,9 @@ clear:
 
 streamlit:
     poetry run streamlit run src/genio/game.py
+
+edit:
+    poetry run pyxel edit assets/sprites.pyxres
+
+play:
+    poetry run python -m genio.gui
