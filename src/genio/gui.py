@@ -224,9 +224,20 @@ class App:
         display.text(x + 1, y + 1, first_line, 0)
         pyxel.dither(1.0)
         display.text(x, y, first_line, 7)
-        gauge(x, y + 20, w=40, h=7, c0=4, c1=8, value=battler.hp, max_value=battler.max_hp)
+        gauge(
+            x, y + 20, w=40, h=7, c0=4, c1=8, value=battler.hp, max_value=battler.max_hp
+        )
         if isinstance(battler, PlayerBattler):
-            gauge(x, y + 30, w=40, h=7, c0=1, c1=5, value=battler.mp, max_value=battler.max_mp)
+            gauge(
+                x,
+                y + 30,
+                w=40,
+                h=7,
+                c0=1,
+                c1=5,
+                value=battler.mp,
+                max_value=battler.max_mp,
+            )
         pyxel.camera()
         # logtext.text(x, y + 12 + offset, second_line, 7)
         # logtext.text(x, y + 24 + offset, third_line, 7)
@@ -246,7 +257,11 @@ class App:
                 self.draw_battler(battler, 5, 30 + num_players_seen * 50)
                 num_players_seen += 1
             else:
-                self.draw_battler(battler, 200 + 100 * (num_enemies_seen % 2), 30 + num_enemies_seen * 50)
+                self.draw_battler(
+                    battler,
+                    200 + 100 * (num_enemies_seen % 2),
+                    30 + num_enemies_seen * 50,
+                )
                 num_enemies_seen += 1
             # break
             # emoji.text(5, 30 + i * 37 + 12, "🚘", 7)
