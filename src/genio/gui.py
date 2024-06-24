@@ -20,7 +20,8 @@ pyuni = PyxelUnicode("assets/Roboto-Medium.ttf", 14)
 # emoji = PyxelUnicode("/Users/lbq/goof/genio/assets/NotoColorEmoji.ttf", 109, multipler=1)
 display = PyxelUnicode("/Users/lbq/goof/genio/assets/DMSerifDisplay-Regular.ttf", 18)
 logtext = PyxelUnicode("assets/Roboto-Medium.ttf", 12)
-
+cutefont = PyxelUnicode("/Users/lbq/goof/genio/assets/retro-pixel-cute-prop.ttf", 11)
+retrofont = PyxelUnicode("/Users/lbq/goof/genio/assets/retro-pixel-petty-5h.ttf", 5)
 
 class CardSprite:
     def __init__(self, index, card: Card, app: App, selected=False):
@@ -78,6 +79,7 @@ class CardSprite:
 
         if self.is_mouse_over():
             self.hovered = True
+            self.app.tooltip.reset(self.card.name, "")
         else:
             self.hovered = False
 
@@ -127,11 +129,42 @@ def gauge(x, y, w, h, c0, c1, value, max_value):
     pyxel.dither(0.5)
     pyxel.rectb(x, y, w, h, 0)
     pyxel.dither(1.0)
-    pyxel.dither(0.5)
-    pyxel.text(x + 3, y + 3, f"{value}/{max_value}", 0)
-    pyxel.dither(1.0)
-    pyxel.text(x + 2, y + 2, f"{value}/{max_value}", 7)
+    shadowed_text(x + 2, y + 2, f"{value}/{max_value}", 7)
 
+
+def shadowed_text(x, y, text, color):
+    pyxel.dither(0.5)
+    retrofont.text(x + 1, y + 1, text, 0)
+    pyxel.dither(1.0)
+    retrofont.text(x, y, text, color)
+
+
+class Tooltip:
+    def __init__(self, title: str, description: str):
+        self.title = title
+        self.description = description
+        self.counter = 60
+
+    def draw(self):
+        if (not self.title and not self.description) or self.counter <= 0:
+            return
+        # Draw on mouse, and fade with counter if counter < 50
+        mx, my = pyxel.mouse_x, pyxel.mouse_y
+        dither_amount = 1.0 if self.counter > 50 else (self.counter / 50) ** 2
+        pyxel.dither(dither_amount)
+        pyxel.rect(mx, my, 40, 20, 0)
+        pyxel.dither(1.0)
+
+    def update(self):
+        self.counter -= 3
+        if self.counter <= 0:
+            self.title = ""
+            self.description = ""
+
+    def reset(self, title: str, description: str):
+        self.title = title
+        self.description = description
+        self.counter = 60
 
 class App:
     CARD_WIDTH = 43
@@ -154,6 +187,7 @@ class App:
         )
         self.card_sprites = []
         self.sync_sprites()
+        self.tooltip = Tooltip("", "")
         pyxel.run(self.update, self.draw)
 
     def sync_sprites(self):
@@ -191,6 +225,8 @@ class App:
         for card in self.card_sprites:
             card.update()
 
+        self.tooltip.update()
+
     def play_selected(self):
         selected_card_sprites = [card for card in self.card_sprites if card.selected]
         if not selected_card_sprites:
@@ -227,6 +263,7 @@ class App:
         gauge(
             x, y + 20, w=40, h=7, c0=4, c1=8, value=battler.hp, max_value=battler.max_hp
         )
+        latest_y = y + 20
         if isinstance(battler, PlayerBattler):
             gauge(
                 x,
@@ -238,7 +275,10 @@ class App:
                 value=battler.mp,
                 max_value=battler.max_mp,
             )
+            latest_y = y + 30
+        shadowed_text(x + 2, latest_y + 10, f"Shield: {battler.shield_points}", 7)
         pyxel.camera()
+
         # logtext.text(x, y + 12 + offset, second_line, 7)
         # logtext.text(x, y + 24 + offset, third_line, 7)
 
@@ -247,7 +287,7 @@ class App:
         for card in self.card_sprites:
             card.draw()
 
-        pyuni.text(5, 5, f"Deck: {len(self.bundle.card_bundle.deck)}", 7)
+        cutefont.text(5, 5, f"Deck: {len(self.bundle.card_bundle.deck)}", 7)
         pyuni.text(5, 15, f"Graveyard: {len(self.bundle.card_bundle.graveyard)}", 7)
 
         num_players_seen = 0
@@ -283,6 +323,7 @@ class App:
         # pyxel.line(mx - 5, my, mx + 5, my, 7)
         # pyxel.line(mx, my - 5, mx, my + 5, 7)
         self.draw_crosshair(pyxel.mouse_x, pyxel.mouse_y)
+        self.tooltip.draw()
 
     def draw_crosshair(self, x, y):
         pyxel.line(x - 5, y, x + 5, y, 7)
