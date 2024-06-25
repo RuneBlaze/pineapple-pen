@@ -12,16 +12,25 @@ from genio.battle import (
 )
 from genio.card import Card
 from genio.core.base import slurp_toml
+from pyxelxl import Font
+from functools import partial
 
 predef = slurp_toml("assets/strings.toml")
 
 # Initialize pyuni at the module level
 pyuni = PyxelUnicode("assets/Roboto-Medium.ttf", 14)
-# emoji = PyxelUnicode("/Users/lbq/goof/genio/assets/NotoColorEmoji.ttf", 109, multipler=1)
 display = PyxelUnicode("/Users/lbq/goof/genio/assets/DMSerifDisplay-Regular.ttf", 18)
 logtext = PyxelUnicode("assets/Roboto-Medium.ttf", 12)
 cutefont = PyxelUnicode("/Users/lbq/goof/genio/assets/retro-pixel-cute-prop.ttf", 11)
 retrofont = PyxelUnicode("/Users/lbq/goof/genio/assets/retro-pixel-petty-5h.ttf", 5)
+retrotext_font = Font("assets/retro-pixel-petty-5h.ttf")
+
+retro_text = partial(retrotext_font.draw, font_size = 5)
+roboto_font = Font("assets/Roboto-Medium.ttf")
+roboto_text = roboto_font.draw
+display_font = Font("assets/DMSerifDisplay-Regular.ttf")
+display_text = partial(display_font.draw, font_size = 18)
+
 
 class CardSprite:
     def __init__(self, index, card: Card, app: App, selected=False):
@@ -47,7 +56,7 @@ class CardSprite:
             pyxel.dither(0.5)
             pyxel.fill(self.x + 10, self.y + 10, 3)
             pyxel.dither(1.0)
-        pyuni.text(self.x + 5, self.y + 10, self.card.name, color=0)
+        roboto_text(self.x + 5, self.y + 10, self.card.name, 0, font_size = 14)
 
     def is_mouse_over(self):
         return (
@@ -134,9 +143,9 @@ def gauge(x, y, w, h, c0, c1, value, max_value):
 
 def shadowed_text(x, y, text, color):
     pyxel.dither(0.5)
-    retrofont.text(x + 1, y + 1, text, 0)
+    retro_text(x + 1, y + 1, text, 0)
     pyxel.dither(1.0)
-    retrofont.text(x, y, text, color)
+    retro_text(x, y, text, color)
 
 
 class Tooltip:
@@ -166,6 +175,7 @@ class Tooltip:
         self.description = description
         self.counter = 60
 
+
 class App:
     CARD_WIDTH = 43
     CARD_HEIGHT = 60
@@ -180,7 +190,7 @@ class App:
     card_bundle: CardBundle
 
     def __init__(self):
-        pyxel.init(427, 240)
+        pyxel.init(427, 240, title="Genio")
         pyxel.load("/Users/lbq/goof/genio/assets/sprites.pyxres")
         self.bundle = setup_battle_bundle(
             "initial_deck", "players.starter", ["enemies.slime"] * 2
@@ -239,8 +249,6 @@ class App:
         self.bundle.resolve_player_cards(selected_cards)
 
     def draw_battler(self, battler: Battler, x: int, y: int) -> None:
-        # pyxel.pal(6, 9)
-        # pyxel.pal(7, 15)
         pyxel.blt(x, y, 0, 0, 64, self.CARD_HEIGHT, self.CARD_WIDTH, colkey=0)
         pyxel.pal()
         first_line = f"{battler.name_stem}"
@@ -257,9 +265,9 @@ class App:
         offset = self.CARD_WIDTH + 5
         pyxel.camera(-9, -35)
         pyxel.dither(0.5)
-        display.text(x + 1, y + 1, first_line, 0)
+        display_text(x + 1, y + 1 , first_line, 0, threshold=70)
         pyxel.dither(1.0)
-        display.text(x, y, first_line, 7)
+        display_text(x, y, first_line, 7, threshold=70)
         gauge(
             x, y + 20, w=40, h=7, c0=4, c1=8, value=battler.hp, max_value=battler.max_hp
         )
