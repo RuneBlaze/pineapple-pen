@@ -3893,21 +3893,6 @@ files = [
 ]
 
 [[package]]
-name = "pyxelunicode"
-version = "1.0.4"
-description = "A pixel font builder for the game engine pyxel"
-optional = false
-python-versions = ">=3.6"
-files = [
-    {file = "pyxelunicode-1.0.4-py3-none-any.whl", hash = "sha256:537cf0032c29e04267dce5fcea8634f43dd7bbc925b959c398e4991e25aca73d"},
-    {file = "pyxelunicode-1.0.4.tar.gz", hash = "sha256:7b063e11b44475ce5e25aac442b4df532495e5faf8946b5120ce8ae4fa432943"},
-]
-
-[package.dependencies]
-Pillow = "*"
-pyxel = "*"
-
-[[package]]
 name = "pyxelxl"
 version = "0.0.16"
 description = "Truetype fonts, sprite rotation, and in the future more extensions for Pyxel."
@@ -6108,4 +6093,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<=3.12"
-content-hash = "ec9a4714d991d8fd21c7795f74b5e4620f873ed3eb609f3f9aaca2da0736cc96"
+content-hash = "940eedc10a44bf1b21310cf3abd2b29f7c224d6a09621f6039a65685ef043290"

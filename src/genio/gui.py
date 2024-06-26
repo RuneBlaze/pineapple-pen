@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import contextlib
-import math
+import functools
+import os
+from typing import Literal
 
 import numpy as np
 import pyxel
+import safetensors.numpy as stnp
 from pyxelxl import Font, LayoutOpts, layout
+from pyxelxl.font import _image_as_ndarray
 
 from genio.battle import (
     Battler,
@@ -16,13 +20,81 @@ from genio.battle import (
 from genio.card import Card
 from genio.core.base import slurp_toml
 
+WORKING_DIR = os.getcwd()
+
+
+def asset_path(*args):
+    return os.path.join(WORKING_DIR, "assets", *args)
+
+
 predef = slurp_toml("assets/strings.toml")
 
-retro_text = Font("assets/retro-pixel-petty-5h.ttf").specialize(font_size=5)
+retro_text = Font(asset_path("retro-pixel-petty-5h.ttf")).specialize(font_size=5)
 display_text = Font("assets/DMSerifDisplay-Regular.ttf").specialize(
     font_size=18, threshold=100
 )
 cute_text = Font("assets/retro-pixel-cute-prop.ttf").specialize(font_size=11)
+
+
+def center_crop(img: np.ndarray, size: tuple[int, int]) -> np.ndarray:
+    # size in h, w
+    # img in h, w, c
+    h, w = img.shape[:2]
+    if h < size[0] or w < size[1]:
+        raise ValueError("Image is smaller than the crop size")
+    x = (w - size[1]) // 2
+    y = (h - size[0]) // 2
+    return img[y : y + size[0], x : x + size[1]]
+
+
+def paste_center(src: np.ndarray, target: np.ndarray, offset: int = 0) -> None:
+    x = (target.shape[1] - src.shape[1]) // 2
+    y = (target.shape[0] - src.shape[0]) // 2
+    target[y + offset : y + src.shape[0] + offset, x : x + src.shape[1]] = src[:]
+
+
+def ndarray_to_image(img: np.ndarray) -> pyxel.Image:
+    image = pyxel.Image(img.shape[1], img.shape[0])
+    data_ptr = image.data_ptr()
+    np.frombuffer(data_ptr, dtype=np.uint8)[:] = img.flatten()
+    return image
+
+
+class CardArtSet:
+    unfaded: np.ndarray
+    faded: np.ndarray
+
+    def __init__(self, base_image: pyxel.Image, basename: str) -> None:
+        bundle = stnp.load_file(asset_path("cards", f"{basename}.safetensors"))
+        self.unfaded = bundle["unfaded"]
+        self.faded = bundle["faded"]
+        self.base_image = base_image
+
+    def imprint(self, card_name: str, rarity: Literal[0, 1, 2]) -> pyxel.Image:
+        w, h = self.base_image.width, self.base_image.height
+        base = _image_as_ndarray(self.base_image)
+        buffer = np.full((h, w), 255, dtype=np.uint8)
+        buffer[:] = base
+        buffer[buffer == 0] = 255
+        if rarity >= 1:
+            center_crop_size = (60 - 2 * 2, 43 - 2 * 2)
+            unfaded_cropped = center_crop(self.unfaded, center_crop_size)
+            paste_center(unfaded_cropped, buffer)
+            buffer[2, 2] = 7
+            buffer[2, 40] = 7
+            buffer[57, 2] = 7
+            buffer[57, 40] = 7
+        else:
+            center_crop_size = (30, 43 - 2 * 4)
+            faded_cropped = center_crop(self.faded, center_crop_size)
+            paste_center(faded_cropped, buffer, offset=2)
+        return ndarray_to_image(buffer)
+
+
+def shadowed(fn, x, y, col):
+    for dx, dy in [[1, 0], [-1, 0], [0, 1], [0, -1]]:
+        fn(dx + x, dy + y, col=0)
+    fn(x, y, col=col)
 
 
 class CardSprite:
@@ -40,16 +112,31 @@ class CardSprite:
         self.dragging = False
         self.drag_offset_x = 0
         self.drag_offset_y = 0
+        base_image = pyxel.Image(43, 60)
+        base_image.blt(0, 0, 0, 0, 0, 43, 60, colkey=0)
+        self.card_art = CardArtSet(base_image, "bundle")
+        self.is_rare = rarity = bool(card.description)
+        self.image = self.card_art.imprint(card.name, int(rarity))
 
     def draw(self):
         if self.selected:
             pyxel.rectb(self.x - 2, self.y - 2, self.width + 4, self.height + 4, 8)
-        pyxel.blt(self.x, self.y, 0, 0, 0, self.width, self.height, colkey=0)
-        if not self.hovered:
-            pyxel.dither(0.5)
-            pyxel.fill(self.x + 10, self.y + 10, 3)
-            pyxel.dither(1.0)
-        retro_text(self.x + 5, self.y + 10, self.card.name, 0)
+        pyxel.blt(self.x, self.y, self.image, 0, 0, self.width, self.height, colkey=255)
+        shadowed_retro_text = functools.partial(
+            retro_text,
+            s=self.card.name,
+            layout=layout(w=33, ha="center", break_words=True),
+        )
+        if self.is_rare:
+            shadowed(shadowed_retro_text, self.x + 5, self.y + 10 - 2, 7)
+        else:
+            retro_text(
+                self.x + 5,
+                self.y + 10 - 2,
+                self.card.name,
+                0,
+                layout=layout(w=33, ha="center", break_words=True),
+            )
 
     def is_mouse_over(self):
         return (
@@ -134,9 +221,7 @@ def gauge(x, y, w, h, c0, c1, value, max_value, label=None):
     text = f"{value}/{max_value}"
     if label:
         text = f"{label} {text}"
-    shadowed_text(
-        x + 2, y + 2, text, 7, layout_opts=layout(w=w, ha="left")
-    )
+    shadowed_text(x + 2, y + 2, text, 7, layout_opts=layout(w=w, ha="left"))
 
 
 def shadowed_text(x, y, text, color, layout_opts: LayoutOpts | None = None):
@@ -183,9 +268,21 @@ class Tooltip:
                 amy - offset,
                 0,
             )
-            cute_text(amx - 50, amy - offset + 5, self.title, 7, layout = layout(w=100, ha="left"))
+            cute_text(
+                amx - 50,
+                amy - offset + 5,
+                self.title,
+                7,
+                layout=layout(w=100, ha="left"),
+            )
             if self.description:
-                retro_text(amx - 50, amy - offset + 20, self.description, 7, layout = layout(w=100, ha="left"))
+                retro_text(
+                    amx - 50,
+                    amy - offset + 20,
+                    self.description,
+                    7,
+                    layout=layout(w=100, ha="left"),
+                )
 
     def update(self):
         self.counter -= 3
@@ -292,7 +389,15 @@ class App:
         pyxel.dither(1.0)
         display_text(x, y, first_line, 7, threshold=70)
         gauge(
-            x, y + 20, w=40, h=7, c0=4, c1=8, value=battler.hp, max_value=battler.max_hp, label="HP"
+            x,
+            y + 20,
+            w=40,
+            h=7,
+            c0=4,
+            c1=8,
+            value=battler.hp,
+            max_value=battler.max_hp,
+            label="HP",
         )
         latest_y = y + 20
         if isinstance(battler, PlayerBattler):
