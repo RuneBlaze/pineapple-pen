@@ -23,14 +23,18 @@ Driven by a quest for justice and an insatiable curiosity, Celine ventures throu
 
 [initial_deck]
 
+# cards = [
+#     "left * 3",
+#     "right * 3",
+#     "repeat all previous",
+#     "Slash * 3 # Takes sword and slashes at the enemy. Deals 2 times 4 base damage.", # two copies of this card
+#     "Block * 2 # Raises shield to block incoming attacks. Gains 2 shield points.",
+#     "Bash * 10 # Strikes one enemy with a powerful blow. Deals 8 base damage and applies 2 vulnerable.",
+#     # "Backflip * 10 # Draw 2 cards. Gain 2 shield points.",
+# ]
+
 cards = [
-    "left * 3",
-    "right * 3",
-    "repeat all previous",
-    "Slash * 3 # Takes sword and slashes at the enemy. Deals 2 times 4 base damage.", # two copies of this card
-    "Block * 2 # Raises shield to block incoming attacks. Gains 2 shield points.",
-    "Bash * 10 # Strikes one enemy with a powerful blow. Deals 8 base damage and applies 2 vulnerable.",
-    # "Backflip * 10 # Draw 2 cards. Gain 2 shield points.",
+    "reflex * 10 # Draw 2 cards.",
 ]
 
 

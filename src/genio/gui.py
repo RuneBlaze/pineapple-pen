@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import contextlib
+import math
+
 import numpy as np
 import pyxel
-from pyxelunicode import PyxelUnicode
+from pyxelxl import Font, LayoutOpts, layout
 
 from genio.battle import (
     Battler,
@@ -12,24 +15,14 @@ from genio.battle import (
 )
 from genio.card import Card
 from genio.core.base import slurp_toml
-from pyxelxl import Font
-from functools import partial
 
 predef = slurp_toml("assets/strings.toml")
 
-# Initialize pyuni at the module level
-pyuni = PyxelUnicode("assets/Roboto-Medium.ttf", 14)
-display = PyxelUnicode("/Users/lbq/goof/genio/assets/DMSerifDisplay-Regular.ttf", 18)
-logtext = PyxelUnicode("assets/Roboto-Medium.ttf", 12)
-cutefont = PyxelUnicode("/Users/lbq/goof/genio/assets/retro-pixel-cute-prop.ttf", 11)
-retrofont = PyxelUnicode("/Users/lbq/goof/genio/assets/retro-pixel-petty-5h.ttf", 5)
-retrotext_font = Font("assets/retro-pixel-petty-5h.ttf")
-
-retro_text = partial(retrotext_font.draw, font_size = 5)
-roboto_font = Font("assets/Roboto-Medium.ttf")
-roboto_text = roboto_font.draw
-display_font = Font("assets/DMSerifDisplay-Regular.ttf")
-display_text = partial(display_font.draw, font_size = 18)
+retro_text = Font("assets/retro-pixel-petty-5h.ttf").specialize(font_size=5)
+display_text = Font("assets/DMSerifDisplay-Regular.ttf").specialize(
+    font_size=18, threshold=100
+)
+cute_text = Font("assets/retro-pixel-cute-prop.ttf").specialize(font_size=11)
 
 
 class CardSprite:
@@ -56,7 +49,7 @@ class CardSprite:
             pyxel.dither(0.5)
             pyxel.fill(self.x + 10, self.y + 10, 3)
             pyxel.dither(1.0)
-        roboto_text(self.x + 5, self.y + 10, self.card.name, 0, font_size = 14)
+        retro_text(self.x + 5, self.y + 10, self.card.name, 0)
 
     def is_mouse_over(self):
         return (
@@ -88,7 +81,7 @@ class CardSprite:
 
         if self.is_mouse_over():
             self.hovered = True
-            self.app.tooltip.reset(self.card.name, "")
+            self.app.tooltip.reset(self.card.name, self.card.description or "")
         else:
             self.hovered = False
 
@@ -132,20 +125,32 @@ def horizontal_gradient(x, y, w, h, c0, c1):
     pyxel.dither(1.0)
 
 
-def gauge(x, y, w, h, c0, c1, value, max_value):
+def gauge(x, y, w, h, c0, c1, value, max_value, label=None):
     pyxel.rect(x, y, w, h, c0)
-    pyxel.rect(x, y, w * value // max_value, h, c1)
+    pyxel.rect(x, y, min(w * value // max_value, w), h, c1)
     pyxel.dither(0.5)
     pyxel.rectb(x, y, w, h, 0)
     pyxel.dither(1.0)
-    shadowed_text(x + 2, y + 2, f"{value}/{max_value}", 7)
+    text = f"{value}/{max_value}"
+    if label:
+        text = f"{label} {text}"
+    shadowed_text(
+        x + 2, y + 2, text, 7, layout_opts=layout(w=w, ha="left")
+    )
 
 
-def shadowed_text(x, y, text, color):
+def shadowed_text(x, y, text, color, layout_opts: LayoutOpts | None = None):
     pyxel.dither(0.5)
-    retro_text(x + 1, y + 1, text, 0)
+    retro_text(x + 1, y + 1, text, 0, layout=layout_opts)
     pyxel.dither(1.0)
-    retro_text(x, y, text, color)
+    retro_text(x, y, text, color, layout=layout_opts)
+
+
+@contextlib.contextmanager
+def dithering(f: float):
+    pyxel.dither(f)
+    yield
+    pyxel.dither(1.0)
 
 
 class Tooltip:
@@ -159,10 +164,28 @@ class Tooltip:
             return
         # Draw on mouse, and fade with counter if counter < 50
         mx, my = pyxel.mouse_x, pyxel.mouse_y
+        amx, amy = mx, my
+        t = 0.6
+        amx = mx * t + ((1 - t) * pyxel.width / 2)
+        amy = my * t + ((1 - t) * pyxel.height / 2)
         dither_amount = 1.0 if self.counter > 50 else (self.counter / 50) ** 2
-        pyxel.dither(dither_amount)
-        pyxel.rect(mx, my, 40, 20, 0)
-        pyxel.dither(1.0)
+        with dithering(dither_amount):
+            rect_width = 125
+            rect_height = 60
+            offset = 60
+            pyxel.rect(amx - rect_width // 2, amy - offset, rect_width, rect_height, 0)
+            pyxel.tri(
+                mx,
+                my,
+                amx - 10,
+                amy - offset,
+                amx + 10,
+                amy - offset,
+                0,
+            )
+            cute_text(amx - 50, amy - offset + 5, self.title, 7, layout = layout(w=100, ha="left"))
+            if self.description:
+                retro_text(amx - 50, amy - offset + 20, self.description, 7, layout = layout(w=100, ha="left"))
 
     def update(self):
         self.counter -= 3
@@ -265,11 +288,11 @@ class App:
         offset = self.CARD_WIDTH + 5
         pyxel.camera(-9, -35)
         pyxel.dither(0.5)
-        display_text(x + 1, y + 1 , first_line, 0, threshold=70)
+        display_text(x + 1, y + 1, first_line, 0, threshold=70)
         pyxel.dither(1.0)
         display_text(x, y, first_line, 7, threshold=70)
         gauge(
-            x, y + 20, w=40, h=7, c0=4, c1=8, value=battler.hp, max_value=battler.max_hp
+            x, y + 20, w=40, h=7, c0=4, c1=8, value=battler.hp, max_value=battler.max_hp, label="HP"
         )
         latest_y = y + 20
         if isinstance(battler, PlayerBattler):
@@ -282,21 +305,29 @@ class App:
                 c1=5,
                 value=battler.mp,
                 max_value=battler.max_mp,
+                label="MP",
             )
             latest_y = y + 30
-        shadowed_text(x + 2, latest_y + 10, f"Shield: {battler.shield_points}", 7)
+        gauge(
+            x,
+            latest_y + 10,
+            w=40,
+            h=7,
+            c0=2,
+            c1=6,
+            value=battler.shield_points,
+            max_value=battler.max_hp,
+            label="S",
+        )
         pyxel.camera()
-
-        # logtext.text(x, y + 12 + offset, second_line, 7)
-        # logtext.text(x, y + 24 + offset, third_line, 7)
 
     def draw(self):
         vertical_gradient(0, 0, 427, 240, 5, 12)
         for card in self.card_sprites:
             card.draw()
 
-        cutefont.text(5, 5, f"Deck: {len(self.bundle.card_bundle.deck)}", 7)
-        pyuni.text(5, 15, f"Graveyard: {len(self.bundle.card_bundle.graveyard)}", 7)
+        # cutefont.text(5, 5, f"Deck: {len(self.bundle.card_bundle.deck)}", 7)
+        # pyuni.text(5, 15, f"Graveyard: {len(self.bundle.card_bundle.graveyard)}", 7)
 
         num_players_seen = 0
         num_enemies_seen = 0
@@ -311,21 +342,6 @@ class App:
                     30 + num_enemies_seen * 50,
                 )
                 num_enemies_seen += 1
-            # break
-            # emoji.text(5, 30 + i * 37 + 12, "🚘", 7)
-            # break
-            # if isinstance(battler, PlayerBattler):
-            #     str_repr = f"[{battler.name_stem}]: HP {battler.hp} S {battler.shield_points}"
-            # elif isinstance(battler, EnemyBattler):
-            #     str_repr = f"[{battler.name}]: HP {battler.hp} S {battler.shield_points} Intent: {battler.current_intent}"
-            # else:
-            #     str_repr = f"{battler.name}"
-            # logtext.text(
-            #     5,
-            #     30 + i * 12,
-            #     str_repr,
-            #     7,
-            # )
 
         # mx, my = pyxel.mouse_x, pyxel.mouse_y
         # pyxel.line(mx - 5, my, mx + 5, my, 7)
