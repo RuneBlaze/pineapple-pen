@@ -7,8 +7,7 @@ from typing import Literal
 
 import numpy as np
 import pyxel
-import safetensors.numpy as stnp
-from pyxelxl import Font, LayoutOpts, layout
+from pyxelxl import Font, LayoutOpts, blt_rot, layout
 from pyxelxl.font import _image_as_ndarray
 
 from genio.battle import (
@@ -19,11 +18,14 @@ from genio.battle import (
 )
 from genio.card import Card
 from genio.core.base import slurp_toml
+from genio.semantic_search import SerializedCardArt, search_closest_document
 
 WORKING_DIR = os.getcwd()
 
+WINDOW_WIDTH, WINDOW_HEIGHT = 427, 240
 
-def asset_path(*args):
+
+def asset_path(*args: str):
     return os.path.join(WORKING_DIR, "assets", *args)
 
 
@@ -64,18 +66,17 @@ class CardArtSet:
     unfaded: np.ndarray
     faded: np.ndarray
 
-    def __init__(self, base_image: pyxel.Image, basename: str) -> None:
-        bundle = stnp.load_file(asset_path("cards", f"{basename}.safetensors"))
-        self.unfaded = bundle["unfaded"]
-        self.faded = bundle["faded"]
+    def __init__(self, base_image: pyxel.Image, document: SerializedCardArt) -> None:
+        self.unfaded = document.unfaded
+        self.faded = document.unfaded
         self.base_image = base_image
 
     def imprint(self, card_name: str, rarity: Literal[0, 1, 2]) -> pyxel.Image:
         w, h = self.base_image.width, self.base_image.height
         base = _image_as_ndarray(self.base_image)
-        buffer = np.full((h, w), 255, dtype=np.uint8)
+        buffer = np.full((h, w), 254, dtype=np.uint8)
         buffer[:] = base
-        buffer[buffer == 0] = 255
+        buffer[buffer == 0] = 254
         if rarity >= 1:
             center_crop_size = (60 - 2 * 2, 43 - 2 * 2)
             unfaded_cropped = center_crop(self.unfaded, center_crop_size)
@@ -88,13 +89,38 @@ class CardArtSet:
             center_crop_size = (30, 43 - 2 * 4)
             faded_cropped = center_crop(self.faded, center_crop_size)
             paste_center(faded_cropped, buffer, offset=2)
-        return ndarray_to_image(buffer)
+        img = ndarray_to_image(buffer)
+        self._print_card_name(img, card_name, rarity)
+        return img
+
+    def _print_card_name(self, image: pyxel.Image, card_name: str, rarity: int) -> None:
+        shadowed_retro_text = functools.partial(
+            retro_text,
+            s=card_name,
+            layout=layout(w=33, ha="center", break_words=True),
+            target=image,
+        )
+        if rarity >= 1:
+            shadowed(shadowed_retro_text, 5, 10 - 2, 7)
+        else:
+            retro_text(
+                5,
+                10 - 2,
+                card_name,
+                0,
+                layout=layout(w=33, ha="center", break_words=True),
+                target=image,
+            )
 
 
 def shadowed(fn, x, y, col):
     for dx, dy in [[1, 0], [-1, 0], [0, 1], [0, -1]]:
         fn(dx + x, dy + y, col=0)
     fn(x, y, col=col)
+
+
+def clip_magnitude(x, max_magnitude):
+    return max(-max_magnitude, min(max_magnitude, x))
 
 
 class CardSprite:
@@ -114,29 +140,45 @@ class CardSprite:
         self.drag_offset_y = 0
         base_image = pyxel.Image(43, 60)
         base_image.blt(0, 0, 0, 0, 0, 43, 60, colkey=0)
-        self.card_art = CardArtSet(base_image, "bundle")
+        self.card_art = CardArtSet(base_image, search_closest_document(card.name))
         self.is_rare = rarity = bool(card.description)
         self.image = self.card_art.imprint(card.name, int(rarity))
 
     def draw(self):
-        if self.selected:
-            pyxel.rectb(self.x - 2, self.y - 2, self.width + 4, self.height + 4, 8)
-        pyxel.blt(self.x, self.y, self.image, 0, 0, self.width, self.height, colkey=255)
-        shadowed_retro_text = functools.partial(
-            retro_text,
-            s=self.card.name,
-            layout=layout(w=33, ha="center", break_words=True),
+        pyxel.pal(4, 13)
+        angle = fan_out_for_N(self.deck_length)[self.index]
+        blt_rot(
+            self.x,
+            self.y,
+            self.image,
+            0,
+            0,
+            self.width,
+            self.height,
+            colkey=0,
+            rot=angle,
         )
-        if self.is_rare:
-            shadowed(shadowed_retro_text, self.x + 5, self.y + 10 - 2, 7)
-        else:
-            retro_text(
-                self.x + 5,
-                self.y + 10 - 2,
-                self.card.name,
-                0,
-                layout=layout(w=33, ha="center", break_words=True),
-            )
+        if not self.selected and any(
+            card for card in self.app.card_sprites if card.selected
+        ):
+            with pal_single_color(5):
+                with dithering(0.5):
+                    blt_rot(
+                        self.x,
+                        self.y,
+                        self.image,
+                        0,
+                        0,
+                        self.width,
+                        self.height,
+                        colkey=0,
+                        rot=angle,
+                    )
+        pyxel.pal()
+
+    @property
+    def deck_length(self) -> int:
+        return len(self.app.bundle.card_bundle.hand)
 
     def is_mouse_over(self):
         return (
@@ -163,8 +205,14 @@ class CardSprite:
 
         # Tweening for smooth transition
         if not self.dragging:
-            self.x += (self.target_x - self.x) * self.app.TWEEN_SPEED
-            self.y += (self.target_y - self.y) * self.app.TWEEN_SPEED
+            target_x, target_y = self.adjusted_target_coords()
+            dx = (target_x - self.x) * self.app.TWEEN_SPEED
+            dy = (target_y - self.y) * self.app.TWEEN_SPEED
+            dx = clip_magnitude(dx, 13)
+            dy = clip_magnitude(dy, 13)
+
+            self.x += dx
+            self.y += dy
 
         if self.is_mouse_over():
             self.hovered = True
@@ -186,8 +234,18 @@ class CardSprite:
 
     def change_index(self, new_index: int):
         self.index = new_index
-        self.target_x = self.app.GRID_X_START + new_index * self.app.GRID_SPACING_X
-        self.target_y = self.app.GRID_Y_START
+        self.target_x, self.target_y = self.calculate_target_coords()
+
+    def adjusted_target_coords(self) -> tuple[int, int]:
+        x, y = self.calculate_target_coords()
+        return x, y - 10 if self.selected else y
+
+    def calculate_target_coords(self) -> tuple[int, int]:
+        fanout = fan_out_for_N(self.deck_length)[self.index]
+        return (
+            self.app.GRID_X_START + self.index * self.app.GRID_SPACING_X,
+            self.app.GRID_Y_START + pyxel.sin(abs(fanout)) * 60,
+        )
 
 
 def vertical_gradient(x, y, w, h, c0, c1):
@@ -296,16 +354,105 @@ class Tooltip:
         self.counter = 60
 
 
+@contextlib.contextmanager
+def pal_single_color(col: int):
+    for i in range(16):
+        pyxel.pal(i, col)
+    yield
+    pyxel.pal()
+
+
+camera_stack = []
+
+
+@contextlib.contextmanager
+def camera_shift(x: int, y: int):
+    global camera_stack
+    base_coord = camera_shift[-1] if camera_stack else (0, 0)
+    pyxel.camera(x + base_coord[0], y + base_coord[1])
+    camera_stack.append((x, y))
+    yield
+    camera_stack.pop()
+    pyxel.camera(base_coord[0], base_coord[1])
+
+
+def button(
+    x: int, y: int, w: int, h: int, text: str, color: int, hover_color: int
+) -> None:
+    if x <= pyxel.mouse_x <= x + w and y <= pyxel.mouse_y <= y + h:
+        pyxel.rect(x, y, w, h, hover_color)
+    else:
+        pyxel.rect(x, y, w, h, color)
+    pyxel.rectb(x, y, w, h, 0)
+    retro_text(x + 2, y + 2, text, 0, layout=layout(w=w, h=h, ha="center", va="center"))
+    retro_text(x, y, text, 7, layout=layout(w=w, h=h, ha="center", va="center"))
+
+
+class DrawDeck:
+    def __init__(self, card_bundle: CardBundle):
+        self.deck_background = pyxel.Image.from_image(asset_path("card-back.png"))
+        self.card_bundle = card_bundle
+
+    def draw(self, x: int, y: int) -> None:
+        num_shadow = max(1, len(self.card_bundle.deck) // 5)
+        if len(self.card_bundle.deck) == 1:
+            num_shadow = 0
+        with pal_single_color(13):
+            for i in range(num_shadow):
+                pyxel.blt(
+                    x - i - 1, y + i + 1, self.deck_background, 0, 0, 43, 60, colkey=0
+                )
+        pyxel.blt(x, y, self.deck_background, 0, 0, 43, 60, colkey=0)
+        width = 43
+        label_width = 22
+        label_x = x + (width - label_width) // 2
+        label_y = y - 3
+        pyxel.rect(label_x, label_y, label_width, 7, 7)
+        retro_text(
+            label_x,
+            label_y,
+            str(len(self.card_bundle.deck)),
+            0,
+            layout=layout(w=label_width, ha="center", h=7, va="center"),
+        )
+
+
+@functools.cache
+def calculate_fan_out_angles_symmetry(
+    N: int, max_angle: int, max_difference: int
+) -> list[int]:
+    if N == 0:
+        return []
+
+    angles = [0] * N
+    middle_index = N // 2
+
+    # Generate angles for one side
+    for i in range(1, middle_index + 1):
+        target_angle = min(i * max_difference, max_angle)
+        angles[middle_index - i] = -target_angle  # Left side
+        angles[
+            middle_index + (i - 1) + (0 if N % 2 == 0 else 0)
+        ] = target_angle  # Right side
+
+    return angles
+
+
+fan_out_for_N = functools.partial(
+    calculate_fan_out_angles_symmetry, max_angle=15, max_difference=1.5
+)
+
+
 class App:
     CARD_WIDTH = 43
     CARD_HEIGHT = 60
     CARD_COLOR = 7
-    GRID_X_START = 10
+    GRID_X_START = 85
     GRID_Y_START = 180
-    GRID_SPACING_X = 50
+    GRID_SPACING_X = 40
     GRID_SPACING_Y = 10
     TOTAL_CARDS = 6
-    TWEEN_SPEED = 0.2
+    TWEEN_SPEED = 0.5
 
     card_bundle: CardBundle
 
@@ -318,6 +465,7 @@ class App:
         self.card_sprites = []
         self.sync_sprites()
         self.tooltip = Tooltip("", "")
+        self.draw_deck = DrawDeck(self.bundle.card_bundle)
         pyxel.run(self.update, self.draw)
 
     def sync_sprites(self):
@@ -376,13 +524,6 @@ class App:
             first_line += " " + " ".join(
                 f"({status.name} {status.counter})" for status in battler.status_effects
             )
-        second_line = f"HP: {battler.hp} S: {battler.shield_points}"
-        third_line = (
-            ""
-            if isinstance(battler, PlayerBattler)
-            else f"Intent: {battler.current_intent}"
-        )
-        offset = self.CARD_WIDTH + 5
         pyxel.camera(-9, -35)
         pyxel.dither(0.5)
         display_text(x + 1, y + 1, first_line, 0, threshold=70)
@@ -428,11 +569,9 @@ class App:
 
     def draw(self):
         vertical_gradient(0, 0, 427, 240, 5, 12)
+        self.draw_deck.draw(10, 190)
         for card in self.card_sprites:
             card.draw()
-
-        # cutefont.text(5, 5, f"Deck: {len(self.bundle.card_bundle.deck)}", 7)
-        # pyuni.text(5, 15, f"Graveyard: {len(self.bundle.card_bundle.graveyard)}", 7)
 
         num_players_seen = 0
         num_enemies_seen = 0
@@ -448,11 +587,10 @@ class App:
                 )
                 num_enemies_seen += 1
 
-        # mx, my = pyxel.mouse_x, pyxel.mouse_y
-        # pyxel.line(mx - 5, my, mx + 5, my, 7)
-        # pyxel.line(mx, my - 5, mx, my + 5, 7)
-        self.draw_crosshair(pyxel.mouse_x, pyxel.mouse_y)
+        button(WINDOW_WIDTH - 70, WINDOW_HEIGHT - 20, 55, 15, "End Turn", 7, 5)
+        button(WINDOW_WIDTH - 70, WINDOW_HEIGHT - 50, 55, 15, "Play Cards", 7, 5)
         self.tooltip.draw()
+        self.draw_crosshair(pyxel.mouse_x, pyxel.mouse_y)
 
     def draw_crosshair(self, x, y):
         pyxel.line(x - 5, y, x + 5, y, 7)

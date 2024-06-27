@@ -11,15 +11,19 @@ But in this case, you are the DM and you will resolve the actions of either the 
 - The resolution switch is set to **{{ resolve_player_actions }}**.
 - If **true**, resolve the player's actions. If **false**, resolve the enemies' actions.
 
-### Card Types (for player actions):
-To create dynamic and engaging gameplay, our card system combines specific player actions (Concrete Cards) with descriptive modifiers (Modifier Cards). This approach allows players to form complex actions by combining words, almost like constructing sentences in a word game. Players can imagine a narrative where actions and modifiers connect fluidly, creating a vivid and imaginative gameplay experience.
+## Card Types (for player actions):
 
-- **Concrete Cards**: These represent the core actions the player takes (e.g., attacking, blocking).
-- **Modifier Cards**: These are postfix modifiers that alter or enhance the concrete cards (e.g., "left" and "right" modifying "Slash" to "Slash left").
+To create dynamic and engaging gameplay, we allow players to form complex actions by combining words, almost like constructing sentences in a word game. Broadly speaking, there are two types of cards:
 
-In this system, players read the combinations like a literary game, where the sequence of cards forms a coherent and vivid description of actions, much like forming sentences from words. For example, combining "Block," "left," and "right" can be imagined as "Block left, then block right," in a defensive formation, enhancing the player's engagement and immersion in the game.
+- **Concrete Cards** ("With description cards"): They have well-defined descriptions, forming the "meat" of an action or a series of actions.
+- **Modifier Cards** ("Without description cards"): These are postfix modifiers that act like connecting words in a sentence.
 
-### Status Effects Notation:
+In this system, players read the combinations like a literary game, where the played cards form a sequence of actions, much like a compressed set of words formed from sentences. For example, combining "Block," "left," and "right" can be imagined as "Block left, then block right," in a defensive formation. There is no strict separation between concrete and modifier cards, and players can mix and match them. The only difference is that concrete cards have descriptions that dictate the nature of the action, while modifier cards provide additional context or modify the concrete cards.
+
+## Status Effects:
+
+### Notations:
+
 - **General Form**: `[entity: +effect [duration times|turns] [pattern] (optional condition) -> [replacement];]`
   - **entity**: Target entity.
   - **effect**: Name of the effect.
@@ -43,7 +47,10 @@ In this system, players read the combinations like a literary game, where the se
 4. **Diamond Shield**: Cancels damage <= 2 for 2 times.
   - Notation: {% raw %}`[entity: +diamond shield [2 times] [ME: damaged {:d}] (if m[0] <= 2) -> [ME: damaged {{0}}];]`{% endraw %}
 
-### Player Profile:
+## The battlefield
+
+Player's profile:
+
 - {{ user.profile.profile }}
 
 ### Battlefield
@@ -56,6 +63,8 @@ In this system, players read the combinations like a literary game, where the se
 
 {%- if resolve_player_actions %}
 But remember, you are only resolving the player's actions. The enemies' intents are provided for context.
+{%- else %}
+You are resolving the enemies' actions, and their intents determine their actions.
 {%- endif %}
 
 {% macro actions_description(title, resolve_goal, interpret_goal) %}

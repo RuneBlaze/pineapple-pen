@@ -41,7 +41,7 @@ pillow = "9.5.0"
 smallperm = "^0.1.10"
 parse = "^1.20.2"
 pytest-sugar = "^1.0.0"
-pyxelxl = "^0.0.16"
+pyxelxl = "^0.0.17"
 safetensors = "^0.4.3"
 
 
