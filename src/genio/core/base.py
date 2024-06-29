@@ -39,6 +39,7 @@ logger = get_logger()
 
 TEMPLATE_REGISTRY = {}
 OUTPUT_FORMAT = "JSON"
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
 
 def paragraph_consolidate(text: str) -> str:
@@ -82,9 +83,6 @@ def can_access(structure, lens: str) -> bool:
         return True
     except KeyError:
         return False
-
-
-PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
 
 class TemplateRegistryLoader(BaseLoader):
@@ -599,7 +597,6 @@ def load_writer_archetypes() -> list[WriterArchetype]:
     return [WriterArchetype(**archetype) for archetype in parsed_data["writer"]]
 
 
-@cache
 def slurp_toml(path):
     with open(path) as f:
         return tomlkit_to_popo(tomllib.load(f))

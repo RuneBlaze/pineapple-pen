@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import functools
-import os
+from itertools import cycle
 from typing import Literal
 
 import numpy as np
@@ -10,6 +10,7 @@ import pyxel
 from pyxelxl import Font, LayoutOpts, blt_rot, layout
 from pyxelxl.font import _image_as_ndarray
 
+from genio.base import asset_path
 from genio.battle import (
     Battler,
     CardBundle,
@@ -17,19 +18,14 @@ from genio.battle import (
     setup_battle_bundle,
 )
 from genio.card import Card
-from genio.core.base import slurp_toml
+from genio.predef import access_predef, refresh_predef
+from genio.ps import Anim
 from genio.semantic_search import SerializedCardArt, search_closest_document
-
-WORKING_DIR = os.getcwd()
 
 WINDOW_WIDTH, WINDOW_HEIGHT = 427, 240
 
 
-def asset_path(*args: str):
-    return os.path.join(WORKING_DIR, "assets", *args)
-
-
-predef = slurp_toml("assets/strings.toml")
+# predef = slurp_toml("assets/strings.toml")
 
 retro_text = Font(asset_path("retro-pixel-petty-5h.ttf")).specialize(font_size=5)
 display_text = Font("assets/DMSerifDisplay-Regular.ttf").specialize(
@@ -123,6 +119,25 @@ def clip_magnitude(x, max_magnitude):
     return max(-max_magnitude, min(max_magnitude, x))
 
 
+class Peekable:
+    def __init__(self, iterable):
+        self.iterator = iter(iterable)
+        self._next = next(self.iterator, None)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self._next is None:
+            raise StopIteration
+        result = self._next
+        self._next = next(self.iterator, None)
+        return result
+
+    def peek(self):
+        return self._next
+
+
 class CardSprite:
     def __init__(self, index, card: Card, app: App, selected=False):
         self.index = index
@@ -145,7 +160,8 @@ class CardSprite:
         self.image = self.card_art.imprint(card.name, int(rarity))
 
     def draw(self):
-        pyxel.pal(4, 13)
+        if self.index >= self.deck_length:
+            return
         angle = fan_out_for_N(self.deck_length)[self.index]
         blt_rot(
             self.x,
@@ -158,6 +174,7 @@ class CardSprite:
             colkey=0,
             rot=angle,
         )
+        pyxel.pal()
         if not self.selected and any(
             card for card in self.app.card_sprites if card.selected
         ):
@@ -174,7 +191,6 @@ class CardSprite:
                         colkey=0,
                         rot=angle,
                     )
-        pyxel.pal()
 
     @property
     def deck_length(self) -> int:
@@ -187,6 +203,10 @@ class CardSprite:
         )
 
     def update(self):
+        if self.index >= self.deck_length:
+            for i, card in enumerate(self.app.card_sprites):
+                card.change_index(i)
+            return
         if pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT):
             if self.is_mouse_over():
                 self.dragging = True
@@ -241,7 +261,7 @@ class CardSprite:
         return x, y - 10 if self.selected else y
 
     def calculate_target_coords(self) -> tuple[int, int]:
-        fanout = fan_out_for_N(self.deck_length)[self.index]
+        fanout = fan_out_for_N(self.deck_length)[min(self.index, self.deck_length - 1)]
         return (
             self.app.GRID_X_START + self.index * self.app.GRID_SPACING_X,
             self.app.GRID_Y_START + pyxel.sin(abs(fanout)) * 60,
@@ -455,6 +475,7 @@ class App:
     TWEEN_SPEED = 0.5
 
     card_bundle: CardBundle
+    anims: list[Anim]
 
     def __init__(self):
         pyxel.init(427, 240, title="Genio")
@@ -466,6 +487,9 @@ class App:
         self.sync_sprites()
         self.tooltip = Tooltip("", "")
         self.draw_deck = DrawDeck(self.bundle.card_bundle)
+        self.anims = []
+        self.timer = 0
+        self.particle_configs = Peekable(cycle(access_predef("anims").items()))
         pyxel.run(self.update, self.draw)
 
     def sync_sprites(self):
@@ -503,7 +527,21 @@ class App:
         for card in self.card_sprites:
             card.update()
 
+        if pyxel.btnr(pyxel.KEY_R):
+            refresh_predef()
+            self.particle_configs = Peekable(cycle(access_predef("anims").items()))
+            print(self.particle_configs.peek())
+
+        if pyxel.btnp(pyxel.KEY_E):
+            next(self.particle_configs)
+
         self.tooltip.update()
+        for anim in self.anims:
+            anim.update()
+        if self.timer % 30 == 0:
+            self.add_anim(self.particle_configs.peek()[1], 100, 100, 1.0)
+        self.anims = [anim for anim in self.anims if not anim.dead]
+        self.timer += 1
 
     def play_selected(self):
         selected_card_sprites = [card for card in self.card_sprites if card.selected]
@@ -512,6 +550,9 @@ class App:
         selected_cards = [card.card for card in selected_card_sprites]
         self.bundle.card_bundle.hand_to_resolving(selected_cards)
         self.resolve_selected_cards(selected_cards)
+
+    def add_anim(self, name: str, x: int, y: int, play_speed: float = 1.0):
+        self.anims.append(Anim.from_predef(name, x, y, play_speed))
 
     def resolve_selected_cards(self, selected_cards: list[Card]):
         self.bundle.resolve_player_cards(selected_cards)
@@ -591,6 +632,10 @@ class App:
         button(WINDOW_WIDTH - 70, WINDOW_HEIGHT - 50, 55, 15, "Play Cards", 7, 5)
         self.tooltip.draw()
         self.draw_crosshair(pyxel.mouse_x, pyxel.mouse_y)
+        if self.anims:
+            self.anims[0].draw()
+        current_name = self.particle_configs.peek()[0]
+        shadowed_text(5, 5, current_name, 7)
 
     def draw_crosshair(self, x, y):
         pyxel.line(x - 5, y, x + 5, y, 7)

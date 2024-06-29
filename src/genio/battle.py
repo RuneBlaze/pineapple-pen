@@ -298,7 +298,7 @@ class CardBundle:
         if match := parse(expr, "#{:d}"):
             card_number = match.fixed[0]
             return self.deck[card_number]
-        for card in chain(self.deck, self.hand, self.graveyard):
+        for card in chain(self.deck, self.hand, self.graveyard, self.resolving):
             if card.name.lower() == expr.lower():
                 return card
             if card.short_id() == expr.lower():
@@ -459,6 +459,28 @@ def parse_top_level_brackets(s: str) -> list[str]:
     return result
 
 
+def postprocess_common_mistake(s: str) -> list[str]:
+    num_semicolons = s.count(";")
+    if num_semicolons <= 1:
+        return [s]
+    # split by semicolon
+    segs = s.split(";")
+    processed_segs = []
+    for seg in segs:
+        seg = seg.strip()
+        if not seg.endswith("]"):
+            seg += "]"
+        if not seg.startswith("["):
+            seg = "[" + seg
+        processed_segs.append(seg)
+    logger.info("Common mistake detected", s=s, processed_segs=processed_segs)
+    return processed_segs
+
+
+def flat_map(fn, iterable):
+    return chain.from_iterable(map(fn, iterable))
+
+
 @dataclass
 class StatusEffect:
     defn: StatusDefinition
@@ -604,7 +626,9 @@ class BattleBundle:
         self, result: str, autoenqueue: bool = True, aggregate_mode: bool = False
     ) -> EffectGroup:
         result = self.postprocess_result(result, aggregate_mode=aggregate_mode)
-        substrings = parse_top_level_brackets(result)
+        substrings = flat_map(
+            postprocess_common_mistake, parse_top_level_brackets(result)
+        )
         group = EffectGroup(self)
         for substring in substrings:
             parsed = parse_effect(substring, self.card_bundle)

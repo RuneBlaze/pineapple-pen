@@ -22,7 +22,9 @@ In this system, players read the combinations like a literary game, where the pl
 
 ## Status Effects:
 
-### Notations:
+### Status Effect Notations
+
+Sometimes status effects like `vulnerable` or `poisoned` are applied to entities. Here is the notation for status effects:
 
 - **General Form**: `[entity: +effect [duration times|turns] [pattern] (optional condition) -> [replacement];]`
   - **entity**: Target entity.
@@ -46,6 +48,8 @@ In this system, players read the combinations like a literary game, where the pl
   - Notation: `[entity: +burn [3 turns] [ME: end of turn] -> [ME: damaged 2];]`
 4. **Diamond Shield**: Cancels damage <= 2 for 2 times.
   - Notation: {% raw %}`[entity: +diamond shield [2 times] [ME: damaged {:d}] (if m[0] <= 2) -> [ME: damaged {{0}}];]`{% endraw %}
+
+Anything instant should not require a status effect.
 
 ## The battlefield
 
@@ -88,11 +92,14 @@ Your goals for filling in are:
     - `[entity: healed X]` - The entity receives X healing.
     - `[entity: shield -X]` - The entity loses X shield points.
     - `[entity: shield X]` - The entity gains X shield points.
-    - `[entity: +effect [duration times|turns] [pattern] (optional condition) -> [replacement];]` - Status effect. See the notation above. You must define the effect of the status effect yourself.
+    - `[entity: +status [duration times|turns] [pattern] (optional condition) -> [replacement];]` - Status effect. See the notation above. You must define the effect of the status effect yourself.
 5. **Global Effects**:
-    - `[draw X]` - The player draws X cards.
+  Use these without appending a specific entity:
+    - `[draw X]` - The player draws X cards. Do not use this to create copies or create cards.
     - `[discard X]` - The player discards X cards.
-    - `[create card "card description"]` - A specified card is created.
+    - `[discard CARD_SPECIFIER..]` - Discard a specific card, or multiple cards. E.g.,`[discard kb5a lruf]` (discard the two cards with short ID `kb5a` and `lruf`).
+    - `[duplicate CARD_SPECIFIER in WHERE]` - Duplicate a specific card. E.g., `[duplicate kb5a in deck]` (duplicate the card with short ID `kb5a` and put it in the deck). `WHERE` can be `deck_top`, `deck`, `hand`, or `graveyard`. For multiple copies, do `[duplicate CARD_SPECIFIER * k in WHERE]` where `k` is the number of copies.
+    - `[create card "card name: card description" in WHERE]` - A specified card is created. See above for `WHERE`, and for multiple copies, do `[create card "card name: card description" * k in WHERE]`. A description can be omitted (perfectly valid).
 6. **Effect Modifiers**:
    - **Critical Chance (crit X)**: Chance of double damage/healing.
        - `[entity: damaged 10 | crit 0.5]`
@@ -114,11 +121,13 @@ Your goals for filling in are:
 {%- if resolve_player_actions %}
 ### Player's Actions:
 
-Here are the cards that the player has played (effects in parentheses):
+Here are the cards that the player has played (effects in parentheses), in their exact order that you should respect. The short ID is provided for you to be able to write CARD_SPECIFIER in the global effects.
 
 {%- for card in cards %}
-- {{ loop.index }}. {{ card.to_plaintext() }}
+- {{ loop.index }}. {{ card.to_plaintext() }} (Shord ID: `{{card.short_id()}}`)
 {%- endfor %}
+
+In other words, the player played all the cards together: {{ cards | map(attribute='name') | join(', ') }}.
 
 {{ actions_description('Player\'s Actions', 'Resolve Player\'s Actions', 'Interpret the Cards') }}
 

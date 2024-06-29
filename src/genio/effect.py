@@ -135,13 +135,15 @@ def parse_global_effect(modifier: str, context: CardContext) -> GlobalEffect:
             **common_modifiers,
         )
     elif "duplicate" in effect:
-        card_specifier, postfix, where = search(
-            "[duplicate {} {}in {:w}", modifier
-        ).fixed
+        card_specifier, where = search("[duplicate {}in {:w}", modifier).fixed
+        if "*" in card_specifier:
+            card_specifier, postfix = card_specifier.split()
+        else:
+            postfix = ""
         mult = 1
         if mult_expr := postfix.replace(" ", ""):
             mult = search("*{:d}", mult_expr).fixed[0]
-        card = context.seek_card(card_specifier)
+        card = context.seek_card(card_specifier.strip())
         return DuplicateCardEffect(
             card=card, where=where, copies=mult, **common_modifiers
         )

@@ -22,8 +22,8 @@ class Card:
 
     def to_plaintext(self) -> str:
         if self.description:
-            return f"<{self.name} {self.short_id()}: {self.description}>"
-        return f"<{self.name} {self.short_id()}>"
+            return f"<{self.name}: {self.description}>"
+        return f"<{self.name}>"
 
     def short_id(self) -> str:
         return b32encode(bytes.fromhex(self.id[:8])).decode().lower()[:4]
