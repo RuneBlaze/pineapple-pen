@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import functools
+import random
 from itertools import cycle
 from typing import Literal
 
@@ -302,10 +303,12 @@ def gauge(x, y, w, h, c0, c1, value, max_value, label=None):
     shadowed_text(x + 2, y + 2, text, 7, layout_opts=layout(w=w, ha="left"))
 
 
-def shadowed_text(x, y, text, color, layout_opts: LayoutOpts | None = None):
-    pyxel.dither(0.5)
+def shadowed_text(
+    x, y, text, color, layout_opts: LayoutOpts | None = None, dither_mult: float = 1.0
+):
+    pyxel.dither(0.5 * dither_mult)
     retro_text(x + 1, y + 1, text, 0, layout=layout_opts)
-    pyxel.dither(1.0)
+    pyxel.dither(1.0 * dither_mult)
     retro_text(x, y, text, color, layout=layout_opts)
 
 
@@ -463,6 +466,38 @@ fan_out_for_N = functools.partial(
 )
 
 
+class Popup:
+    def __init__(self, text: str, x: int, y: int, color: int):
+        self.text = text
+        self.x = x
+        self.y = y
+        self.color = color
+        self.counter = 60
+        self.dx = random.randint(-10, 10)
+        self.dy = random.randint(-65, -55)
+
+    def draw(self):
+        if self.counter <= 0:
+            return
+        t = 1 - self.counter / 60
+        t = t**0.8
+        if self.counter >= 45:
+            if self.counter % 10 <= 5:
+                pyxel.pal(self.color, 10)
+        shadowed_text(
+            self.x + self.dx * t,
+            self.y + self.dy * t,
+            self.text,
+            self.color,
+            layout_opts=layout(w=30, h=20, ha="center", va="center"),
+            dither_mult=(1 - t) if self.counter <= 30 else 1.0,
+        )
+        pyxel.pal()
+
+    def update(self):
+        self.counter -= 1
+
+
 class App:
     CARD_WIDTH = 43
     CARD_HEIGHT = 60
@@ -488,6 +523,7 @@ class App:
         self.tooltip = Tooltip("", "")
         self.draw_deck = DrawDeck(self.bundle.card_bundle)
         self.anims = []
+        self.popups = []
         self.timer = 0
         self.particle_configs = Peekable(cycle(access_predef("anims").items()))
         pyxel.run(self.update, self.draw)
@@ -538,8 +574,11 @@ class App:
         self.tooltip.update()
         for anim in self.anims:
             anim.update()
+        for popup in self.popups:
+            popup.update()
         if self.timer % 30 == 0:
             self.add_anim(self.particle_configs.peek()[1], 100, 100, 1.0)
+            self.add_popup("Hello", 100, 100, 11)
         self.anims = [anim for anim in self.anims if not anim.dead]
         self.timer += 1
 
@@ -556,6 +595,9 @@ class App:
 
     def resolve_selected_cards(self, selected_cards: list[Card]):
         self.bundle.resolve_player_cards(selected_cards)
+
+    def add_popup(self, text: str, x: int, y: int, color: int):
+        self.popups.append(Popup(text, x, y, color))
 
     def draw_battler(self, battler: Battler, x: int, y: int) -> None:
         pyxel.blt(x, y, 0, 0, 64, self.CARD_HEIGHT, self.CARD_WIDTH, colkey=0)
@@ -634,6 +676,8 @@ class App:
         self.draw_crosshair(pyxel.mouse_x, pyxel.mouse_y)
         if self.anims:
             self.anims[0].draw()
+        for popup in self.popups:
+            popup.draw()
         current_name = self.particle_configs.peek()[0]
         shadowed_text(5, 5, current_name, 7)
 
