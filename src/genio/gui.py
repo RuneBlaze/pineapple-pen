@@ -11,7 +11,7 @@ import pyxel
 from pyxelxl import Font, LayoutOpts, blt_rot, layout
 from pyxelxl.font import _image_as_ndarray
 
-from genio.base import asset_path
+from genio.base import asset_path, load_image
 from genio.battle import (
     Battler,
     CardBundle,
@@ -21,18 +21,17 @@ from genio.battle import (
 from genio.card import Card
 from genio.predef import access_predef, refresh_predef
 from genio.ps import Anim
+from genio.scene import Scene
 from genio.semantic_search import SerializedCardArt, search_closest_document
 
 WINDOW_WIDTH, WINDOW_HEIGHT = 427, 240
 
 
-# predef = slurp_toml("assets/strings.toml")
-
 retro_text = Font(asset_path("retro-pixel-petty-5h.ttf")).specialize(font_size=5)
-display_text = Font("assets/DMSerifDisplay-Regular.ttf").specialize(
+display_text = Font(asset_path("DMSerifDisplay-Regular.ttf")).specialize(
     font_size=18, threshold=100
 )
-cute_text = Font("assets/retro-pixel-cute-prop.ttf").specialize(font_size=11)
+cute_text = Font(asset_path("retro-pixel-cute-prop.ttf")).specialize(font_size=11)
 
 
 def center_crop(img: np.ndarray, size: tuple[int, int]) -> np.ndarray:
@@ -140,7 +139,7 @@ class Peekable:
 
 
 class CardSprite:
-    def __init__(self, index, card: Card, app: App, selected=False):
+    def __init__(self, index, card: Card, app: MainScene, selected=False):
         self.index = index
         self.app = app
         self.change_index(index)
@@ -172,7 +171,7 @@ class CardSprite:
             0,
             self.width,
             self.height,
-            colkey=0,
+            colkey=254,
             rot=angle,
         )
         pyxel.pal()
@@ -189,7 +188,7 @@ class CardSprite:
                         0,
                         self.width,
                         self.height,
-                        colkey=0,
+                        colkey=254,
                         rot=angle,
                     )
 
@@ -498,7 +497,14 @@ class Popup:
         self.counter -= 1
 
 
-class App:
+def layout_center_for_n(n: int, width: int) -> list[int]:
+    div_by = n + 1
+    spacing = width // div_by
+    start_x = WINDOW_WIDTH // 2 - width // 2
+    return [start_x + i * spacing for i in range(1, n + 1)]
+
+
+class MainScene(Scene):
     CARD_WIDTH = 43
     CARD_HEIGHT = 60
     CARD_COLOR = 7
@@ -513,8 +519,6 @@ class App:
     anims: list[Anim]
 
     def __init__(self):
-        pyxel.init(427, 240, title="Genio")
-        pyxel.load("/Users/lbq/goof/genio/assets/sprites.pyxres")
         self.bundle = setup_battle_bundle(
             "initial_deck", "players.starter", ["enemies.slime"] * 2
         )
@@ -526,7 +530,6 @@ class App:
         self.popups = []
         self.timer = 0
         self.particle_configs = Peekable(cycle(access_predef("anims").items()))
-        pyxel.run(self.update, self.draw)
 
     def sync_sprites(self):
         existing_card_sprites = {
@@ -541,7 +544,6 @@ class App:
             card_sprite.change_index(i)
 
     def reorder_card_as_sprites(self):
-        # sprites might be reordered, so we reorder the cards too
         self.bundle.card_bundle.hand = [
             card_sprite.card for card_sprite in self.card_sprites
         ]
@@ -650,36 +652,78 @@ class App:
         )
         pyxel.camera()
 
+    def _draw_hearts_and_shields(self, x: int, y: int, hp: int, shield: int) -> None:
+        icons = load_image("ui", "icons.png")
+        cursor = x
+        num_hp = hp
+        num_shield = shield
+        while num_hp and num_hp >= 2:
+            pyxel.blt(cursor, y, icons, 0, 0, 8, 64, colkey=255)
+            cursor += 10
+            num_hp -= 2
+        if num_hp:
+            pyxel.blt(cursor, y, icons, 10, 0, 8, 64, colkey=255)
+            cursor += 10
+        while num_shield and num_shield >= 2:
+            pyxel.blt(cursor, y, icons, 20, 0, 8, 64, colkey=255)
+            cursor += 8
+            num_shield -= 2
+        if num_shield:
+            cursor += 1
+            pyxel.blt(cursor, y, icons, 29, 0, 8, 64, colkey=255)
+            cursor += 8
+
     def draw(self):
         vertical_gradient(0, 0, 427, 240, 5, 12)
         self.draw_deck.draw(10, 190)
         for card in self.card_sprites:
             card.draw()
 
-        num_players_seen = 0
-        num_enemies_seen = 0
-        for i, battler in enumerate(self.bundle.battlers()):
-            if isinstance(battler, PlayerBattler):
-                self.draw_battler(battler, 5, 30 + num_players_seen * 50)
-                num_players_seen += 1
-            else:
-                self.draw_battler(
-                    battler,
-                    200 + 100 * (num_enemies_seen % 2),
-                    30 + num_enemies_seen * 50,
-                )
-                num_enemies_seen += 1
+        # num_players_seen = 0
+        # num_enemies_seen = 0
+        # for i, battler in enumerate(self.bundle.battlers()):
+        #     if isinstance(battler, PlayerBattler):
+        #         self.draw_battler(battler, 5, 30 + num_players_seen * 50)
+        #         num_players_seen += 1
+        #     else:
+        #         self.draw_battler(
+        #             battler,
+        #             200 + 100 * (num_enemies_seen % 2),
+        #             30 + num_enemies_seen * 50,
+        #         )
+        #         num_enemies_seen += 1
 
         button(WINDOW_WIDTH - 70, WINDOW_HEIGHT - 20, 55, 15, "End Turn", 7, 5)
         button(WINDOW_WIDTH - 70, WINDOW_HEIGHT - 50, 55, 15, "Play Cards", 7, 5)
         self.tooltip.draw()
         self.draw_crosshair(pyxel.mouse_x, pyxel.mouse_y)
+
+        current_name = self.particle_configs.peek()[0]
+        shadowed_text(5, 5, current_name, 7)
+
+        short_holder = load_image("ui", "short-holder.png")
+        long_holder = load_image("ui", "long-holder.png")
+        char_celine = load_image("char", "char_celine.png")
+        icons = load_image("ui", "icons.png")
+
+        enemy_killer_flower = load_image("char", "enemy_killer_flower.png")
+
+        pyxel.blt(-10, 147 + 10, long_holder, 0, 0, 130, 30, colkey=255)
+        pyxel.blt(0, 100 + 10, char_celine, 0, 0, 64, 64, colkey=255)
+        shadowed_text(51, 147 + 5, "Celine", 7, layout(w=80, ha="left"))
+        self._draw_hearts_and_shields(50, 162, 8, 2)
+        for x in layout_center_for_n(2, 6 * 50):
+            pyxel.blt(10 + x - 32, 60, enemy_killer_flower, 0, 0, 64, 64, colkey=255)
+            # draw short holder
+            pyxel.blt(10 + x - 36, 126, short_holder, 0, 0, 80, 64, colkey=255)
+            shadowed_text(10 + x - 30, 121, "Majora Mask", 7, layout(w=80, ha="left"))
+            num_hp = 5
+            num_shield = 5
+            self._draw_hearts_and_shields(10 + x - 31, 131, num_hp, num_shield)
         if self.anims:
             self.anims[0].draw()
         for popup in self.popups:
             popup.draw()
-        current_name = self.particle_configs.peek()[0]
-        shadowed_text(5, 5, current_name, 7)
 
     def draw_crosshair(self, x, y):
         pyxel.line(x - 5, y, x + 5, y, 7)
@@ -689,4 +733,8 @@ class App:
         self.bundle.end_player_turn()
 
 
-app = App()
+def gen_scene() -> Scene:
+    return MainScene()
+
+
+# app = MainScene()
