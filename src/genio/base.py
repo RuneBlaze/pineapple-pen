@@ -33,15 +33,23 @@ def load_image(*asset_args: str) -> pyxel.Image:
     rgb2paletteix = calculate_rgb2paletteix()
     # Convert to ndarray
     image = Image.open(image_path).convert("RGBA")
-    buffer = np.full((image.height, image.width), 255, dtype=np.uint8)
-    # 255 is transparent, otherwise map to palette
+    buffer = np.full((image.height, image.width), 254, dtype=np.uint8)
+
     for y in range(image.height):
         for x in range(image.width):
             r, g, b, a = image.getpixel((x, y))
             if a != 0:
                 if a != 255:
                     raise ValueError(f"Unexpected alpha value: {a}")
-                buffer[y, x] = rgb2paletteix[(r, g, b)]
+                try:
+                    buffer[y, x] = rgb2paletteix[(r, g, b)]
+                except KeyError:
+                    rgb = (r, g, b)
+                    closest_color = min(
+                        rgb2paletteix.keys(),
+                        key=lambda c: sum((c[i] - rgb[i]) ** 2 for i in range(3)),
+                    )
+                    raise ValueError(f"Unexpected color: {r}, {g}, {b}; closest: {closest_color} at {rgb2paletteix[closest_color]}")
     pimage = pyxel.Image(image.width, image.height)
     _image_as_ndarray(pimage)[:] = buffer
     return pimage

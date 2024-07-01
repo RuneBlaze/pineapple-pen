@@ -68,6 +68,11 @@ class CardArtSet:
         self.base_image = base_image
 
     def imprint(self, card_name: str, rarity: Literal[0, 1, 2]) -> pyxel.Image:
+        match card_name:
+            case "3 of Spades":
+                return load_image("cards", "three-of-spades.png")
+            case "6 of Hearts":
+                return load_image("cards", "six-of-hearts.png")
         w, h = self.base_image.width, self.base_image.height
         base = _image_as_ndarray(self.base_image)
         buffer = np.full((h, w), 254, dtype=np.uint8)
@@ -172,7 +177,7 @@ class CardSprite:
             self.width,
             self.height,
             colkey=254,
-            rot=angle,
+            # rot=angle,
         )
         pyxel.pal()
         if not self.selected and any(
@@ -535,11 +540,11 @@ class WrappedImage:
         if y is None:
             y = self.y
         with self.flash_state.enter() as flash:
-            pyxel.blt(x, y, self.image, self.u, self.v, self.w, self.h, colkey=255)
+            pyxel.blt(x, y, self.image, self.u, self.v, self.w, self.h, colkey=254)
             if flash:
                 with dithering(0.5):
                     with pal_single_color(7):
-                        pyxel.blt(x, y, self.image, self.u, self.v, self.w, self.h, colkey=255)
+                        pyxel.blt(x, y, self.image, self.u, self.v, self.w, self.h, colkey=254)
 
     def flash(self):
         self.flash_state.flash()
@@ -727,19 +732,19 @@ class MainScene(Scene):
         num_hp = hp
         num_shield = shield
         while num_hp and num_hp >= 2:
-            pyxel.blt(cursor, y, icons, 0, 0, 8, 64, colkey=255)
+            pyxel.blt(cursor, y, icons, 0, 0, 8, 64, colkey=254)
             cursor += 10
             num_hp -= 2
         if num_hp:
-            pyxel.blt(cursor, y, icons, 10, 0, 8, 64, colkey=255)
+            pyxel.blt(cursor, y, icons, 10, 0, 8, 64, colkey=254)
             cursor += 10
         while num_shield and num_shield >= 2:
-            pyxel.blt(cursor, y, icons, 20, 0, 8, 64, colkey=255)
+            pyxel.blt(cursor, y, icons, 20, 0, 8, 64, colkey=254)
             cursor += 8
             num_shield -= 2
         if num_shield:
             cursor += 1
-            pyxel.blt(cursor, y, icons, 29, 0, 8, 64, colkey=255)
+            pyxel.blt(cursor, y, icons, 29, 0, 8, 64, colkey=254)
             cursor += 8
 
     def draw(self):
@@ -763,13 +768,13 @@ class MainScene(Scene):
 
         enemy_killer_flower = load_image("char", "enemy_killer_flower.png")
 
-        pyxel.blt(-10, 147 + 10, long_holder, 0, 0, 130, 30, colkey=255)
-        pyxel.blt(0, 100 + 10, char_celine, 0, 0, 64, 64, colkey=255)
+        pyxel.blt(-10, 147 + 10, long_holder, 0, 0, 130, 30, colkey=254)
+        pyxel.blt(0, 100 + 10, char_celine, 0, 0, 64, 64, colkey=254)
         shadowed_text(51, 147 + 5, "Celine", 7, layout(w=80, ha="left"))
         self._draw_hearts_and_shields(50, 162, 8, 2)
         for i, x in enumerate(layout_center_for_n(2, 6 * 50)):
             self.enemy_killer_flower_sprites[i].draw()
-            pyxel.blt(10 + x - 36, 126, short_holder, 0, 0, 80, 64, colkey=255)
+            pyxel.blt(10 + x - 36, 126, short_holder, 0, 0, 80, 64, colkey=254)
             shadowed_text(10 + x - 30, 121, "Majora Mask", 7, layout(w=80, ha="left"))
             num_hp = 5
             num_shield = 5
