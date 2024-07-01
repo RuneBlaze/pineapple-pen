@@ -484,7 +484,7 @@ class Popup:
             if self.counter % 10 <= 5:
                 pyxel.pal(self.color, 10)
         shadowed_text(
-            self.x + self.dx * t,
+            self.x + self.dx * t - 15,
             self.y + self.dy * t,
             self.text,
             self.color,
@@ -495,6 +495,63 @@ class Popup:
 
     def update(self):
         self.counter -= 1
+
+
+class FlashState:
+    def __init__(self):
+        self.counter = 0
+
+    def flash(self):
+        self.counter = 35
+
+    @contextlib.contextmanager
+    def enter(self):
+        yield self.is_flashing()
+        self.counter -= 1
+        self.counter = max(0, self.counter)
+
+    def is_flashing(self):
+        return self.counter >= 30 and self.counter % 5 <= 1
+
+
+class WrappedImage:
+    def __init__(self, image: int | pyxel.Image, u: int, v: int, w: int, h: int, scene : MainScene) -> None:
+        self.image = image
+        self.u = u
+        self.v = v
+        self.w = w
+        self.h = h
+        self.flash_state = FlashState()
+        self.scene = scene
+
+        self.x = 0
+        self.y = 0
+        self.width = w
+        self.height = h
+
+    def draw(self, x: int | None = None, y: int | None = None) -> None:
+        if x is None:
+            x = self.x
+        if y is None:
+            y = self.y
+        with self.flash_state.enter() as flash:
+            pyxel.blt(x, y, self.image, self.u, self.v, self.w, self.h, colkey=255)
+            if flash:
+                with dithering(0.5):
+                    with pal_single_color(7):
+                        pyxel.blt(x, y, self.image, self.u, self.v, self.w, self.h, colkey=255)
+
+    def flash(self):
+        self.flash_state.flash()
+
+    def is_flashing(self):
+        return self.flash_state.is_flashing()
+    
+    def add_popup(self, text: str, color: int) -> None:
+        self.scene.add_popup(text, self.x + self.width // 2, self.y + self.height // 2, color)
+
+    def add_animation(self, lens: str) -> None:
+        self.scene.add_anim(lens, self.x + self.width // 2, self.y + self.height // 2, 1.0)
 
 
 def layout_center_for_n(n: int, width: int) -> list[int]:
@@ -530,6 +587,14 @@ class MainScene(Scene):
         self.popups = []
         self.timer = 0
         self.particle_configs = Peekable(cycle(access_predef("anims").items()))
+        self.enemy_killer_flower_sprites = [
+            WrappedImage(load_image("char", "enemy_killer_flower.png"), 0, 0, 64, 64, self)
+            for _ in range(2)
+        ]
+
+        for s, x in zip(self.enemy_killer_flower_sprites, layout_center_for_n(2, 6 * 50)):
+            s.x = x - 32
+            s.y = 60
 
     def sync_sprites(self):
         existing_card_sprites = {
@@ -578,9 +643,13 @@ class MainScene(Scene):
             anim.update()
         for popup in self.popups:
             popup.update()
-        if self.timer % 30 == 0:
-            self.add_anim(self.particle_configs.peek()[1], 100, 100, 1.0)
-            self.add_popup("Hello", 100, 100, 11)
+        if self.timer % 180 == 0:
+            # self.add_anim(self.particle_configs.peek()[1], 100, 100, 1.0)
+            # self.add_popup("Hello", 100, 100, 11)
+            for sprite in self.enemy_killer_flower_sprites:
+                sprite.flash()
+                sprite.add_popup("Hello", 11)
+                sprite.add_animation('anims.burst')
         self.anims = [anim for anim in self.anims if not anim.dead]
         self.timer += 1
 
@@ -679,20 +748,6 @@ class MainScene(Scene):
         for card in self.card_sprites:
             card.draw()
 
-        # num_players_seen = 0
-        # num_enemies_seen = 0
-        # for i, battler in enumerate(self.bundle.battlers()):
-        #     if isinstance(battler, PlayerBattler):
-        #         self.draw_battler(battler, 5, 30 + num_players_seen * 50)
-        #         num_players_seen += 1
-        #     else:
-        #         self.draw_battler(
-        #             battler,
-        #             200 + 100 * (num_enemies_seen % 2),
-        #             30 + num_enemies_seen * 50,
-        #         )
-        #         num_enemies_seen += 1
-
         button(WINDOW_WIDTH - 70, WINDOW_HEIGHT - 20, 55, 15, "End Turn", 7, 5)
         button(WINDOW_WIDTH - 70, WINDOW_HEIGHT - 50, 55, 15, "Play Cards", 7, 5)
         self.tooltip.draw()
@@ -712,9 +767,8 @@ class MainScene(Scene):
         pyxel.blt(0, 100 + 10, char_celine, 0, 0, 64, 64, colkey=255)
         shadowed_text(51, 147 + 5, "Celine", 7, layout(w=80, ha="left"))
         self._draw_hearts_and_shields(50, 162, 8, 2)
-        for x in layout_center_for_n(2, 6 * 50):
-            pyxel.blt(10 + x - 32, 60, enemy_killer_flower, 0, 0, 64, 64, colkey=255)
-            # draw short holder
+        for i, x in enumerate(layout_center_for_n(2, 6 * 50)):
+            self.enemy_killer_flower_sprites[i].draw()
             pyxel.blt(10 + x - 36, 126, short_holder, 0, 0, 80, 64, colkey=255)
             shadowed_text(10 + x - 30, 121, "Majora Mask", 7, layout(w=80, ha="left"))
             num_hp = 5
