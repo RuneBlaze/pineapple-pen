@@ -49,7 +49,19 @@ def load_image(*asset_args: str) -> pyxel.Image:
                         rgb2paletteix.keys(),
                         key=lambda c: sum((c[i] - rgb[i]) ** 2 for i in range(3)),
                     )
-                    raise ValueError(f"Unexpected color: {r}, {g}, {b}; closest: {closest_color} at {rgb2paletteix[closest_color]}")
+                    raise ValueError(
+                        f"Unexpected color: {r}, {g}, {b}; closest: {closest_color} at {rgb2paletteix[closest_color]}"
+                    )
+    pimage = pyxel.Image(image.width, image.height)
+    _image_as_ndarray(pimage)[:] = buffer
+    return pimage
+
+
+def resize_image_breathing(image: pyxel.Image, num_cut: int) -> pyxel.Image:
+    rows_to_takeout = np.linspace(0, image.height, num_cut + 2, dtype=int)[1:-1]
+    empty_rows = np.full((num_cut, image.width), 254, dtype=np.uint8)
+    buffer = np.delete(_image_as_ndarray(image), rows_to_takeout, axis=0)
+    buffer = np.concatenate((empty_rows, buffer), axis=0)
     pimage = pyxel.Image(image.width, image.height)
     _image_as_ndarray(pimage)[:] = buffer
     return pimage

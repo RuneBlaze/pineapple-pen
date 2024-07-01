@@ -696,7 +696,7 @@ class BattleBundle:
         for battler in self.battlers():
             self.emit_battler_event(battler, "end of turn")
 
-    def resolve_player_cards(self, cards: list[Card]) -> None:
+    def resolve_player_cards(self, cards: list[Card]) -> ResolvedEffects:
         resolved_results: ResolvedResults = _judge_results(
             cards,
             self.player,
@@ -705,7 +705,7 @@ class BattleBundle:
             resolve_player_actions=True,
         )
         self.process_effects(resolved_results.results)
-        self.flush_expired_effects(self.rng)
+        return self.flush_expired_effects(self.rng)
 
     def resolve_enemy_actions(self) -> None:
         resolved_results: ResolvedResults = _judge_results(

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Literal, Protocol, TypeAlias
 from uuid import uuid4
 
@@ -30,6 +31,15 @@ class StatusDefinition:
     name: str
     subst: Subst
     counter_type: Literal["turns", "times"]
+
+
+class SinglePointEffectType(Enum):
+    DAMAGE = 1
+    HEAL = 2
+    SHIELD_GAIN = 3
+    SHIELD_LOSS = 4
+    STATUS = 5
+    OTHER = 6
 
 
 @dataclass(eq=True, frozen=True)
@@ -66,6 +76,19 @@ class SinglePointEffect(BaseEffect):
     @property
     def shield_loss(self) -> int:
         return max(-self.delta_shield, 0)
+
+    def classify_type(self) -> SinglePointEffectType:
+        if self.delta_hp < 0:
+            return SinglePointEffectType.DAMAGE
+        if self.delta_hp > 0:
+            return SinglePointEffectType.HEAL
+        if self.delta_shield > 0:
+            return SinglePointEffectType.SHIELD_GAIN
+        if self.delta_shield < 0:
+            return SinglePointEffectType.SHIELD_LOSS
+        if self.add_status:
+            return SinglePointEffectType.STATUS
+        return SinglePointEffectType.OTHER
 
 
 @dataclass(eq=True, frozen=True)

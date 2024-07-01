@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import functools
 import random
+from enum import Enum
 from itertools import cycle
 from typing import Literal
 
@@ -11,14 +12,14 @@ import pyxel
 from pyxelxl import Font, LayoutOpts, blt_rot, layout
 from pyxelxl.font import _image_as_ndarray
 
-from genio.base import asset_path, load_image
+from genio.base import asset_path, load_image, resize_image_breathing
 from genio.battle import (
-    Battler,
     CardBundle,
-    PlayerBattler,
+    ResolvedEffects,
     setup_battle_bundle,
 )
 from genio.card import Card
+from genio.effect import SinglePointEffect, SinglePointEffectType
 from genio.predef import access_predef, refresh_predef
 from genio.ps import Anim
 from genio.scene import Scene
@@ -26,8 +27,8 @@ from genio.semantic_search import SerializedCardArt, search_closest_document
 
 WINDOW_WIDTH, WINDOW_HEIGHT = 427, 240
 
-
-retro_text = Font(asset_path("retro-pixel-petty-5h.ttf")).specialize(font_size=5)
+retro_font = Font(asset_path("retro-pixel-petty-5h.ttf"))
+retro_text = retro_font.specialize(font_size=5)
 display_text = Font(asset_path("DMSerifDisplay-Regular.ttf")).specialize(
     font_size=18, threshold=100
 )
@@ -143,6 +144,12 @@ class Peekable:
         return self._next
 
 
+class CardState(Enum):
+    ACTIVE = 0
+    RESOLVING = 1
+    RESOLVED = 2
+
+
 class CardSprite:
     def __init__(self, index, card: Card, app: MainScene, selected=False):
         self.index = index
@@ -163,6 +170,7 @@ class CardSprite:
         self.card_art = CardArtSet(base_image, search_closest_document(card.name))
         self.is_rare = rarity = bool(card.description)
         self.image = self.card_art.imprint(card.name, int(rarity))
+        self.state = CardState.ACTIVE
 
     def draw(self):
         if self.index >= self.deck_length:
@@ -519,8 +527,27 @@ class FlashState:
         return self.counter >= 30 and self.counter % 5 <= 1
 
 
+def pingpong(n: int):
+    while True:
+        yield 0
+        for i in range(1, n - 1):
+            yield i
+        for i in range(n - 1, 0, -1):
+            yield i
+
+
 class WrappedImage:
-    def __init__(self, image: int | pyxel.Image, u: int, v: int, w: int, h: int, scene : MainScene) -> None:
+    def __init__(
+        self,
+        image: int | pyxel.Image,
+        u: int,
+        v: int,
+        w: int,
+        h: int,
+        scene: MainScene,
+        has_breathing: bool = False,
+        user_data: str = "",
+    ) -> None:
         self.image = image
         self.u = u
         self.v = v
@@ -528,11 +555,23 @@ class WrappedImage:
         self.h = h
         self.flash_state = FlashState()
         self.scene = scene
-
+        self.has_breathing = has_breathing
+        self.breathing_versions = [self.image] + (
+            [resize_image_breathing(image, i) for i in range(1, 3)]
+            if has_breathing
+            else []
+        )
         self.x = 0
         self.y = 0
         self.width = w
         self.height = h
+        self.pingpong = pingpong(len(self.breathing_versions) if has_breathing else 1)
+        self.timer = 0
+        self.rng = np.random.default_rng(seed=id(image))
+        # self.wait = self.rng.integers(0,3)
+        self.cycle = self.rng.integers(32, 45)
+        self.wait = self.rng.integers(0, 30)
+        self.user_data = user_data
 
     def draw(self, x: int | None = None, y: int | None = None) -> None:
         if x is None:
@@ -544,19 +583,34 @@ class WrappedImage:
             if flash:
                 with dithering(0.5):
                     with pal_single_color(7):
-                        pyxel.blt(x, y, self.image, self.u, self.v, self.w, self.h, colkey=254)
+                        pyxel.blt(
+                            x, y, self.image, self.u, self.v, self.w, self.h, colkey=254
+                        )
+
+    def update(self) -> None:
+        self.timer += 1
+        if self.timer >= self.cycle + self.wait:
+            self.image = self.breathing_versions[next(self.pingpong)]
+            # self.wait = self.rng.integers(0, 10)
+            self.cycle = self.rng.integers(32, 35)
+            self.timer = self.wait
+            # self.timer = 0
 
     def flash(self):
         self.flash_state.flash()
 
     def is_flashing(self):
         return self.flash_state.is_flashing()
-    
+
     def add_popup(self, text: str, color: int) -> None:
-        self.scene.add_popup(text, self.x + self.width // 2, self.y + self.height // 2, color)
+        self.scene.add_popup(
+            text, self.x + self.width // 2, self.y + self.height // 2, color
+        )
 
     def add_animation(self, lens: str) -> None:
-        self.scene.add_anim(lens, self.x + self.width // 2, self.y + self.height // 2, 1.0)
+        self.scene.add_anim(
+            lens, self.x + self.width // 2, self.y + self.height // 2, 1.0
+        )
 
 
 def layout_center_for_n(n: int, width: int) -> list[int]:
@@ -564,6 +618,10 @@ def layout_center_for_n(n: int, width: int) -> list[int]:
     spacing = width // div_by
     start_x = WINDOW_WIDTH // 2 - width // 2
     return [start_x + i * spacing for i in range(1, n + 1)]
+
+
+from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 
 
 class MainScene(Scene):
@@ -582,7 +640,7 @@ class MainScene(Scene):
 
     def __init__(self):
         self.bundle = setup_battle_bundle(
-            "initial_deck", "players.starter", ["enemies.slime"] * 2
+            "initial_deck", "players.starter", ["enemies.evil_mask"] * 2
         )
         self.card_sprites = []
         self.sync_sprites()
@@ -592,14 +650,46 @@ class MainScene(Scene):
         self.popups = []
         self.timer = 0
         self.particle_configs = Peekable(cycle(access_predef("anims").items()))
-        self.enemy_killer_flower_sprites = [
-            WrappedImage(load_image("char", "enemy_killer_flower.png"), 0, 0, 64, 64, self)
-            for _ in range(2)
+        self.enemy_sprites = [
+            WrappedImage(
+                load_image("char", "enemy_killer_flower.png"),
+                0,
+                0,
+                64,
+                64,
+                self,
+                has_breathing=True,
+                user_data=e.uuid,
+            )
+            for e in self.bundle.enemies
         ]
 
-        for s, x in zip(self.enemy_killer_flower_sprites, layout_center_for_n(2, 6 * 50)):
+        self.player_sprite = WrappedImage(
+            load_image("char", "char_celine.png"),
+            0,
+            0,
+            64,
+            64,
+            self,
+            has_breathing=False,
+            user_data=self.bundle.player.uuid,
+        )
+
+        self.player_sprite.x = 0
+        self.player_sprite.y = 110
+
+        for s, x in zip(
+            self.enemy_sprites, layout_center_for_n(len(self.bundle.enemies), 6 * 50)
+        ):
             s.x = x - 32
             s.y = 60
+
+        self.futures = deque()
+        self.executor = ThreadPoolExecutor(max_workers=2)
+
+    def sprites(self):
+        yield self.player_sprite
+        yield from self.enemy_sprites
 
     def sync_sprites(self):
         existing_card_sprites = {
@@ -626,7 +716,7 @@ class MainScene(Scene):
         if pyxel.btnp(pyxel.KEY_Q):
             pyxel.quit()
 
-        if pyxel.btnp(pyxel.KEY_SPACE):
+        if pyxel.btnp(pyxel.KEY_SPACE) and not self.futures:
             self.play_selected()
 
         if pyxel.btnp(pyxel.KEY_Z):
@@ -648,14 +738,10 @@ class MainScene(Scene):
             anim.update()
         for popup in self.popups:
             popup.update()
-        if self.timer % 180 == 0:
-            # self.add_anim(self.particle_configs.peek()[1], 100, 100, 1.0)
-            # self.add_popup("Hello", 100, 100, 11)
-            for sprite in self.enemy_killer_flower_sprites:
-                sprite.flash()
-                sprite.add_popup("Hello", 11)
-                sprite.add_animation('anims.burst')
         self.anims = [anim for anim in self.anims if not anim.dead]
+        for sprite in self.sprites():
+            sprite.update()
+        self.check_mailbox()
         self.timer += 1
 
     def play_selected(self):
@@ -664,67 +750,51 @@ class MainScene(Scene):
             return
         selected_cards = [card.card for card in selected_card_sprites]
         self.bundle.card_bundle.hand_to_resolving(selected_cards)
-        self.resolve_selected_cards(selected_cards)
+        self.futures.append(
+            self.executor.submit(self.resolve_selected_cards, selected_cards)
+        )
+
+    def check_mailbox(self):
+        while self.futures and self.futures[0].done():
+            effects = self.futures.popleft().result()
+            for target_effect in effects:
+                battler, effect = target_effect
+                if isinstance(effect, SinglePointEffect):
+                    if not battler:
+                        raise ValueError("No battler found")
+                    sprite = self.sprite_by_id(battler.uuid)
+                    sprite.flash()
+                    match effect.classify_type():
+                        case SinglePointEffectType.DAMAGE:
+                            sprite.add_popup(str(effect.damage), 7)
+                            sprite.add_animation("anims.burst")
+                        case SinglePointEffectType.HEAL:
+                            sprite.add_popup(str(effect.heal), 11)
+                            sprite.add_animation("anims.heal")
+                        case SinglePointEffectType.SHIELD_GAIN:
+                            sprite.add_animation("anims.shield_gain")
+                        case SinglePointEffectType.SHIELD_LOSS:
+                            sprite.add_popup(f"shield {effect.delta_shield}", 7)
+                            sprite.add_animation("anims.debuff")
+                        case SinglePointEffectType.STATUS:
+                            for status_effect, counter in effect.add_status:
+                                sprite.add_popup(f"+ {status_effect.name}", 7)
+                            sprite.add_animation("anims.buff")
+
+    def sprite_by_id(self, id: str) -> WrappedImage:
+        for sprite in self.sprites():
+            if sprite.user_data == id:
+                return sprite
+        raise ValueError(f"Sprite with id {id} not found")
 
     def add_anim(self, name: str, x: int, y: int, play_speed: float = 1.0):
         self.anims.append(Anim.from_predef(name, x, y, play_speed))
 
-    def resolve_selected_cards(self, selected_cards: list[Card]):
-        self.bundle.resolve_player_cards(selected_cards)
+    def resolve_selected_cards(self, selected_cards: list[Card]) -> ResolvedEffects:
+        return self.bundle.resolve_player_cards(selected_cards)
 
     def add_popup(self, text: str, x: int, y: int, color: int):
         self.popups.append(Popup(text, x, y, color))
-
-    def draw_battler(self, battler: Battler, x: int, y: int) -> None:
-        pyxel.blt(x, y, 0, 0, 64, self.CARD_HEIGHT, self.CARD_WIDTH, colkey=0)
-        pyxel.pal()
-        first_line = f"{battler.name_stem}"
-        if battler.status_effects:
-            first_line += " " + " ".join(
-                f"({status.name} {status.counter})" for status in battler.status_effects
-            )
-        pyxel.camera(-9, -35)
-        pyxel.dither(0.5)
-        display_text(x + 1, y + 1, first_line, 0, threshold=70)
-        pyxel.dither(1.0)
-        display_text(x, y, first_line, 7, threshold=70)
-        gauge(
-            x,
-            y + 20,
-            w=40,
-            h=7,
-            c0=4,
-            c1=8,
-            value=battler.hp,
-            max_value=battler.max_hp,
-            label="HP",
-        )
-        latest_y = y + 20
-        if isinstance(battler, PlayerBattler):
-            gauge(
-                x,
-                y + 30,
-                w=40,
-                h=7,
-                c0=1,
-                c1=5,
-                value=battler.mp,
-                max_value=battler.max_mp,
-                label="MP",
-            )
-            latest_y = y + 30
-        gauge(
-            x,
-            latest_y + 10,
-            w=40,
-            h=7,
-            c0=2,
-            c1=6,
-            value=battler.shield_points,
-            max_value=battler.max_hp,
-            label="S",
-        )
-        pyxel.camera()
 
     def _draw_hearts_and_shields(self, x: int, y: int, hp: int, shield: int) -> None:
         icons = load_image("ui", "icons.png")
@@ -769,16 +839,32 @@ class MainScene(Scene):
         enemy_killer_flower = load_image("char", "enemy_killer_flower.png")
 
         pyxel.blt(-10, 147 + 10, long_holder, 0, 0, 130, 30, colkey=254)
-        pyxel.blt(0, 100 + 10, char_celine, 0, 0, 64, 64, colkey=254)
-        shadowed_text(51, 147 + 5, "Celine", 7, layout(w=80, ha="left"))
-        self._draw_hearts_and_shields(50, 162, 8, 2)
-        for i, x in enumerate(layout_center_for_n(2, 6 * 50)):
-            self.enemy_killer_flower_sprites[i].draw()
+        self.player_sprite.draw()
+        player = self.bundle.player
+        shadowed_text(51, 147 + 5, player.name_stem, 7, layout(w=80, ha="left"))
+        self._draw_hearts_and_shields(50, 162, player.hp, player.shield_points)
+        for i, (x, e) in enumerate(
+            zip(layout_center_for_n(2, 6 * 50), self.bundle.enemies)
+        ):
+            self.enemy_sprites[i].draw()
             pyxel.blt(10 + x - 36, 126, short_holder, 0, 0, 80, 64, colkey=254)
-            shadowed_text(10 + x - 30, 121, "Majora Mask", 7, layout(w=80, ha="left"))
-            num_hp = 5
-            num_shield = 5
-            self._draw_hearts_and_shields(10 + x - 31, 131, num_hp, num_shield)
+            shadowed_text(10 + x - 30, 121, e.name, 7, layout(w=80, ha="left"))
+            self._draw_hearts_and_shields(10 + x - 31, 131, e.hp, e.shield_points)
+            pyxel.clip(10 + x - 30 - 5, 141, 68, 7)
+            text_width = retro_font.rasterize(e.current_intent, 5, 255, 0, 0).width + 14
+            retro_text(
+                10 + x - 30 - 5 - (self.timer) % text_width,
+                141,
+                e.current_intent,
+                col=7,
+            )
+            retro_text(
+                10 + x - 30 - 5 - (self.timer) % text_width + text_width,
+                141,
+                e.current_intent,
+                col=7,
+            )
+            pyxel.clip()
         if self.anims:
             self.anims[0].draw()
         for popup in self.popups:

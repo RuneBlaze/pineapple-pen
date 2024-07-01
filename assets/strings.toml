@@ -10,7 +10,7 @@ In conversation, Jon speaks with a gentle, almost lyrical cadence. His words are
 
 [players.starter]
 name = "Celine, the Magical Swordswoman"
-hit_points = 90
+hit_points = 7
 mp = 6
 profile = """
 Celine, the Magical Swordswoman, is a fierce and determined warrior with an ethereal touch. At 24 years old, she stands at 5'1", her petite frame belying the formidable strength and agility she possesses. Her short, auburn hair cascades around her heart-shaped face, and her bright green eyes, filled with a piercing intensity, reflect the fire of her unyielding spirit.
@@ -39,6 +39,12 @@ cards = [
 [enemies.slime]
 name = "Slime"
 hit_points = 30
+description = "A malevolent gelatinous creature, the Slime oozes malice as it shifts between offensive and defensive stances."
+pattern = ["attack player for 5 damage", "block for 3 shield points"]
+
+[enemies.evil_mask]
+name = "Evil Mask"
+hit_points = 4
 description = "A malevolent gelatinous creature, the Slime oozes malice as it shifts between offensive and defensive stances."
 pattern = ["attack player for 5 damage", "block for 3 shield points"]
 
