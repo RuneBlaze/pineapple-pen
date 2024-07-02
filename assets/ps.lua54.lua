@@ -15,7 +15,7 @@
 -------------------------------------------------- globals
 
 prev_time = nil -- for calculating dt
-delta_time = nil -- the change in time
+delta_time = 1/30 -- the change in time
 
 -- function update_time()
 --  delta_time = time()-prev_time

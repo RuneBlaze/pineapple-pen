@@ -3678,6 +3678,16 @@ files = [
 ]
 
 [[package]]
+name = "pytweening"
+version = "1.2.0"
+description = "A collection of tweening (aka easing) functions."
+optional = false
+python-versions = "*"
+files = [
+    {file = "pytweening-1.2.0.tar.gz", hash = "sha256:243318b7736698066c5f362ec5c2b6434ecf4297c3c8e7caa8abfe6af4cac71b"},
+]
+
+[[package]]
 name = "pytz"
 version = "2024.1"
 description = "World timezone definitions, modern and historical"
@@ -5738,4 +5748,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<=3.12"
-content-hash = "168f6d913d5cc6d94a6d35a1940fa5c57ab6798a6e3581bd16bcacb1d850c01e"
+content-hash = "dd7e40ef8fb17df3d2556f47500fb2a7b62d459a4a93e3b411f787364ac85f7e"

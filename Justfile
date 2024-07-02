@@ -13,3 +13,6 @@ edit:
 
 play:
     poetry run python -m genio.main
+
+ps:
+    poetry run python -m genio.main --edit

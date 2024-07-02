@@ -15,6 +15,41 @@ def asset_path(*args: str):
     return os.path.join(WORKING_DIR, "assets", *args)
 
 
+class Video:
+    def __init__(self, *args: str) -> None:
+        self.raw = np.load(asset_path(*args))
+        self.num_frames = self.raw.shape[0]
+        self.timer = 0
+        self.images = [buffer_to_image(frame) for frame in self.raw]
+        self.actual_timer = 0
+        self.masks = [
+            buffer_to_image(self.generate_mask(thres))
+            for thres in [0.7, 0.6, 0.8, 0.5, 0.3]
+        ]
+
+    def update(self):
+        self.actual_timer += 1
+        self.timer += self.actual_timer % 3
+        if self.timer == self.num_frames:
+            self.timer = 0
+
+    @property
+    def current_image(self):
+        return self.images[self.timer]
+
+    def generate_mask(self, threshold) -> np.ndarray:
+        mask = np.zeros((WINDOW_HEIGHT, WINDOW_WIDTH), dtype=np.float32)
+        for i in range(0, WINDOW_HEIGHT):
+            for j in range(0, WINDOW_WIDTH):
+                u = ((i / WINDOW_HEIGHT) - 0.5) / 0.5
+                v = ((j / WINDOW_WIDTH) - 0.5) / 0.5
+                mask[i, j] = u**2 * 0.5 + v**2 * 0.5
+        mask = np.clip(mask, 0, 1)
+        buffer = np.full((WINDOW_HEIGHT, WINDOW_WIDTH), 254, dtype=np.uint8)
+        buffer[mask > threshold] = 0
+        return buffer
+
+
 @cache
 def calculate_rgb2paletteix() -> dict:
     palette = pyxel.colors.to_list()
@@ -27,8 +62,7 @@ def calculate_rgb2paletteix() -> dict:
     return rgb2paletteix
 
 
-@cache
-def load_image(*asset_args: str) -> pyxel.Image:
+def load_as_buffer(*asset_args: str) -> np.ndarray:
     image_path = asset_path(*asset_args)
     rgb2paletteix = calculate_rgb2paletteix()
     # Convert to ndarray
@@ -52,7 +86,19 @@ def load_image(*asset_args: str) -> pyxel.Image:
                     raise ValueError(
                         f"Unexpected color: {r}, {g}, {b}; closest: {closest_color} at {rgb2paletteix[closest_color]}"
                     )
-    pimage = pyxel.Image(image.width, image.height)
+    return buffer
+
+
+@cache
+def load_image(*asset_args: str) -> pyxel.Image:
+    buffer = load_as_buffer(*asset_args)
+    pimage = pyxel.Image(buffer.shape[1], buffer.shape[0])
+    _image_as_ndarray(pimage)[:] = buffer
+    return pimage
+
+
+def buffer_to_image(buffer: np.ndarray) -> pyxel.Image:
+    pimage = pyxel.Image(buffer.shape[1], buffer.shape[0])
     _image_as_ndarray(pimage)[:] = buffer
     return pimage
 
@@ -65,3 +111,17 @@ def resize_image_breathing(image: pyxel.Image, num_cut: int) -> pyxel.Image:
     pimage = pyxel.Image(image.width, image.height)
     _image_as_ndarray(pimage)[:] = buffer
     return pimage
+
+
+import glob
+
+ok = sorted(glob.glob("assets/background/*.png"))
+if __name__ == "__main__":
+    pyxel.init(WINDOW_WIDTH, WINDOW_HEIGHT)
+    buffers = []
+    for file in ok:
+        image = load_as_buffer("background", file.split("/")[-1])
+        buffers.append((int(file.split("/")[-1].split(".")[0]), image))
+    sorted_buffers = sorted(buffers, key=lambda x: x[0])
+    stack = np.stack([x[1] for x in sorted_buffers])
+    np.save("background.npy", stack)

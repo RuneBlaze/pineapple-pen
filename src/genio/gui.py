@@ -2,17 +2,23 @@ from __future__ import annotations
 
 import contextlib
 import functools
+import itertools
+import math
 import random
+from collections import deque
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from itertools import cycle
 from typing import Literal
 
 import numpy as np
+import pytweening
 import pyxel
 from pyxelxl import Font, LayoutOpts, blt_rot, layout
 from pyxelxl.font import _image_as_ndarray
 
-from genio.base import asset_path, load_image, resize_image_breathing
+from genio.base import Video, asset_path, load_image, resize_image_breathing
 from genio.battle import (
     CardBundle,
     ResolvedEffects,
@@ -125,25 +131,6 @@ def clip_magnitude(x, max_magnitude):
     return max(-max_magnitude, min(max_magnitude, x))
 
 
-class Peekable:
-    def __init__(self, iterable):
-        self.iterator = iter(iterable)
-        self._next = next(self.iterator, None)
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        if self._next is None:
-            raise StopIteration
-        result = self._next
-        self._next = next(self.iterator, None)
-        return result
-
-    def peek(self):
-        return self._next
-
-
 class CardState(Enum):
     ACTIVE = 0
     RESOLVING = 1
@@ -171,11 +158,49 @@ class CardSprite:
         self.is_rare = rarity = bool(card.description)
         self.image = self.card_art.imprint(card.name, int(rarity))
         self.state = CardState.ACTIVE
+        self.target_x = None
+        self.target_y = None
+        self.update_delay = 0
+        self.anims = deque()
+        self.rotation = 0
+
+    def can_transition_to_resolving(self) -> bool:
+        if self.state != CardState.ACTIVE:
+            return False
+        if self.dragging:
+            return False
+        return True
+
+    def try_transition_to_resolving(self) -> None:
+        if self.can_transition_to_resolving():
+            self.state = CardState.RESOLVING
+        else:
+            raise ValueError("Cannot transition to resolving")
+
+        num_total_cards = len(self.app.bundle.card_bundle.resolving)
+        my_index = self.app.bundle.card_bundle.resolving.index(self.card)
+
+        self.update_delay += my_index * 6
+        self.index = 0
+
+        target_x = layout_center_for_n(num_total_cards, 400)[my_index]
+        target_y = WINDOW_HEIGHT // 2 - self.height // 2
+
+        self.anims.append(
+            itertools.chain(
+                range(4 * my_index),
+                MutableTweening(
+                    15, pytweening.easeInOutQuad, self, (target_x, target_y)
+                ),
+                range(4),
+                Shake(self, 5, 15),
+            )
+        )
 
     def draw(self):
         if self.index >= self.deck_length:
             return
-        angle = fan_out_for_N(self.deck_length)[self.index]
+
         blt_rot(
             self.x,
             self.y,
@@ -185,7 +210,7 @@ class CardSprite:
             self.width,
             self.height,
             colkey=254,
-            # rot=angle,
+            rot=self.rotation,
         )
         pyxel.pal()
         if not self.selected and any(
@@ -202,7 +227,7 @@ class CardSprite:
                         self.width,
                         self.height,
                         colkey=254,
-                        rot=angle,
+                        rot=self.rotation,
                     )
 
     @property
@@ -216,12 +241,15 @@ class CardSprite:
         )
 
     def update(self):
+        if self.update_delay > 0:
+            self.update_delay -= 1
+            return
         if self.index >= self.deck_length:
             for i, card in enumerate(self.app.card_sprites):
                 card.change_index(i)
             return
         if pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT):
-            if self.is_mouse_over():
+            if self.is_mouse_over() and self.state == CardState.ACTIVE:
                 self.dragging = True
                 self.drag_offset_x = pyxel.mouse_x - self.x
                 self.drag_offset_y = pyxel.mouse_y - self.y
@@ -237,7 +265,7 @@ class CardSprite:
             self.y = pyxel.mouse_y - self.drag_offset_y
 
         # Tweening for smooth transition
-        if not self.dragging:
+        if not self.dragging and self.state == CardState.ACTIVE:
             target_x, target_y = self.adjusted_target_coords()
             dx = (target_x - self.x) * self.app.TWEEN_SPEED
             dy = (target_y - self.y) * self.app.TWEEN_SPEED
@@ -252,6 +280,12 @@ class CardSprite:
             self.app.tooltip.reset(self.card.name, self.card.description or "")
         else:
             self.hovered = False
+
+        if self.anims:
+            try:
+                next(self.anims[0])
+            except StopIteration:
+                self.anims.popleft()
 
     def snap_to_grid(self):
         new_index = (
@@ -536,6 +570,83 @@ def pingpong(n: int):
             yield i
 
 
+def lerp(
+    uv: tuple[float, float], target: tuple[float, float], t: float
+) -> tuple[float, float]:
+    return (uv[0] + (target[0] - uv[0]) * t, uv[1] + (target[1] - uv[1]) * t)
+
+
+class Tweening:
+    def __init__(self, duration: int, inner: Callable[[float], float]):
+        self.duration = duration
+        self.inner = inner
+        self.timer = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        self.timer += 1
+        if self.timer > self.duration:
+            raise StopIteration
+        return self.inner(self.timer / self.duration)
+
+
+class MutableTweening:
+    def __init__(
+        self,
+        duration: int,
+        inner: Callable[[float], float],
+        this: WrappedImage,
+        target: tuple[int, int],
+    ):
+        self.inner = Tweening(duration, inner)
+        self.this = this
+        self.current = (this.x, this.y)
+        self.target = target
+
+    def __iter__(self):
+        for t in self.inner:
+            self.this.x, self.this.y = lerp(self.current, self.target, t)
+            yield
+
+
+class WaitUntilTweening:
+    def __init__(self, callable: Callable[[], bool]):
+        self.callable = callable
+
+    def __iter__(self):
+        while not self.callable():
+            yield
+
+
+class Instant:
+    def __init__(self, runnable: Callable):
+        self.runnable = runnable
+
+    def __iter__(self):
+        self.runnable()
+        raise StopIteration
+
+
+class Shake:
+    def __init__(self, this: WrappedImage, duration: int, magnitude: int):
+        self.this = this
+        self.magnitude = magnitude
+        self.inner = Tweening(duration, sin_bounce)
+
+    def __iter__(self):
+        for t in self.inner:
+            self.this.rotation = self.magnitude * t
+            yield
+
+
+def sin_bounce(t: float) -> float:
+    if t == 1.0:
+        return 0.0
+    return math.sin(t * math.pi * 2)
+
+
 class WrappedImage:
     def __init__(
         self,
@@ -572,6 +683,7 @@ class WrappedImage:
         self.cycle = self.rng.integers(32, 45)
         self.wait = self.rng.integers(0, 30)
         self.user_data = user_data
+        self.rotation = 0
 
     def draw(self, x: int | None = None, y: int | None = None) -> None:
         if x is None:
@@ -583,18 +695,24 @@ class WrappedImage:
             if flash:
                 with dithering(0.5):
                     with pal_single_color(7):
-                        pyxel.blt(
-                            x, y, self.image, self.u, self.v, self.w, self.h, colkey=254
+                        blt_rot(
+                            x,
+                            y,
+                            self.image,
+                            self.u,
+                            self.v,
+                            self.w,
+                            self.h,
+                            colkey=254,
+                            rot=self.rotation,
                         )
 
     def update(self) -> None:
         self.timer += 1
         if self.timer >= self.cycle + self.wait:
             self.image = self.breathing_versions[next(self.pingpong)]
-            # self.wait = self.rng.integers(0, 10)
             self.cycle = self.rng.integers(32, 35)
             self.timer = self.wait
-            # self.timer = 0
 
     def flash(self):
         self.flash_state.flash()
@@ -620,10 +738,6 @@ def layout_center_for_n(n: int, width: int) -> list[int]:
     return [start_x + i * spacing for i in range(1, n + 1)]
 
 
-from collections import deque
-from concurrent.futures import ThreadPoolExecutor
-
-
 class MainScene(Scene):
     CARD_WIDTH = 43
     CARD_HEIGHT = 60
@@ -643,6 +757,8 @@ class MainScene(Scene):
             "initial_deck", "players.starter", ["enemies.evil_mask"] * 2
         )
         self.card_sprites = []
+        self.tmp_card_sprites = []
+        self.background_video = Video("background.npy")
         self.sync_sprites()
         self.tooltip = Tooltip("", "")
         self.draw_deck = DrawDeck(self.bundle.card_bundle)
@@ -708,6 +824,15 @@ class MainScene(Scene):
             card_sprite.card for card_sprite in self.card_sprites
         ]
 
+    def can_resolve_new_cards(self):
+        return (
+            all(
+                card_sprite.can_transition_to_resolving()
+                for card_sprite in self.card_sprites
+            )
+            and not self.futures
+        )
+
     def update(self):
         while self.bundle.card_bundle.events:
             _ev = self.bundle.card_bundle.events.pop()
@@ -716,7 +841,7 @@ class MainScene(Scene):
         if pyxel.btnp(pyxel.KEY_Q):
             pyxel.quit()
 
-        if pyxel.btnp(pyxel.KEY_SPACE) and not self.futures:
+        if pyxel.btnp(pyxel.KEY_SPACE) and self.can_resolve_new_cards():
             self.play_selected()
 
         if pyxel.btnp(pyxel.KEY_Z):
@@ -725,10 +850,12 @@ class MainScene(Scene):
         for card in self.card_sprites:
             card.update()
 
+        for card in self.tmp_card_sprites:
+            card.update()
+
         if pyxel.btnr(pyxel.KEY_R):
             refresh_predef()
             self.particle_configs = Peekable(cycle(access_predef("anims").items()))
-            print(self.particle_configs.peek())
 
         if pyxel.btnp(pyxel.KEY_E):
             next(self.particle_configs)
@@ -742,6 +869,7 @@ class MainScene(Scene):
         for sprite in self.sprites():
             sprite.update()
         self.check_mailbox()
+        self.background_video.update()
         self.timer += 1
 
     def play_selected(self):
@@ -750,6 +878,12 @@ class MainScene(Scene):
             return
         selected_cards = [card.card for card in selected_card_sprites]
         self.bundle.card_bundle.hand_to_resolving(selected_cards)
+        self.tmp_card_sprites.extend(selected_card_sprites)
+        for card in selected_card_sprites:
+            card.try_transition_to_resolving()
+
+        # filter
+        self.card_sprites = [card for card in self.card_sprites if not card.selected]
         self.futures.append(
             self.executor.submit(self.resolve_selected_cards, selected_cards)
         )
@@ -818,9 +952,20 @@ class MainScene(Scene):
             cursor += 8
 
     def draw(self):
-        vertical_gradient(0, 0, 427, 240, 5, 12)
+        pyxel.cls(0)
+        pyxel.pal(3, 5)
+        pyxel.pal(11, 12)
+        pyxel.blt(0, 0, self.background_video.current_image, 0, 0, 427, 240, 0)
+        with dithering(0.5):
+            for mask in self.background_video.masks:
+                pyxel.blt(0, 0, mask, 0, 0, 427, 240, colkey=254)
+        with dithering(0.5):
+            pyxel.blt(0, 0, self.background_video.masks[0], 0, 0, 427, 240, colkey=254)
+        pyxel.pal()
         self.draw_deck.draw(10, 190)
         for card in self.card_sprites:
+            card.draw()
+        for card in self.tmp_card_sprites:
             card.draw()
 
         button(WINDOW_WIDTH - 70, WINDOW_HEIGHT - 20, 55, 15, "End Turn", 7, 5)

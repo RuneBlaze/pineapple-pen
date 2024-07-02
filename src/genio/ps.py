@@ -1,5 +1,7 @@
+"""Particle Systems"""
 from __future__ import annotations
 
+from collections import deque
 from collections.abc import Sequence
 from dataclasses import dataclass
 
@@ -23,6 +25,13 @@ class EmitterConfig:
     angle: list[int | float] | None = None
     gravity: bool = False
     duration: float | None = None
+    delta_x: int | None = None
+    delta_y: int | None = None
+    appear_delay: int = 0
+    rnd_color: bool = False
+
+    def __post_init__(self):
+        self.appear_delay = self.appear_delay or 0
 
 
 def convert_to_emitter_configs(parsed_data: list) -> list[EmitterConfig]:
@@ -43,6 +52,10 @@ def convert_to_emitter_configs(parsed_data: list) -> list[EmitterConfig]:
             angle=item["angle"] if "angle" in item else None,
             gravity=item["gravity"] if "gravity" in item else False,
             sprites=item["sprites"] if "sprites" in item else None,
+            delta_x=item["delta_x"] if "delta_x" in item else None,
+            delta_y=item["delta_y"] if "delta_y" in item else None,
+            appear_delay=item["appear_delay"] if "appear_delay" in item else None,
+            rnd_color=item["rnd_color"] if "rnd_color" in item else False,
         )
         emitter_configs.append(config)
 
@@ -57,6 +70,7 @@ def uv_for_16(ix: int) -> tuple[int, int]:
 
 class Anim:
     emitters: list[EmitterConfig]
+    queued: deque[EmitterConfig]
 
     def __init__(
         self, x: int, y: int, emitters: list[EmitterConfig], play_speed: float = 1.0
@@ -69,34 +83,52 @@ class Anim:
         self.dead = False
         self.play_speed = play_speed
         self.duration = max(ec.duration or 1 for ec in emitters)
+        self.queued = []
         for ec in emitters:
-            e = emitter.create(x, y, ec.frequency, ec.max_p)
-            if isinstance(ec.size, Sequence):
-                ps_set_size(e, *ec.size)
+            self.queued.append(ec)
+        self.queued = deque(sorted(self.queued, key=lambda x: x.appear_delay))
+        self.flush_queued()
+
+    def flush_queued(self):
+        while self.queued and self.queued[0].appear_delay <= self.timer:
+            ec = self.queued.popleft()
+            self.create_from_config(ec)
+
+    def create_from_config(self, ec: EmitterConfig):
+        x, y = self.x, self.y
+        x += ec.delta_x or 0
+        y += ec.delta_y or 0
+        e = emitter.create(x, y, ec.frequency, ec.max_p)
+        if isinstance(ec.size, Sequence):
+            ps_set_size(e, *ec.size)
+        else:
+            ps_set_size(e, ec.size)
+        ps_set_speed(ec, ec.speed)
+        if isinstance(ec.life, Sequence):
+            ps_set_life(e, *ec.life)
+        else:
+            ps_set_life(e, ec.life)
+        if ec.colors:
+            ps_set_colours(e, lua.table(*ec.colors))
+        if ec.sprites:
+            ps_set_sprites(e, lua.table(*ec.sprites))
+        if ec.area:
+            if isinstance(ec.area, Sequence):
+                ps_set_area(e, *ec.area)
             else:
-                ps_set_size(e, ec.size)
-            ps_set_speed(ec, ec.speed)
-            if isinstance(ec.life, Sequence):
-                ps_set_life(e, *ec.life)
+                ps_set_area(e, ec.area)
+        if ec.burst:
+            ps_set_burst(e, *ec.burst)
+        if ec.angle:
+            if isinstance(ec.angle, Sequence):
+                ps_set_angle(e, *ec.angle)
             else:
-                ps_set_life(e, ec.life)
-            if ec.colors:
-                ps_set_colours(e, lua.table(*ec.colors))
-            if ec.sprites:
-                ps_set_sprites(e, lua.table(*ec.sprites))
-            if ec.area:
-                if isinstance(ec.area, Sequence):
-                    ps_set_area(e, *ec.area)
-                else:
-                    ps_set_area(e, ec.area)
-            if ec.burst:
-                ps_set_burst(e, *ec.burst)
-            if ec.angle:
-                if isinstance(ec.angle, Sequence):
-                    ps_set_angle(e, *ec.angle)
-                else:
-                    ps_set_angle(e, ec.angle)
-            self.inner.append(e)
+                ps_set_angle(e, ec.angle)
+        if ec.gravity:
+            ps_set_gravity(e, True)
+        if ec.rnd_color:
+            ps_set_rnd_colour(e, True)
+        self.inner.append(e)
 
     def update(self):
         for e in self.inner:
@@ -151,6 +183,7 @@ ps_set_burst = lua.globals().ps_set_burst
 ps_set_angle = lua.globals().ps_set_angle
 ps_set_gravity = lua.globals().ps_set_gravity
 ps_set_sprites = lua.globals().ps_set_sprites
+ps_set_rnd_colour = lua.globals().ps_set_rnd_colour
 emitter = lua.globals().emitter
 
 
@@ -158,44 +191,3 @@ def flush_draw_calls():
     for v in list(lua.globals().draw_calls.values()):
         print(dict(v))
     lua.globals().draw_calls = lua.table()
-
-
-# explo = emitter.create(120, 120, 0, 30) # omit the first two -- they are coordinates, the last two are frequency and max particles
-# ps_set_size(explo, 4, 0, 3, 0)
-# ps_set_speed(explo, 0)
-# ps_set_life(explo, 1)
-# ps_set_colours(explo, lua.table(7, 6, 5))
-# ps_set_area(explo, 30, 30)
-# ps_set_burst(explo, True, 10)
-# emitters.append(explo)
-
-# spray = emitter.create(120, 120, 0, 80)
-# ps_set_size(spray, 0)
-# ps_set_speed(spray, 20, 10, 20, 10)
-# ps_set_colours(spray, lua.table(7, 6, 5))
-# ps_set_life(spray, 0, 1.3)
-# ps_set_burst(spray, True, 30)
-# emitters.append(spray)
-
-# for _ in range(60):
-#     explo.update(explo, 1/60)
-#     explo.draw(explo)
-#     flush_draw_calls()
-
-# def update_emitters():
-#     for e in emitters:
-#         e.update(e, 1/30)
-#         e.draw(e)
-
-# def draw_emitters():
-#     for _v in list(lua.globals().draw_calls.values()):
-#         v = dict(_v)
-#         print(v)
-#         match v:
-#             case {'t': 'circfill', 'x': x, 'y': y, 'r': r, 'c': c}:
-#                 pyxel.circ(x, y, r, c)
-#             case {'t': 'spr', 'n': n, 'x': x, 'y': y}:
-#                 pyxel.blt(x, y, 1, n*16, 0, 8, 8, 0)
-#             case _:
-#                 raise ValueError(f"Unknown draw call: {v}")
-#     lua.globals().draw_calls = lua.table()
