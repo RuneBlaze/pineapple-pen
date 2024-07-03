@@ -43,7 +43,7 @@ class ParticleDemoScene(Scene):
             anim.update()
         self.anims = [anim for anim in self.anims if not anim.dead]
 
-        if self.timer % 60 == 0 and not self.anims:
+        if self.timer % 30 == 0 and not self.anims:
             self.add_anim(
                 self.particle_configs.peek()[1], WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2
             )
@@ -59,6 +59,7 @@ class ParticleDemoScene(Scene):
         pyxel.text(0, 20, "Press SPACE to reload", 7)
         for anim in self.anims:
             anim.draw()
+
 
 def gen_scene():
     return ParticleDemoScene()

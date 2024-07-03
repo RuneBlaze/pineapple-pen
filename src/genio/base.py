@@ -26,6 +26,11 @@ class Video:
             buffer_to_image(self.generate_mask(thres))
             for thres in [0.7, 0.6, 0.8, 0.5, 0.3]
         ]
+        # self.appearance = (255 - np.load(asset_path('mask.npy'))) / 255.0
+        # # normalize
+        # self.appearance = (self.appearance - self.appearance.min()) / (self.appearance.max() - self.appearance.min())
+        # random apperance mask
+        self.appearance = np.random.rand(WINDOW_HEIGHT, WINDOW_WIDTH)
 
     def update(self):
         self.actual_timer += 1
@@ -113,15 +118,34 @@ def resize_image_breathing(image: pyxel.Image, num_cut: int) -> pyxel.Image:
     return pimage
 
 
-import glob
-
-ok = sorted(glob.glob("assets/background/*.png"))
 if __name__ == "__main__":
-    pyxel.init(WINDOW_WIDTH, WINDOW_HEIGHT)
-    buffers = []
-    for file in ok:
-        image = load_as_buffer("background", file.split("/")[-1])
-        buffers.append((int(file.split("/")[-1].split(".")[0]), image))
-    sorted_buffers = sorted(buffers, key=lambda x: x[0])
-    stack = np.stack([x[1] for x in sorted_buffers])
-    np.save("background.npy", stack)
+    import numpy as np
+    from PIL import Image
+    # img = Image.open("assets/mask.png").convert("RGB")
+    # luminance = np.zeros((img.height, img.width), dtype=np.uint8)
+    # # each pixel
+    # for i in range(img.height):
+    #     for j in range(img.width):
+    #         r, g, b = img.getpixel((j, i))
+    #         r, g, b = r / 255.0, g / 255.0, b / 255.0
+    #         luminance[i, j] = min(int((0.299 * r + 0.587 * g + 0.114 * b) * 255), 255)
+    # np.save("assets/mask.npy", luminance)
+
+    # load mask.npy and visualize it
+
+    mask = np.load("assets/mask.npy")
+    img = Image.fromarray(mask)
+    img.show()
+
+# import glob
+
+# ok = sorted(glob.glob("assets/background/*.png"))
+# if __name__ == "__main__":
+#     pyxel.init(WINDOW_WIDTH, WINDOW_HEIGHT)
+#     buffers = []
+#     for file in ok:
+#         image = load_as_buffer("background", file.split("/")[-1])
+#         buffers.append((int(file.split("/")[-1].split(".")[0]), image))
+#     sorted_buffers = sorted(buffers, key=lambda x: x[0])
+#     stack = np.stack([x[1] for x in sorted_buffers])
+#     np.save("background.npy", stack)

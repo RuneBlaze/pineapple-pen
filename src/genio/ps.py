@@ -103,7 +103,10 @@ class Anim:
             ps_set_size(e, *ec.size)
         else:
             ps_set_size(e, ec.size)
-        ps_set_speed(ec, ec.speed)
+        if isinstance(ec.speed, Sequence):
+            ps_set_speed(e, *ec.speed)
+        else:
+            ps_set_speed(ec, ec.speed)
         if isinstance(ec.life, Sequence):
             ps_set_life(e, *ec.life)
         else:

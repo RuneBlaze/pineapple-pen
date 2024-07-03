@@ -3,13 +3,11 @@ from __future__ import annotations
 import contextlib
 import functools
 import itertools
-import math
 import random
 from collections import deque
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
-from itertools import cycle
 from typing import Literal
 
 import numpy as np
@@ -26,12 +24,18 @@ from genio.battle import (
 )
 from genio.card import Card
 from genio.effect import SinglePointEffect, SinglePointEffectType
-from genio.predef import access_predef, refresh_predef
+from genio.layout import (
+    WINDOW_HEIGHT,
+    WINDOW_WIDTH,
+    fan_out_for_N,
+    layout_center_for_n,
+    lerp,
+    pingpong,
+    sin_bounce,
+)
 from genio.ps import Anim
 from genio.scene import Scene
 from genio.semantic_search import SerializedCardArt, search_closest_document
-
-WINDOW_WIDTH, WINDOW_HEIGHT = 427, 240
 
 retro_font = Font(asset_path("retro-pixel-petty-5h.ttf"))
 retro_text = retro_font.specialize(font_size=5)
@@ -131,10 +135,25 @@ def clip_magnitude(x, max_magnitude):
     return max(-max_magnitude, min(max_magnitude, x))
 
 
+def round_off_rating(number):
+    """Round a number to the closest half integer.
+    >>> round_off_rating(1.3)
+    1.5
+    >>> round_off_rating(2.6)
+    2.5
+    >>> round_off_rating(3.0)
+    3.0
+    >>> round_off_rating(4.1)
+    4.0"""
+
+    return round(number * 2) / 2
+
+
 class CardState(Enum):
     ACTIVE = 0
     RESOLVING = 1
     RESOLVED = 2
+    INITIALIZE = 3
 
 
 class CardSprite:
@@ -142,8 +161,9 @@ class CardSprite:
         self.index = index
         self.app = app
         self.change_index(index)
-        self.x = self.target_x
-        self.y = self.target_y
+        # 10, 190
+        self.x = 10
+        self.y = 190
         self.card = card
         self.width = app.CARD_WIDTH
         self.height = app.CARD_HEIGHT
@@ -157,12 +177,22 @@ class CardSprite:
         self.card_art = CardArtSet(base_image, search_closest_document(card.name))
         self.is_rare = rarity = bool(card.description)
         self.image = self.card_art.imprint(card.name, int(rarity))
-        self.state = CardState.ACTIVE
-        self.target_x = None
-        self.target_y = None
-        self.update_delay = 0
+        self.state = CardState.INITIALIZE
+        self.update_delay = 8 * index + 5
         self.anims = deque()
         self.rotation = 0
+        self.fade_timer = 0
+        self.anims.append(
+            itertools.chain(
+                MutableTweening(
+                    12, pytweening.easeInOutQuad, self, (self.target_x, self.target_y)
+                ),
+                Instant(self.transition_to_active),
+            )
+        )
+
+    def transition_to_active(self):
+        self.state = CardState.ACTIVE
 
     def can_transition_to_resolving(self) -> bool:
         if self.state != CardState.ACTIVE:
@@ -200,35 +230,61 @@ class CardSprite:
     def draw(self):
         if self.index >= self.deck_length:
             return
-
-        blt_rot(
-            self.x,
-            self.y,
-            self.image,
-            0,
-            0,
-            self.width,
-            self.height,
-            colkey=254,
-            rot=self.rotation,
-        )
-        pyxel.pal()
-        if not self.selected and any(
-            card for card in self.app.card_sprites if card.selected
-        ):
-            with pal_single_color(5):
-                with dithering(0.5):
-                    blt_rot(
-                        self.x,
-                        self.y,
-                        self.image,
-                        0,
-                        0,
-                        self.width,
-                        self.height,
-                        colkey=254,
-                        rot=self.rotation,
-                    )
+        if self.state == CardState.INITIALIZE:
+            blt_rot(
+                self.x,
+                self.y,
+                card_back(),
+                0,
+                0,
+                self.width,
+                self.height,
+                colkey=0,
+                rot=self.rotation,
+            )
+            return
+        self.fade_timer += 1
+        if self.fade_timer <= 5:
+            blt_rot(
+                self.x,
+                self.y,
+                card_back(),
+                0,
+                0,
+                self.width,
+                self.height,
+                colkey=0,
+                rot=self.rotation,
+            )
+        with dithering(min(round_off_rating(self.fade_timer / 5), 1)):
+            blt_rot(
+                self.x,
+                self.y,
+                self.image,
+                0,
+                0,
+                self.width,
+                self.height,
+                colkey=254,
+                rot=self.rotation,
+            )
+            pyxel.pal()
+            if not self.selected and any(
+                card for card in self.app.card_sprites if card.selected
+            ):
+                with pal_single_color(5):
+                    with dithering(0.5):
+                        blt_rot(
+                            self.x,
+                            self.y,
+                            self.image,
+                            0,
+                            0,
+                            self.width,
+                            self.height,
+                            colkey=254,
+                            rot=self.rotation,
+                        )
 
     @property
     def deck_length(self) -> int:
@@ -244,12 +300,23 @@ class CardSprite:
         if self.update_delay > 0:
             self.update_delay -= 1
             return
+
+        if self.state == CardState.ACTIVE:
+            self.update_active()
+
+        if self.anims:
+            try:
+                next(self.anims[0])
+            except StopIteration:
+                self.anims.popleft()
+
+    def update_active(self):
         if self.index >= self.deck_length:
             for i, card in enumerate(self.app.card_sprites):
                 card.change_index(i)
             return
         if pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT):
-            if self.is_mouse_over() and self.state == CardState.ACTIVE:
+            if self.is_mouse_over():
                 self.dragging = True
                 self.drag_offset_x = pyxel.mouse_x - self.x
                 self.drag_offset_y = pyxel.mouse_y - self.y
@@ -265,7 +332,7 @@ class CardSprite:
             self.y = pyxel.mouse_y - self.drag_offset_y
 
         # Tweening for smooth transition
-        if not self.dragging and self.state == CardState.ACTIVE:
+        if not self.dragging:
             target_x, target_y = self.adjusted_target_coords()
             dx = (target_x - self.x) * self.app.TWEEN_SPEED
             dy = (target_y - self.y) * self.app.TWEEN_SPEED
@@ -280,12 +347,6 @@ class CardSprite:
             self.app.tooltip.reset(self.card.name, self.card.description or "")
         else:
             self.hovered = False
-
-        if self.anims:
-            try:
-                next(self.anims[0])
-            except StopIteration:
-                self.anims.popleft()
 
     def snap_to_grid(self):
         new_index = (
@@ -486,32 +547,6 @@ class DrawDeck:
         )
 
 
-@functools.cache
-def calculate_fan_out_angles_symmetry(
-    N: int, max_angle: int, max_difference: int
-) -> list[int]:
-    if N == 0:
-        return []
-
-    angles = [0] * N
-    middle_index = N // 2
-
-    # Generate angles for one side
-    for i in range(1, middle_index + 1):
-        target_angle = min(i * max_difference, max_angle)
-        angles[middle_index - i] = -target_angle  # Left side
-        angles[
-            middle_index + (i - 1) + (0 if N % 2 == 0 else 0)
-        ] = target_angle  # Right side
-
-    return angles
-
-
-fan_out_for_N = functools.partial(
-    calculate_fan_out_angles_symmetry, max_angle=15, max_difference=1.5
-)
-
-
 class Popup:
     def __init__(self, text: str, x: int, y: int, color: int):
         self.text = text
@@ -559,21 +594,6 @@ class FlashState:
 
     def is_flashing(self):
         return self.counter >= 30 and self.counter % 5 <= 1
-
-
-def pingpong(n: int):
-    while True:
-        yield 0
-        for i in range(1, n - 1):
-            yield i
-        for i in range(n - 1, 0, -1):
-            yield i
-
-
-def lerp(
-    uv: tuple[float, float], target: tuple[float, float], t: float
-) -> tuple[float, float]:
-    return (uv[0] + (target[0] - uv[0]) * t, uv[1] + (target[1] - uv[1]) * t)
 
 
 class Tweening:
@@ -641,12 +661,6 @@ class Shake:
             yield
 
 
-def sin_bounce(t: float) -> float:
-    if t == 1.0:
-        return 0.0
-    return math.sin(t * math.pi * 2)
-
-
 class WrappedImage:
     def __init__(
         self,
@@ -679,7 +693,6 @@ class WrappedImage:
         self.pingpong = pingpong(len(self.breathing_versions) if has_breathing else 1)
         self.timer = 0
         self.rng = np.random.default_rng(seed=id(image))
-        # self.wait = self.rng.integers(0,3)
         self.cycle = self.rng.integers(32, 45)
         self.wait = self.rng.integers(0, 30)
         self.user_data = user_data
@@ -731,11 +744,9 @@ class WrappedImage:
         )
 
 
-def layout_center_for_n(n: int, width: int) -> list[int]:
-    div_by = n + 1
-    spacing = width // div_by
-    start_x = WINDOW_WIDTH // 2 - width // 2
-    return [start_x + i * spacing for i in range(1, n + 1)]
+@functools.cache
+def card_back() -> pyxel.Image:
+    return pyxel.Image.from_image(asset_path("card-back.png"))
 
 
 class MainScene(Scene):
@@ -765,7 +776,6 @@ class MainScene(Scene):
         self.anims = []
         self.popups = []
         self.timer = 0
-        self.particle_configs = Peekable(cycle(access_predef("anims").items()))
         self.enemy_sprites = [
             WrappedImage(
                 load_image("char", "enemy_killer_flower.png"),
@@ -801,6 +811,7 @@ class MainScene(Scene):
             s.y = 60
 
         self.futures = deque()
+        self.buffer = pyxel.Image(427, 240)
         self.executor = ThreadPoolExecutor(max_workers=2)
 
     def sprites(self):
@@ -812,7 +823,9 @@ class MainScene(Scene):
             card_sprite.card.id: card_sprite for card_sprite in self.card_sprites
         }
         self.card_sprites = [
-            existing_card_sprites.get(card.id, CardSprite(i, card, self))
+            existing_card_sprites.get(card.id)
+            if existing_card_sprites.get(card.id)
+            else CardSprite(i, card, self)
             for i, card in enumerate(self.bundle.card_bundle.hand)
         ]
 
@@ -852,13 +865,6 @@ class MainScene(Scene):
 
         for card in self.tmp_card_sprites:
             card.update()
-
-        if pyxel.btnr(pyxel.KEY_R):
-            refresh_predef()
-            self.particle_configs = Peekable(cycle(access_predef("anims").items()))
-
-        if pyxel.btnp(pyxel.KEY_E):
-            next(self.particle_configs)
 
         self.tooltip.update()
         for anim in self.anims:
@@ -952,17 +958,25 @@ class MainScene(Scene):
             cursor += 8
 
     def draw(self):
+        m = self.background_video.appearance
+        buffer_as_arr = _image_as_ndarray(self.buffer)
         pyxel.cls(0)
         pyxel.pal(3, 5)
         pyxel.pal(11, 12)
+        buffer_as_arr[:] = 0
         pyxel.blt(0, 0, self.background_video.current_image, 0, 0, 427, 240, 0)
+        t = pytweening.easeOutCirc(min(self.background_video.actual_timer / 500.0, 1))
+        buffer_as_arr[m < t] = 254
+        pyxel.pal()
         with dithering(0.5):
             for mask in self.background_video.masks:
                 pyxel.blt(0, 0, mask, 0, 0, 427, 240, colkey=254)
         with dithering(0.5):
             pyxel.blt(0, 0, self.background_video.masks[0], 0, 0, 427, 240, colkey=254)
-        pyxel.pal()
+        with dithering(1 - t):
+            pyxel.blt(0, 0, self.buffer, 0, 0, 427, 240, colkey=254)
         self.draw_deck.draw(10, 190)
+
         for card in self.card_sprites:
             card.draw()
         for card in self.tmp_card_sprites:
@@ -972,9 +986,6 @@ class MainScene(Scene):
         button(WINDOW_WIDTH - 70, WINDOW_HEIGHT - 50, 55, 15, "Play Cards", 7, 5)
         self.tooltip.draw()
         self.draw_crosshair(pyxel.mouse_x, pyxel.mouse_y)
-
-        current_name = self.particle_configs.peek()[0]
-        shadowed_text(5, 5, current_name, 7)
 
         short_holder = load_image("ui", "short-holder.png")
         long_holder = load_image("ui", "long-holder.png")
@@ -1025,6 +1036,3 @@ class MainScene(Scene):
 
 def gen_scene() -> Scene:
     return MainScene()
-
-
-# app = MainScene()

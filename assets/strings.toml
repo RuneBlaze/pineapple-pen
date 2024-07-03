@@ -51,6 +51,37 @@ pattern = ["attack player for 5 damage", "block for 3 shield points"]
 
 [anims]
 
+[[anims.confetti]]
+frequency = 20
+max_p = 200
+area = [10, 10]
+size = [0, 0, 2, 0]
+speed = [75, 10, 75, 10]
+life = [1.5, 1]
+delta_x = -50
+colors = [7, 8, 9, 10, 11, 12, 13, 14, 15]
+duration = 1
+angle = [30, 45]
+burst = [true, 200]
+gravity = true
+rnd_color = true
+
+
+[[anims.confetti]]
+frequency = 20
+max_p = 200
+area = [10, 10]
+size = [0, 0, 2, 0]
+speed = [75, 10, 75, 10]
+life = [1.5, 1]
+delta_x = 50
+colors = [7, 8, 9, 10, 11, 12, 13, 14, 15]
+duration = 1
+angle = [120, 45]
+burst = [true, 200]
+gravity = true
+rnd_color = true
+
 [[anims.debuff]]
 frequency = 20
 max_p = 200
@@ -86,7 +117,7 @@ sprites = [11, 11, 11]
 duration = 1
 angle = [90, 45]
 burst = [true, 20]
-gravity = true
+# gravity = true
 
 [[anims.buff]]
 frequency = 30
@@ -103,7 +134,7 @@ burst = [true, 5]
 frequency = 20
 max_p = 80
 size = [0, 1]
-speed = [100, 50]
+speed = [50, 25]
 life = [0, 1]
 angle = [90, 45]
 sprites = [4, 5, 6]
@@ -185,6 +216,5 @@ size = [1, 0, 1, 0]
 speed = 20
 life = [1.5, 1]
 colors = [11,11, 11, 11, 14, 14, 14]
-# angle = 180
 duration = 1
 burst = [true, 30]
