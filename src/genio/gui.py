@@ -5,7 +5,7 @@ import functools
 import itertools
 import random
 from collections import deque
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from typing import Literal
@@ -136,16 +136,6 @@ def clip_magnitude(x, max_magnitude):
 
 
 def round_off_rating(number):
-    """Round a number to the closest half integer.
-    >>> round_off_rating(1.3)
-    1.5
-    >>> round_off_rating(2.6)
-    2.5
-    >>> round_off_rating(3.0)
-    3.0
-    >>> round_off_rating(4.1)
-    4.0"""
-
     return round(number * 2) / 2
 
 
@@ -154,6 +144,28 @@ class CardState(Enum):
     RESOLVING = 1
     RESOLVED = 2
     INITIALIZE = 3
+
+
+class Tweener:
+    def __init__(self):
+        self.inner = deque()
+
+    def _append(self, tween: Iterator):
+        self.inner.append(itertools.chain(tween))
+
+    def append(self, *tweens: Iterator):
+        for tween in tweens:
+            self._append(tween)
+
+    def update(self):
+        if not self.inner:
+            return
+        try:
+            next(self.inner[0])
+        except StopIteration:
+            self.inner.popleft()
+        except RuntimeError:
+            self.inner.popleft()
 
 
 class CardSprite:
@@ -179,10 +191,10 @@ class CardSprite:
         self.image = self.card_art.imprint(card.name, int(rarity))
         self.state = CardState.INITIALIZE
         self.update_delay = 8 * index + 5
-        self.anims = deque()
+        self.tweens = Tweener()
         self.rotation = 0
         self.fade_timer = 0
-        self.anims.append(
+        self.tweens.append(
             itertools.chain(
                 MutableTweening(
                     12, pytweening.easeInOutQuad, self, (self.target_x, self.target_y)
@@ -216,7 +228,7 @@ class CardSprite:
         target_x = layout_center_for_n(num_total_cards, 400)[my_index]
         target_y = WINDOW_HEIGHT // 2 - self.height // 2
 
-        self.anims.append(
+        self.tweens.append(
             itertools.chain(
                 range(4 * my_index),
                 MutableTweening(
@@ -304,11 +316,7 @@ class CardSprite:
         if self.state == CardState.ACTIVE:
             self.update_active()
 
-        if self.anims:
-            try:
-                next(self.anims[0])
-            except StopIteration:
-                self.anims.popleft()
+        self.tweens.update()
 
     def update_active(self):
         if self.index >= self.deck_length:
@@ -384,6 +392,27 @@ def vertical_gradient(x, y, w, h, c0, c1):
     for i in range(num_chunks - 1):
         pyxel.rect(x, int(chunks[i]), w, int(chunks[i + 1]) - int(chunks[i]), c1)
         pyxel.dither(1.0 - dithering[i + 1])
+    pyxel.dither(1.0)
+
+
+def black_gradient(x, y, w, h) -> None:
+    num_chunks = 5
+    chunks = np.linspace(y, y + h, num_chunks)
+    dithering = np.linspace(0, 1, num_chunks)
+    for i in range(num_chunks - 1):
+        pyxel.rect(x, int(chunks[i]), w, int(chunks[i + 1]) - int(chunks[i]), 0)
+        pyxel.dither(1.0 - dithering[i + 1])
+    pyxel.dither(1.0)
+
+
+def black_gradient_inverse(x, y, w, h) -> None:
+    num_chunks = 5
+    chunks = np.linspace(y, y + h, num_chunks)
+    dithering = np.linspace(1, 0, num_chunks)
+    pyxel.dither(0.0)
+    for i in range(num_chunks - 1):
+        pyxel.rect(x, int(chunks[i]), w, int(chunks[i + 1]) - int(chunks[i]), 0)
+        pyxel.dither(1.2 - dithering[i + 1])
     pyxel.dither(1.0)
 
 
@@ -631,6 +660,30 @@ class MutableTweening:
             yield
 
 
+class Mutator:
+    def __init__(
+        self,
+        duration: int,
+        inner: Callable[[float], float],
+        this: object,
+        lens: str,
+        target: float,
+    ) -> None:
+        self.inner = Tweening(duration, inner)
+        self.this = this
+        self.lens = lens
+        self.target = target
+
+    def __iter__(self):
+        for t in self.inner:
+            setattr(
+                self.this,
+                self.lens,
+                lerp(getattr(self.this, self.lens), self.target, t),
+            )
+            yield
+
+
 class WaitUntilTweening:
     def __init__(self, callable: Callable[[], bool]):
         self.callable = callable
@@ -645,8 +698,9 @@ class Instant:
         self.runnable = runnable
 
     def __iter__(self):
+        yield
         self.runnable()
-        raise StopIteration
+        return
 
 
 class Shake:
@@ -749,6 +803,50 @@ def card_back() -> pyxel.Image:
     return pyxel.Image.from_image(asset_path("card-back.png"))
 
 
+class FramingState(Enum):
+    INACTIVE = 0
+    PUT_UP = 1
+    ACTIVE = 2
+    PUT_DOWN = 3
+
+
+class ResolvingFraming:
+    def __init__(self, scene: MainScene) -> None:
+        self.scene = scene
+        self.rarity = -1
+        self.tweener = Tweener()
+        self.put_up_factor = 0
+        self.state = FramingState.INACTIVE
+
+    def set_state(self, state: FramingState) -> None:
+        self.state = state
+
+    def update(self):
+        self.tweener.update()
+
+    def draw(self):
+        if self.state == FramingState.INACTIVE:
+            return
+
+        if self.put_up_factor:
+            black_gradient(0, 0, 427, self.put_up_factor)
+            black_gradient_inverse(0, 240 - self.put_up_factor, 427, self.put_up_factor)
+
+    def putup(self):
+        self.tweener.append(
+            Instant(lambda: self.set_state(FramingState.PUT_UP)),
+            Mutator(15, pytweening.easeInOutQuad, self, "put_up_factor", 30),
+            Instant(lambda: self.set_state(FramingState.ACTIVE)),
+        )
+
+    def teardown(self):
+        self.tweener.append(
+            Instant(lambda: self.set_state(FramingState.PUT_DOWN)),
+            Mutator(15, pytweening.easeInOutQuad, self, "put_up_factor", 0),
+            Instant(lambda: self.set_state(FramingState.INACTIVE)),
+        )
+
+
 class MainScene(Scene):
     CARD_WIDTH = 43
     CARD_HEIGHT = 60
@@ -812,6 +910,7 @@ class MainScene(Scene):
 
         self.futures = deque()
         self.buffer = pyxel.Image(427, 240)
+        self.framing = ResolvingFraming(self)
         self.executor = ThreadPoolExecutor(max_workers=2)
 
     def sprites(self):
@@ -874,9 +973,18 @@ class MainScene(Scene):
         self.anims = [anim for anim in self.anims if not anim.dead]
         for sprite in self.sprites():
             sprite.update()
+        self.framing.update()
         self.check_mailbox()
         self.background_video.update()
         self.timer += 1
+
+        if self.timer % 120 == 0:
+            self.framing.putup()
+        if self.timer % 120 == 60:
+            self.framing.teardown()
+
+        # if self.timer % 30 == 0:
+        #     self.add_anim("anims.black_flames_burst_top", WINDOW_WIDTH // 2, 0)
 
     def play_selected(self):
         selected_card_sprites = [card for card in self.card_sprites if card.selected]
@@ -958,6 +1066,27 @@ class MainScene(Scene):
             cursor += 8
 
     def draw(self):
+        self.draw_background()
+        self.draw_deck.draw(10, 190)
+
+        self.draw_battlers()
+
+        for card in self.card_sprites:
+            card.draw()
+        for card in self.tmp_card_sprites:
+            card.draw()
+
+        button(WINDOW_WIDTH - 70, WINDOW_HEIGHT - 20, 55, 15, "End Turn", 7, 5)
+        button(WINDOW_WIDTH - 70, WINDOW_HEIGHT - 50, 55, 15, "Play Cards", 7, 5)
+        self.tooltip.draw()
+        self.framing.draw()
+        if self.anims:
+            self.anims[0].draw()
+        for popup in self.popups:
+            popup.draw()
+        self.draw_crosshair(pyxel.mouse_x, pyxel.mouse_y)
+
+    def draw_background(self):
         m = self.background_video.appearance
         buffer_as_arr = _image_as_ndarray(self.buffer)
         pyxel.cls(0)
@@ -973,26 +1102,12 @@ class MainScene(Scene):
                 pyxel.blt(0, 0, mask, 0, 0, 427, 240, colkey=254)
         with dithering(0.5):
             pyxel.blt(0, 0, self.background_video.masks[0], 0, 0, 427, 240, colkey=254)
-        with dithering(1 - t):
-            pyxel.blt(0, 0, self.buffer, 0, 0, 427, 240, colkey=254)
-        self.draw_deck.draw(10, 190)
+        # with dithering(1 - t):
+        #     pyxel.blt(0, 0, self.buffer, 0, 0, 427, 240, colkey=254)
 
-        for card in self.card_sprites:
-            card.draw()
-        for card in self.tmp_card_sprites:
-            card.draw()
-
-        button(WINDOW_WIDTH - 70, WINDOW_HEIGHT - 20, 55, 15, "End Turn", 7, 5)
-        button(WINDOW_WIDTH - 70, WINDOW_HEIGHT - 50, 55, 15, "Play Cards", 7, 5)
-        self.tooltip.draw()
-        self.draw_crosshair(pyxel.mouse_x, pyxel.mouse_y)
-
+    def draw_battlers(self):
         short_holder = load_image("ui", "short-holder.png")
         long_holder = load_image("ui", "long-holder.png")
-        char_celine = load_image("char", "char_celine.png")
-        icons = load_image("ui", "icons.png")
-
-        enemy_killer_flower = load_image("char", "enemy_killer_flower.png")
 
         pyxel.blt(-10, 147 + 10, long_holder, 0, 0, 130, 30, colkey=254)
         self.player_sprite.draw()
@@ -1021,10 +1136,6 @@ class MainScene(Scene):
                 col=7,
             )
             pyxel.clip()
-        if self.anims:
-            self.anims[0].draw()
-        for popup in self.popups:
-            popup.draw()
 
     def draw_crosshair(self, x, y):
         pyxel.line(x - 5, y, x + 5, y, 7)

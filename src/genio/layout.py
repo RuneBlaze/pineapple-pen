@@ -1,4 +1,5 @@
 from __future__ import annotations
+from collections.abc import Sequence
 
 import functools
 import math
@@ -28,10 +29,13 @@ def pingpong(n: int):
             yield i
 
 
+
 def lerp(
-    uv: tuple[float, float], target: tuple[float, float], t: float
+    uv: tuple[float, float] | float, target: tuple[float, float] | float, t: float
 ) -> tuple[float, float]:
-    return (uv[0] + (target[0] - uv[0]) * t, uv[1] + (target[1] - uv[1]) * t)
+    if isinstance(uv, Sequence):
+        return (uv[0] + (target[0] - uv[0]) * t, uv[1] + (target[1] - uv[1]) * t)
+    return uv + (target - uv) * t
 
 
 @functools.cache

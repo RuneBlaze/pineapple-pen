@@ -5,6 +5,8 @@ from collections.abc import Callable
 import pyxel
 from structlog import get_logger
 
+from genio.predef import refresh_predef
+
 logger = get_logger()
 
 
@@ -34,6 +36,7 @@ class ReloadableScene(Scene):
         self.current_version.draw()
 
     def on_request_reload(self):
+        refresh_predef()
         self.current_version = self.scene_factory()
 
 

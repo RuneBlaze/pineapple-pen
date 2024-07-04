@@ -26,10 +26,6 @@ class Video:
             buffer_to_image(self.generate_mask(thres))
             for thres in [0.7, 0.6, 0.8, 0.5, 0.3]
         ]
-        # self.appearance = (255 - np.load(asset_path('mask.npy'))) / 255.0
-        # # normalize
-        # self.appearance = (self.appearance - self.appearance.min()) / (self.appearance.max() - self.appearance.min())
-        # random apperance mask
         self.appearance = np.random.rand(WINDOW_HEIGHT, WINDOW_WIDTH)
 
     def update(self):
