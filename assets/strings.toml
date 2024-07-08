@@ -98,26 +98,26 @@ area = [40, 40]
 burst = [true, 30]
 
 [[anims.black_flames]]
-frequency = 50
+frequency = 40
 max_p = 0
 area = [427, 10]
 size = [4, 0, 2, 0]
-speed = [30, 5, 20]
+speed = [24, 5, 15]
 life = [0.5, 2]
 delta_y = 140
-colors = [0, 1]
-duration = 0
+colors = [0, 0, 1, 1, 1, 14]
+duration = 3
 angle = [90, 10]
 
 [[anims.black_flames]]
-frequency = 50
+frequency = 40
 max_p = 0
 area = [427, 10]
 size = [4, 0, 2, 0]
-speed = [30, 5, 20]
+speed = [24, 5, 15]
 life = [0.5, 2]
 delta_y = -140
-colors = [0, 1]
+colors = [0, 0, 1, 1, 1, 14]
 duration = 0
 angle = [-90, 10]
 
@@ -126,34 +126,32 @@ frequency = 100
 max_p = 0
 area = [427, 10]
 size = [2, 0, 2, 0]
-speed = [30, 5, 20]
+speed = 2
 life = [0.5, 2]
-colors = [7]
-duration = 10000
+colors = [0, 0, 1, 1, 1, 14]
+duration = 2
 angle = [90, 10]
-burst = [true, 400]
+burst = [true, 200]
 
 [[anims.black_flames_burst_top]]
 frequency = 400
 max_p = 400
 area = [427, 10]
 size = [4, 0, 2, 0]
-speed = 1
-delta_y = -4
+speed = 2
 life = [0.5, 2]
 colors = [0, 0, 1, 1, 1, 14]
-duration = 10000
+duration = 2
 angle = [-90, 10]
-burst = [true, 100]
+burst = [true, 200]
 
-[[anims.confetti]]
+[[anims.confetti_left]]
 frequency = 20
 max_p = 200
 area = [10, 10]
 size = [0, 0, 2, 0]
 speed = [75, 10, 75, 10]
 life = [1.5, 1]
-delta_x = -50
 colors = [7, 8, 9, 10, 11, 12, 13, 14, 15]
 duration = 1
 angle = [30, 45]
@@ -162,14 +160,13 @@ gravity = true
 rnd_color = true
 
 
-[[anims.confetti]]
+[[anims.confetti_right]]
 frequency = 20
 max_p = 200
 area = [10, 10]
 size = [0, 0, 2, 0]
 speed = [75, 10, 75, 10]
 life = [1.5, 1]
-delta_x = 50
 colors = [7, 8, 9, 10, 11, 12, 13, 14, 15]
 duration = 1
 angle = [120, 45]

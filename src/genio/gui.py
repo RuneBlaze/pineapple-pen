@@ -34,6 +34,7 @@ from genio.ps import Anim
 from genio.scene import Scene
 from genio.semantic_search import SerializedCardArt, search_closest_document
 from genio.tween import Instant, MutableTweening, Mutator, Shake, Tweener
+from genio.utils.weaklist import WeakList
 
 
 def center_crop(img: np.ndarray, size: tuple[int, int]) -> np.ndarray:
@@ -655,9 +656,12 @@ class FramingState(Enum):
     ACTIVE = 2
     PUT_DOWN = 3
 
+rng = np.random.default_rng()
 
 class ResolvingFraming:
     """A frame that shows up when resolving cards."""
+
+    anim_handles: WeakList[Anim]
 
     def __init__(self, scene: MainScene) -> None:
         self.scene = scene
@@ -665,9 +669,57 @@ class ResolvingFraming:
         self.tweener = Tweener()
         self.put_up_factor = 0
         self.state = FramingState.INACTIVE
+        self.anim_handles = WeakList()
 
     def set_state(self, state: FramingState) -> None:
+        if state == self.state:
+            return
+        self.transition_out_state(state)
         self.state = state
+        self.transition_in_state(state)
+
+    def transition_out_state(self, state: FramingState) -> None:
+        if state == FramingState.ACTIVE:
+            for handle in self.anim_handles.surviving_items():
+                handle.stop()
+            self.anim_handles.garbage_collect()
+
+    def transition_in_state(self, state: FramingState) -> None:
+        if state == FramingState.ACTIVE:
+            if self.rarity == 1:
+                self.anim_handles.append(
+                    self.scene.add_anim(
+                        "anims.black_flames_burst_top", WINDOW_WIDTH // 2, 0
+                    )
+                )
+                self.anim_handles.append(
+                    self.scene.add_anim(
+                        "anims.black_flames_burst_bottom",
+                        WINDOW_WIDTH // 2,
+                        WINDOW_HEIGHT,
+                    )
+                )
+            elif self.rarity == 2:
+                self.anim_handles.append(
+                    self.scene.add_anim(
+                        "anims.black_flames", WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2
+                    )
+                )
+                for i, x in enumerate(rng.integers(5, 10, size=8)):
+                    anim_lens = "anims.confetti_left" if i % 2 == 0 else "anims.confetti_right"
+                    normalized_coord = rng.normal([0.5,0.5], [0.15, 0.1], 2)
+                    normalized_coord = np.clip(normalized_coord, 0.2, 0.8)
+                    if i == 0:
+                        x += 30
+                    self.enqueue_animation(
+                        x, anim_lens, WINDOW_WIDTH * normalized_coord[0], WINDOW_HEIGHT * normalized_coord[1]
+                    )
+
+    def enqueue_animation(self, delay: int, lens: str, x: int, y: int) -> None:
+        self.tweener.append(
+            range(delay),
+            Instant(lambda: self.anim_handles.append(self.scene.add_anim(lens, x, y))),
+        )
 
     def update(self):
         self.tweener.update()
@@ -759,6 +811,7 @@ class MainScene(Scene):
         self.futures = deque()
         self.buffer = pyxel.Image(427, 240)
         self.framing = ResolvingFraming(self)
+        self.framing.rarity = 2
         self.executor = ThreadPoolExecutor(max_workers=2)
 
     def sprites(self):
@@ -826,9 +879,9 @@ class MainScene(Scene):
         self.background_video.update()
         self.timer += 1
 
-        if self.timer % 120 == 0:
+        if self.timer % 240 == 0:
             self.framing.putup()
-        if self.timer % 120 == 60:
+        if self.timer % 240 == 120:
             self.framing.teardown()
 
         # if self.timer % 30 == 0:
@@ -883,8 +936,9 @@ class MainScene(Scene):
                 return sprite
         raise ValueError(f"Sprite with id {id} not found")
 
-    def add_anim(self, name: str, x: int, y: int, play_speed: float = 1.0):
-        self.anims.append(Anim.from_predef(name, x, y, play_speed))
+    def add_anim(self, name: str, x: int, y: int, play_speed: float = 1.0) -> Anim:
+        self.anims.append(result := Anim.from_predef(name, x, y, play_speed))
+        return result
 
     def resolve_selected_cards(self, selected_cards: list[Card]) -> ResolvedEffects:
         return self.bundle.resolve_player_cards(selected_cards)
@@ -927,11 +981,11 @@ class MainScene(Scene):
         button(WINDOW_WIDTH - 70, WINDOW_HEIGHT - 20, 55, 15, "End Turn", 7, 5)
         button(WINDOW_WIDTH - 70, WINDOW_HEIGHT - 50, 55, 15, "Play Cards", 7, 5)
         self.tooltip.draw()
-        self.framing.draw()
-        if self.anims:
-            self.anims[0].draw()
+
+        Anim.draw()
         for popup in self.popups:
             popup.draw()
+        self.framing.draw()
         self.draw_crosshair(pyxel.mouse_x, pyxel.mouse_y)
 
     def draw_background(self):
