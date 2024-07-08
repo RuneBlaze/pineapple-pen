@@ -4,11 +4,17 @@ from __future__ import annotations
 from collections import deque
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Protocol
 
 import pyxel
 from lupa.lua54 import LuaRuntime
 
 from genio.predef import access_predef
+
+
+class HasXY(Protocol):
+    def xy(self) -> tuple[float, float]:
+        ...
 
 
 @dataclass
@@ -56,6 +62,7 @@ def convert_to_emitter_configs(parsed_data: list) -> list[EmitterConfig]:
             delta_y=item["delta_y"] if "delta_y" in item else None,
             appear_delay=item["appear_delay"] if "appear_delay" in item else None,
             rnd_color=item["rnd_color"] if "rnd_color" in item else False,
+            duration=item["duration"] if "duration" in item else None,
         )
         emitter_configs.append(config)
 
@@ -82,7 +89,9 @@ class Anim:
         self.timer = 0
         self.dead = False
         self.play_speed = play_speed
-        self.duration = max(ec.duration or 1 for ec in emitters)
+        self.duration = max(
+            ec.duration if ec.duration is not None else 1 for ec in emitters
+        )
         self.queued = []
         for ec in emitters:
             self.queued.append(ec)
@@ -99,6 +108,8 @@ class Anim:
         x += ec.delta_x or 0
         y += ec.delta_y or 0
         e = emitter.create(x, y, ec.frequency, ec.max_p)
+        e.delta_x = ec.delta_x or 0
+        e.delta_y = ec.delta_y or 0
         if isinstance(ec.size, Sequence):
             ps_set_size(e, *ec.size)
         else:
@@ -135,6 +146,8 @@ class Anim:
 
     def update(self):
         for e in self.inner:
+            e.pos.x = self.x + e.delta_x
+            e.pos.y = self.y + e.delta_y
             e.update(e, 1 / 30 * self.play_speed)
             e.draw(e)
         self.timer += 1
@@ -142,14 +155,20 @@ class Anim:
         if self.timer and self.timer % (30 * 3) == 0:
             for e in self.inner:
                 total_num_particles += len(e.particles)
-            if total_num_particles == 0:
+            if total_num_particles == 0 and not self.duration:
                 self.dead = True
-        if self.timer >= self.duration * 30:
+        if self.duration and self.timer >= self.duration * 30:
             for e in self.inner:
                 if e.is_emitting(e):
                     e.stop_emit(e)
 
-    def draw(self):
+    def stop(self):
+        for e in self.inner:
+            e.stop_emit(e)
+        self.dead = True
+
+    @staticmethod
+    def draw():
         for _v in list(lua.globals().draw_calls.values()):
             v = dict(_v)
             match v:

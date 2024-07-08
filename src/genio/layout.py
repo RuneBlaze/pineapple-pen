@@ -1,8 +1,8 @@
 from __future__ import annotations
-from collections.abc import Sequence
 
 import functools
 import math
+from collections.abc import Sequence
 
 WINDOW_WIDTH, WINDOW_HEIGHT = 427, 240
 
@@ -27,7 +27,6 @@ def pingpong(n: int):
             yield i
         for i in range(n - 1, 0, -1):
             yield i
-
 
 
 def lerp(

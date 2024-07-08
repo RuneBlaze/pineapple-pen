@@ -85,7 +85,7 @@ def load_as_buffer(*asset_args: str) -> np.ndarray:
                         key=lambda c: sum((c[i] - rgb[i]) ** 2 for i in range(3)),
                     )
                     raise ValueError(
-                        f"Unexpected color: {r}, {g}, {b}; closest: {closest_color} at {rgb2paletteix[closest_color]}"
+                        f"Unexpected color: {r}, {g}, {b}; closest: {closest_color} at {rgb2paletteix[closest_color]} when loading {image_path}"
                     )
     return buffer
 

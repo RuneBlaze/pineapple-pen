@@ -38,6 +38,8 @@ class ParticleDemoScene(Scene):
             refresh_predef()
             self.particle_configs = Peekable(cycle(access_predef("anims").items()))
         if pyxel.btnp(pyxel.KEY_Q):
+            for anim in self.anims:
+                anim.stop()
             next(self.particle_configs)
         for anim in self.anims:
             anim.update()

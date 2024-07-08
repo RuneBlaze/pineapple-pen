@@ -3,9 +3,7 @@ from __future__ import annotations
 import contextlib
 import functools
 import itertools
-import random
 from collections import deque
-from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from typing import Literal
@@ -13,7 +11,7 @@ from typing import Literal
 import numpy as np
 import pytweening
 import pyxel
-from pyxelxl import Font, LayoutOpts, blt_rot, layout
+from pyxelxl import blt_rot, layout
 from pyxelxl.font import _image_as_ndarray
 
 from genio.base import Video, asset_path, load_image, resize_image_breathing
@@ -23,31 +21,22 @@ from genio.battle import (
     setup_battle_bundle,
 )
 from genio.card import Card
+from genio.components import Popup, cute_text, retro_font, retro_text, shadowed_text
 from genio.effect import SinglePointEffect, SinglePointEffectType
 from genio.layout import (
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
     fan_out_for_N,
     layout_center_for_n,
-    lerp,
     pingpong,
-    sin_bounce,
 )
 from genio.ps import Anim
 from genio.scene import Scene
 from genio.semantic_search import SerializedCardArt, search_closest_document
-
-retro_font = Font(asset_path("retro-pixel-petty-5h.ttf"))
-retro_text = retro_font.specialize(font_size=5)
-display_text = Font(asset_path("DMSerifDisplay-Regular.ttf")).specialize(
-    font_size=18, threshold=100
-)
-cute_text = Font(asset_path("retro-pixel-cute-prop.ttf")).specialize(font_size=11)
+from genio.tween import Instant, MutableTweening, Mutator, Shake, Tweener
 
 
 def center_crop(img: np.ndarray, size: tuple[int, int]) -> np.ndarray:
-    # size in h, w
-    # img in h, w, c
     h, w = img.shape[:2]
     if h < size[0] or w < size[1]:
         raise ValueError("Image is smaller than the crop size")
@@ -84,6 +73,18 @@ class CardArtSet:
                 return load_image("cards", "three-of-spades.png")
             case "6 of Hearts":
                 return load_image("cards", "six-of-hearts.png")
+            case "4 of Diamonds":
+                return load_image("cards", "four-of-diamonds.png")
+            case "4 of Spades":
+                return load_image("cards", "four-of-spades.png")
+            case "The Fool":
+                image = load_image("cards", "the-fool.png")
+                self.add_retro_text_to_card("O", image)
+                return image
+            case "The Emperor":
+                image = load_image("cards", "the-emperor.png")
+                self.add_retro_text_to_card("IV", image)
+                return image
         w, h = self.base_image.width, self.base_image.height
         base = _image_as_ndarray(self.base_image)
         buffer = np.full((h, w), 254, dtype=np.uint8)
@@ -104,6 +105,16 @@ class CardArtSet:
         img = ndarray_to_image(buffer)
         self._print_card_name(img, card_name, rarity)
         return img
+
+    def add_retro_text_to_card(self, text: str, image: pyxel.Image) -> None:
+        retro_text(
+            0,
+            2,
+            text,
+            col=7,
+            layout=layout(w=MainScene.CARD_WIDTH, ha="center", break_words=True),
+            target=image,
+        )
 
     def _print_card_name(self, image: pyxel.Image, card_name: str, rarity: int) -> None:
         shadowed_retro_text = functools.partial(
@@ -144,28 +155,6 @@ class CardState(Enum):
     RESOLVING = 1
     RESOLVED = 2
     INITIALIZE = 3
-
-
-class Tweener:
-    def __init__(self):
-        self.inner = deque()
-
-    def _append(self, tween: Iterator):
-        self.inner.append(itertools.chain(tween))
-
-    def append(self, *tweens: Iterator):
-        for tween in tweens:
-            self._append(tween)
-
-    def update(self):
-        if not self.inner:
-            return
-        try:
-            next(self.inner[0])
-        except StopIteration:
-            self.inner.popleft()
-        except RuntimeError:
-            self.inner.popleft()
 
 
 class CardSprite:
@@ -427,27 +416,6 @@ def horizontal_gradient(x, y, w, h, c0, c1):
     pyxel.dither(1.0)
 
 
-def gauge(x, y, w, h, c0, c1, value, max_value, label=None):
-    pyxel.rect(x, y, w, h, c0)
-    pyxel.rect(x, y, min(w * value // max_value, w), h, c1)
-    pyxel.dither(0.5)
-    pyxel.rectb(x, y, w, h, 0)
-    pyxel.dither(1.0)
-    text = f"{value}/{max_value}"
-    if label:
-        text = f"{label} {text}"
-    shadowed_text(x + 2, y + 2, text, 7, layout_opts=layout(w=w, ha="left"))
-
-
-def shadowed_text(
-    x, y, text, color, layout_opts: LayoutOpts | None = None, dither_mult: float = 1.0
-):
-    pyxel.dither(0.5 * dither_mult)
-    retro_text(x + 1, y + 1, text, 0, layout=layout_opts)
-    pyxel.dither(1.0 * dither_mult)
-    retro_text(x, y, text, color, layout=layout_opts)
-
-
 @contextlib.contextmanager
 def dithering(f: float):
     pyxel.dither(f)
@@ -576,38 +544,6 @@ class DrawDeck:
         )
 
 
-class Popup:
-    def __init__(self, text: str, x: int, y: int, color: int):
-        self.text = text
-        self.x = x
-        self.y = y
-        self.color = color
-        self.counter = 60
-        self.dx = random.randint(-10, 10)
-        self.dy = random.randint(-65, -55)
-
-    def draw(self):
-        if self.counter <= 0:
-            return
-        t = 1 - self.counter / 60
-        t = t**0.8
-        if self.counter >= 45:
-            if self.counter % 10 <= 5:
-                pyxel.pal(self.color, 10)
-        shadowed_text(
-            self.x + self.dx * t - 15,
-            self.y + self.dy * t,
-            self.text,
-            self.color,
-            layout_opts=layout(w=30, h=20, ha="center", va="center"),
-            dither_mult=(1 - t) if self.counter <= 30 else 1.0,
-        )
-        pyxel.pal()
-
-    def update(self):
-        self.counter -= 1
-
-
 class FlashState:
     def __init__(self):
         self.counter = 0
@@ -623,96 +559,6 @@ class FlashState:
 
     def is_flashing(self):
         return self.counter >= 30 and self.counter % 5 <= 1
-
-
-class Tweening:
-    def __init__(self, duration: int, inner: Callable[[float], float]):
-        self.duration = duration
-        self.inner = inner
-        self.timer = 0
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        self.timer += 1
-        if self.timer > self.duration:
-            raise StopIteration
-        return self.inner(self.timer / self.duration)
-
-
-class MutableTweening:
-    def __init__(
-        self,
-        duration: int,
-        inner: Callable[[float], float],
-        this: WrappedImage,
-        target: tuple[int, int],
-    ):
-        self.inner = Tweening(duration, inner)
-        self.this = this
-        self.current = (this.x, this.y)
-        self.target = target
-
-    def __iter__(self):
-        for t in self.inner:
-            self.this.x, self.this.y = lerp(self.current, self.target, t)
-            yield
-
-
-class Mutator:
-    def __init__(
-        self,
-        duration: int,
-        inner: Callable[[float], float],
-        this: object,
-        lens: str,
-        target: float,
-    ) -> None:
-        self.inner = Tweening(duration, inner)
-        self.this = this
-        self.lens = lens
-        self.target = target
-
-    def __iter__(self):
-        for t in self.inner:
-            setattr(
-                self.this,
-                self.lens,
-                lerp(getattr(self.this, self.lens), self.target, t),
-            )
-            yield
-
-
-class WaitUntilTweening:
-    def __init__(self, callable: Callable[[], bool]):
-        self.callable = callable
-
-    def __iter__(self):
-        while not self.callable():
-            yield
-
-
-class Instant:
-    def __init__(self, runnable: Callable):
-        self.runnable = runnable
-
-    def __iter__(self):
-        yield
-        self.runnable()
-        return
-
-
-class Shake:
-    def __init__(self, this: WrappedImage, duration: int, magnitude: int):
-        self.this = this
-        self.magnitude = magnitude
-        self.inner = Tweening(duration, sin_bounce)
-
-    def __iter__(self):
-        for t in self.inner:
-            self.this.rotation = self.magnitude * t
-            yield
 
 
 class WrappedImage:
@@ -811,6 +657,8 @@ class FramingState(Enum):
 
 
 class ResolvingFraming:
+    """A frame that shows up when resolving cards."""
+
     def __init__(self, scene: MainScene) -> None:
         self.scene = scene
         self.rarity = -1
