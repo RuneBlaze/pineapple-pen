@@ -74,6 +74,10 @@ class ResolvedResults:
             "The nuemrical deltas should be given in square brackets like [Slime: damaged 5]. "
         ),
     ]
+    significance: Annotated[
+        int,
+        "The significance of the action, on a scale of 1 - 3 inclusive. 1 means the action is run-of-the-mill, 2 mean that it is a good play and relatively rare (e.g., two times per battle), and 3 means that it is a game-changing play and very rare (e.g., once per several battles).",
+    ]
 
 
 @promptly
@@ -558,6 +562,7 @@ class ResolvedEffects(
     Sequence[tuple[Battler | None, SinglePointEffect | GlobalEffect]]
 ):
     inner: list[tuple[Battler | None, SinglePointEffect | GlobalEffect]]
+    rarity: int = -1
 
     def __getitem__(
         self, index: int
@@ -705,7 +710,9 @@ class BattleBundle:
             resolve_player_actions=True,
         )
         self.process_effects(resolved_results.results)
-        return self.flush_expired_effects(self.rng)
+        expired_effects = self.flush_expired_effects(self.rng)
+        expired_effects.rarity = resolved_results.significance
+        return expired_effects
 
     def resolve_enemy_actions(self) -> None:
         resolved_results: ResolvedResults = _judge_results(
@@ -848,6 +855,7 @@ class BattleBundle:
         self.player.on_turn_start()
 
     def clear_dead(self) -> None:
+        return
         if self.player.is_dead():
             raise ValueError("Player is dead")
         self.enemies = [enemy for enemy in self.enemies if not enemy.is_dead()]

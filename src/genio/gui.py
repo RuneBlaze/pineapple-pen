@@ -3,8 +3,10 @@ from __future__ import annotations
 import contextlib
 import functools
 import itertools
+import math
 from collections import deque
-from concurrent.futures import ThreadPoolExecutor
+from collections.abc import Callable
+from concurrent.futures import Future, ThreadPoolExecutor
 from enum import Enum
 from typing import Literal
 
@@ -46,11 +48,17 @@ def center_crop(img: np.ndarray, size: tuple[int, int]) -> np.ndarray:
     return img[y : y + size[0], x : x + size[1]]
 
 
-def paste_center(src: np.ndarray, target: np.ndarray, offset: int = 0, ignore: int | None = None) -> None:
+def paste_center(
+    src: np.ndarray, target: np.ndarray, offset: int = 0, ignore: int | None = None
+) -> None:
     x = (target.shape[1] - src.shape[1]) // 2
     y = (target.shape[0] - src.shape[0]) // 2
     if ignore is not None:
-        target[y + offset : y + src.shape[0] + offset, x : x + src.shape[1]] = np.where(src == ignore, target[y + offset : y + src.shape[0] + offset, x : x + src.shape[1]], src)
+        target[y + offset : y + src.shape[0] + offset, x : x + src.shape[1]] = np.where(
+            src == ignore,
+            target[y + offset : y + src.shape[0] + offset, x : x + src.shape[1]],
+            src,
+        )
     else:
         target[y + offset : y + src.shape[0] + offset, x : x + src.shape[1]] = src[:]
 
@@ -124,7 +132,6 @@ class CardArtSet:
             ),
         )
         rasterized = _image_as_ndarray(rasterized)
-        # pad to 43x60
         pad_width = MainScene.CARD_HEIGHT - rasterized.shape[1]
         # print(MainScene.CARD_HEIGHT, rasterized.shape[1], pad_width)
         rasterized = np.pad(rasterized, ((0, pad_width), (0, 0)), constant_values=7)
@@ -181,7 +188,7 @@ class CardState(Enum):
 
 
 class CardSprite:
-    def __init__(self, index, card: Card, app: MainScene, selected=False):
+    def __init__(self, index, card: Card, app: MainScene, selected: bool = False):
         self.index = index
         self.app = app
         self.change_index(index)
@@ -214,6 +221,7 @@ class CardSprite:
                 Instant(self.transition_to_active),
             )
         )
+        self.hover_timer = -1
 
     def transition_to_active(self):
         self.state = CardState.ACTIVE
@@ -237,7 +245,7 @@ class CardSprite:
         self.update_delay += my_index * 6
         self.index = 0
 
-        target_x = layout_center_for_n(num_total_cards, 400)[my_index]
+        target_x = layout_center_for_n(num_total_cards, 400)[my_index] - self.width // 2
         target_y = WINDOW_HEIGHT // 2 - self.height // 2
 
         self.tweens.append(
@@ -247,11 +255,43 @@ class CardSprite:
                     15, pytweening.easeInOutQuad, self, (target_x, target_y)
                 ),
                 range(4),
-                Shake(self, 5, 15),
+                Instant(self.on_reach_hovering_location),
             )
         )
 
+    def try_transitioning_to_resolved(self, i: int = 0) -> None:
+        if self.state != CardState.RESOLVING:
+            raise ValueError("Cannot transition to resolved")
+        self.state = CardState.RESOLVED
+        self.tweens.append(
+            itertools.chain(
+                range(10 + i * 5),
+                MutableTweening(
+                    15,
+                    pytweening.easeInOutQuad,
+                    self,
+                    (WINDOW_WIDTH + 10, WINDOW_HEIGHT - self.height - 2),
+                ),
+            )
+        )
+
+    def on_reach_hovering_location(self):
+        self.hover_timer = 0
+
+    def schedule_shake(self):
+        self.tweens.append(Shake(self, 5, 15))
+
     def draw(self):
+        shift = 0
+        if self.hover_timer > 0:
+            shift = math.sin(self.hover_timer / 10) * 5
+        with camera_shift(0, shift):
+            self._draw()
+
+    def is_dead(self) -> bool:
+        return self.state == CardState.RESOLVED and not self.tweens
+
+    def _draw(self):
         if self.index >= self.deck_length:
             return
         if self.state == CardState.INITIALIZE:
@@ -329,6 +369,8 @@ class CardSprite:
             self.update_active()
 
         self.tweens.update()
+        if self.hover_timer >= 0:
+            self.hover_timer += 1
 
     def update_active(self):
         if self.index >= self.deck_length:
@@ -710,39 +752,43 @@ class ResolvingFraming:
 
     def transition_in_state(self, state: FramingState) -> None:
         if state == FramingState.ACTIVE:
-            if self.rarity == 1:
-                self.anim_handles.append(
-                    self.scene.add_anim(
-                        "anims.black_flames_burst_top", WINDOW_WIDTH // 2, 0
-                    )
+            ...
+
+    def on_rarity_determined(self, rarity: int) -> None:
+        self.rarity = rarity
+        if self.rarity == 2:
+            self.anim_handles.append(
+                self.scene.add_anim(
+                    "anims.black_flames_burst_top", WINDOW_WIDTH // 2, 0
                 )
-                self.anim_handles.append(
-                    self.scene.add_anim(
-                        "anims.black_flames_burst_bottom",
-                        WINDOW_WIDTH // 2,
-                        WINDOW_HEIGHT,
-                    )
+            )
+            self.anim_handles.append(
+                self.scene.add_anim(
+                    "anims.black_flames_burst_bottom",
+                    WINDOW_WIDTH // 2,
+                    WINDOW_HEIGHT,
                 )
-            elif self.rarity == 2:
-                self.anim_handles.append(
-                    self.scene.add_anim(
-                        "anims.black_flames", WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2
-                    )
+            )
+        elif self.rarity >= 3:
+            self.anim_handles.append(
+                self.scene.add_anim(
+                    "anims.black_flames", WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2
                 )
-                for i, x in enumerate(rng.integers(5, 10, size=8)):
-                    anim_lens = (
-                        "anims.confetti_left" if i % 2 == 0 else "anims.confetti_right"
-                    )
-                    normalized_coord = rng.normal([0.5, 0.5], [0.15, 0.1], 2)
-                    normalized_coord = np.clip(normalized_coord, 0.2, 0.8)
-                    if i == 0:
-                        x += 30
-                    self.enqueue_animation(
-                        x,
-                        anim_lens,
-                        WINDOW_WIDTH * normalized_coord[0],
-                        WINDOW_HEIGHT * normalized_coord[1],
-                    )
+            )
+            for i, x in enumerate(rng.integers(5, 10, size=8)):
+                anim_lens = (
+                    "anims.confetti_left" if i % 2 == 0 else "anims.confetti_right"
+                )
+                normalized_coord = rng.normal([0.5, 0.5], [0.15, 0.1], 2)
+                normalized_coord = np.clip(normalized_coord, 0.2, 0.8)
+                if i == 0:
+                    x += 30
+                self.enqueue_animation(
+                    x,
+                    anim_lens,
+                    WINDOW_WIDTH * normalized_coord[0],
+                    WINDOW_HEIGHT * normalized_coord[1],
+                )
 
     def enqueue_animation(self, delay: int, lens: str, x: int, y: int) -> None:
         self.tweener.append(
@@ -789,6 +835,7 @@ class MainScene(Scene):
 
     card_bundle: CardBundle
     anims: list[Anim]
+    futures: deque[Future[ResolvedEffects]]
 
     def __init__(self):
         self.bundle = setup_battle_bundle(
@@ -803,6 +850,7 @@ class MainScene(Scene):
         self.anims = []
         self.popups = []
         self.timer = 0
+        self.tweener = Tweener()
         self.enemy_sprites = [
             WrappedImage(
                 load_image("char", "enemy_killer_flower.png"),
@@ -895,6 +943,12 @@ class MainScene(Scene):
         for card in self.tmp_card_sprites:
             card.update()
 
+        self.tmp_card_sprites = [
+            card for card in self.tmp_card_sprites if not card.is_dead()
+        ]
+
+        self.tweener.update()
+
         self.tooltip.update()
         for anim in self.anims:
             anim.update()
@@ -908,13 +962,8 @@ class MainScene(Scene):
         self.background_video.update()
         self.timer += 1
 
-        if self.timer % 240 == 0:
-            self.framing.putup()
-        if self.timer % 240 == 120:
-            self.framing.teardown()
-
-        # if self.timer % 30 == 0:
-        #     self.add_anim("anims.black_flames_burst_top", WINDOW_WIDTH // 2, 0)
+    def schedule_in(self, delay: int, fn: Callable[[], None]) -> None:
+        self.tweener.append(range(delay), Instant(fn))
 
     def play_selected(self):
         selected_card_sprites = [card for card in self.card_sprites if card.selected]
@@ -923,11 +972,11 @@ class MainScene(Scene):
         selected_cards = [card.card for card in selected_card_sprites]
         self.bundle.card_bundle.hand_to_resolving(selected_cards)
         self.tmp_card_sprites.extend(selected_card_sprites)
-        for card in selected_card_sprites:
+        for i, card in enumerate(selected_card_sprites):
             card.try_transition_to_resolving()
 
-        # filter
         self.card_sprites = [card for card in self.card_sprites if not card.selected]
+        self.framing.putup()
         self.futures.append(
             self.executor.submit(self.resolve_selected_cards, selected_cards)
         )
@@ -935,29 +984,46 @@ class MainScene(Scene):
     def check_mailbox(self):
         while self.futures and self.futures[0].done():
             effects = self.futures.popleft().result()
-            for target_effect in effects:
-                battler, effect = target_effect
-                if isinstance(effect, SinglePointEffect):
-                    if not battler:
-                        raise ValueError("No battler found")
-                    sprite = self.sprite_by_id(battler.uuid)
-                    sprite.flash()
-                    match effect.classify_type():
-                        case SinglePointEffectType.DAMAGE:
-                            sprite.add_popup(str(effect.damage), 7)
-                            sprite.add_animation("anims.burst")
-                        case SinglePointEffectType.HEAL:
-                            sprite.add_popup(str(effect.heal), 11)
-                            sprite.add_animation("anims.heal")
-                        case SinglePointEffectType.SHIELD_GAIN:
-                            sprite.add_animation("anims.shield_gain")
-                        case SinglePointEffectType.SHIELD_LOSS:
-                            sprite.add_popup(f"shield {effect.delta_shield}", 7)
-                            sprite.add_animation("anims.debuff")
-                        case SinglePointEffectType.STATUS:
-                            for status_effect, counter in effect.add_status:
-                                sprite.add_popup(f"+ {status_effect.name}", 7)
-                            sprite.add_animation("anims.buff")
+            self.on_receive_mail(effects)
+
+    def on_receive_mail(self, effects: ResolvedEffects) -> None:
+        for in_progress_card in self.tmp_card_sprites:
+            in_progress_card.schedule_shake()
+
+        self.framing.on_rarity_determined(effects.rarity)
+        self.play_effects(effects)
+        self.schedule_in(30, lambda: self.framing.teardown())
+        self.schedule_in(0, lambda: self.move_away_cards())
+
+    def move_away_cards(self):
+        for i, card in enumerate(self.tmp_card_sprites):
+            card.try_transitioning_to_resolved(i)
+        self.bundle.card_bundle.resolving.clear()
+
+    def play_effects(self, effects: ResolvedEffects) -> None:
+        for target_effect in effects:
+            battler, effect = target_effect
+            if isinstance(effect, SinglePointEffect):
+                if not battler:
+                    raise ValueError("No battler found")
+                sprite = self.sprite_by_id(battler.uuid)
+                sprite.flash()
+                match effect.classify_type():
+                    case SinglePointEffectType.DAMAGE:
+                        sprite.add_popup(str(effect.damage), 7)
+                        sprite.add_animation("anims.burst")
+                    case SinglePointEffectType.HEAL:
+                        sprite.add_popup(str(effect.heal), 11)
+                        sprite.add_animation("anims.heal")
+                    case SinglePointEffectType.SHIELD_GAIN:
+                        sprite.add_animation("anims.shield_gain")
+                    case SinglePointEffectType.SHIELD_LOSS:
+                        sprite.add_popup(f"shield {effect.delta_shield}", 7)
+                        sprite.add_animation("anims.debuff")
+                    case SinglePointEffectType.STATUS:
+                        for status_effect, counter in effect.add_status:
+                            sprite.add_popup(f"+ {status_effect.name}", 7)
+                        sprite.add_animation("anims.buff")
 
     def sprite_by_id(self, id: str) -> WrappedImage:
         for sprite in self.sprites():

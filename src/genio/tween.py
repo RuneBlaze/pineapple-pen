@@ -108,6 +108,8 @@ class Shake:
 
 
 class Tweener:
+    """A scheduler for tweening animations."""
+
     def __init__(self):
         self.inner = deque()
 
@@ -144,3 +146,6 @@ class Tweener:
     def keep_at_most(self, n: int):
         while len(self.inner) > n:
             self.inner.popleft()
+
+    def __len__(self):
+        return len(self.inner)
