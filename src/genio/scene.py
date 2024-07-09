@@ -5,6 +5,7 @@ from collections.abc import Callable
 import pyxel
 from structlog import get_logger
 
+from genio.base import asset_path
 from genio.predef import refresh_predef
 
 logger = get_logger()
@@ -50,7 +51,7 @@ class AppWithScenes:
     def __init__(self, scene: Scene):
         self.scenes = []
         self.add_scene(scene)
-        pyxel.load("/Users/lbq/goof/genio/assets/sprites.pyxres")
+        pyxel.load(asset_path("sprites.pyxres"))
         pyxel.run(self.update, self.draw)
 
     def add_scene(self, scene: Scene):

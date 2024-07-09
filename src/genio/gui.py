@@ -59,6 +59,12 @@ def ndarray_to_image(img: np.ndarray) -> pyxel.Image:
     return image
 
 
+def copy_image(image: pyxel.Image) -> pyxel.Image:
+    img = pyxel.Image(image.width, image.height)
+    _image_as_ndarray(img)[:] = _image_as_ndarray(image)[:]
+    return img
+
+
 class CardArtSet:
     unfaded: np.ndarray
     faded: np.ndarray
@@ -79,11 +85,11 @@ class CardArtSet:
             case "4 of Spades":
                 return load_image("cards", "four-of-spades.png")
             case "The Fool":
-                image = load_image("cards", "the-fool.png")
+                image = copy_image(load_image("cards", "the-fool.png"))
                 self.add_retro_text_to_card("O", image)
                 return image
             case "The Emperor":
-                image = load_image("cards", "the-emperor.png")
+                image = copy_image(load_image("cards", "the-emperor.png"))
                 self.add_retro_text_to_card("IV", image)
                 return image
         w, h = self.base_image.width, self.base_image.height
@@ -116,6 +122,23 @@ class CardArtSet:
             layout=layout(w=MainScene.CARD_WIDTH, ha="center", break_words=True),
             target=image,
         )
+
+    def add_flashcard_text_to_card(self, text: str, image: pyxel.Image) -> None:
+        rasterized = retro_font.rasterize(
+            text,
+            5,
+            255,
+            0,
+            7,
+            layout=layout(
+                w=MainScene.CARD_HEIGHT,
+                ha="center",
+                h=MainScene.CARD_WIDTH,
+                va="center",
+            ),
+        )
+        rasterized = np.rot90(rasterized)
+        _image_as_ndarray(image)[rasterized == 0] = 0
 
     def _print_card_name(self, image: pyxel.Image, card_name: str, rarity: int) -> None:
         shadowed_retro_text = functools.partial(
@@ -656,7 +679,9 @@ class FramingState(Enum):
     ACTIVE = 2
     PUT_DOWN = 3
 
+
 rng = np.random.default_rng()
+
 
 class ResolvingFraming:
     """A frame that shows up when resolving cards."""
@@ -706,13 +731,18 @@ class ResolvingFraming:
                     )
                 )
                 for i, x in enumerate(rng.integers(5, 10, size=8)):
-                    anim_lens = "anims.confetti_left" if i % 2 == 0 else "anims.confetti_right"
-                    normalized_coord = rng.normal([0.5,0.5], [0.15, 0.1], 2)
+                    anim_lens = (
+                        "anims.confetti_left" if i % 2 == 0 else "anims.confetti_right"
+                    )
+                    normalized_coord = rng.normal([0.5, 0.5], [0.15, 0.1], 2)
                     normalized_coord = np.clip(normalized_coord, 0.2, 0.8)
                     if i == 0:
                         x += 30
                     self.enqueue_animation(
-                        x, anim_lens, WINDOW_WIDTH * normalized_coord[0], WINDOW_HEIGHT * normalized_coord[1]
+                        x,
+                        anim_lens,
+                        WINDOW_WIDTH * normalized_coord[0],
+                        WINDOW_HEIGHT * normalized_coord[1],
                     )
 
     def enqueue_animation(self, delay: int, lens: str, x: int, y: int) -> None:
@@ -1004,8 +1034,6 @@ class MainScene(Scene):
                 pyxel.blt(0, 0, mask, 0, 0, 427, 240, colkey=254)
         with dithering(0.5):
             pyxel.blt(0, 0, self.background_video.masks[0], 0, 0, 427, 240, colkey=254)
-        # with dithering(1 - t):
-        #     pyxel.blt(0, 0, self.buffer, 0, 0, 427, 240, colkey=254)
 
     def draw_battlers(self):
         short_holder = load_image("ui", "short-holder.png")
