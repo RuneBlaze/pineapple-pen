@@ -29,10 +29,10 @@ cards = [
     # "repeat all previous",
     # "Slash * 3 # Takes sword and slashes at the enemy. Deals 2 times 4 base damage.", # two copies of this card
     # "Block * 2 # Raises shield to block incoming attacks. Gains 2 shield points.",
-    # "Flower Burst * 5 # Strikes one enemy with a powerful blow. Deals 8 base damage and applies 2 vulnerable.",
-    # "Duplicate * 5 # Create copies of ALL other cards played with this card into the hand, but not the card itself.",
-    "The Fool * 15",
-    "The Emperor * 15",
+    "Flower Burst * 5 # Strikes one enemy with a powerful blow. Deals 8 base damage and applies 2 vulnerable.",
+    "Duplicate * 5 # Create copies of ALL other cards played with this card into the hand, but not the card itself.",
+    # "The Fool * 15",
+    # "The Emperor * 15",
 ]
 
 

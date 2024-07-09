@@ -46,10 +46,13 @@ def center_crop(img: np.ndarray, size: tuple[int, int]) -> np.ndarray:
     return img[y : y + size[0], x : x + size[1]]
 
 
-def paste_center(src: np.ndarray, target: np.ndarray, offset: int = 0) -> None:
+def paste_center(src: np.ndarray, target: np.ndarray, offset: int = 0, ignore: int | None = None) -> None:
     x = (target.shape[1] - src.shape[1]) // 2
     y = (target.shape[0] - src.shape[0]) // 2
-    target[y + offset : y + src.shape[0] + offset, x : x + src.shape[1]] = src[:]
+    if ignore is not None:
+        target[y + offset : y + src.shape[0] + offset, x : x + src.shape[1]] = np.where(src == ignore, target[y + offset : y + src.shape[0] + offset, x : x + src.shape[1]], src)
+    else:
+        target[y + offset : y + src.shape[0] + offset, x : x + src.shape[1]] = src[:]
 
 
 def ndarray_to_image(img: np.ndarray) -> pyxel.Image:
@@ -61,7 +64,7 @@ def ndarray_to_image(img: np.ndarray) -> pyxel.Image:
 
 def copy_image(image: pyxel.Image) -> pyxel.Image:
     img = pyxel.Image(image.width, image.height)
-    _image_as_ndarray(img)[:] = _image_as_ndarray(image)[:]
+    img.blt(0, 0, image, 0, 0, image.width, image.height)
     return img
 
 
@@ -92,26 +95,9 @@ class CardArtSet:
                 image = copy_image(load_image("cards", "the-emperor.png"))
                 self.add_retro_text_to_card("IV", image)
                 return image
-        w, h = self.base_image.width, self.base_image.height
-        base = _image_as_ndarray(self.base_image)
-        buffer = np.full((h, w), 254, dtype=np.uint8)
-        buffer[:] = base
-        buffer[buffer == 0] = 254
-        if rarity >= 1:
-            center_crop_size = (60 - 2 * 2, 43 - 2 * 2)
-            unfaded_cropped = center_crop(self.unfaded, center_crop_size)
-            paste_center(unfaded_cropped, buffer)
-            buffer[2, 2] = 7
-            buffer[2, 40] = 7
-            buffer[57, 2] = 7
-            buffer[57, 40] = 7
-        else:
-            center_crop_size = (30, 43 - 2 * 4)
-            faded_cropped = center_crop(self.faded, center_crop_size)
-            paste_center(faded_cropped, buffer, offset=2)
-        img = ndarray_to_image(buffer)
-        self._print_card_name(img, card_name, rarity)
-        return img
+        image = copy_image(load_image("card_flash.png"))
+        self.add_flashcard_text_to_card(card_name, image)
+        return image
 
     def add_retro_text_to_card(self, text: str, image: pyxel.Image) -> None:
         retro_text(
@@ -127,9 +113,9 @@ class CardArtSet:
         rasterized = retro_font.rasterize(
             text,
             5,
-            255,
-            0,
-            7,
+            254,
+            fg_col=0,
+            bg_col=7,
             layout=layout(
                 w=MainScene.CARD_HEIGHT,
                 ha="center",
@@ -137,8 +123,21 @@ class CardArtSet:
                 va="center",
             ),
         )
+        rasterized = _image_as_ndarray(rasterized)
+        # pad to 43x60
+        pad_width = MainScene.CARD_HEIGHT - rasterized.shape[1]
+        # print(MainScene.CARD_HEIGHT, rasterized.shape[1], pad_width)
+        rasterized = np.pad(rasterized, ((0, pad_width), (0, 0)), constant_values=7)
+        # print(rasterized.shape)
         rasterized = np.rot90(rasterized)
-        _image_as_ndarray(image)[rasterized == 0] = 0
+        rasterized = np.pad(rasterized, ((pad_width, 0), (0, 0)), constant_values=7)
+        # blt manually
+        for y, row in enumerate(rasterized):
+            for x, col in enumerate(row):
+                if col != 0:
+                    continue
+                image.pset(x, y, col)
+        # paste_center(_image_as_ndarray(rasterized), _image_as_ndarray(image))
 
     def _print_card_name(self, image: pyxel.Image, card_name: str, rarity: int) -> None:
         shadowed_retro_text = functools.partial(
