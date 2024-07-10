@@ -1,6 +1,6 @@
 ## Dependencies to Run
 
-We use Just as our [main](https://github.com/casey/just) command runner, and `poetry` to manage dependencies.
+We use [Just](https://github.com/casey/just) as our command runner, and `poetry` to manage dependencies.
 
 Have `GOOGLE_API_KEY` in your environment variables.
 

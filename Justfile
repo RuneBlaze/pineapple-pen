@@ -5,9 +5,6 @@ fix:
 clear:
     rm -r .cache
 
-streamlit:
-    poetry run streamlit run src/genio/game.py
-
 edit:
     poetry run pyxel edit assets/sprites.pyxres
 
