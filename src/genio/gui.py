@@ -142,7 +142,6 @@ class CardArtSet:
                 if col != 0:
                     continue
                 image.pset(x, y, col)
-        # paste_center(_image_as_ndarray(rasterized), _image_as_ndarray(image))
 
     def _print_card_name(self, image: pyxel.Image, card_name: str, rarity: int) -> None:
         shadowed_retro_text = functools.partial(
@@ -840,7 +839,21 @@ class ImageButton:
         )
         pyxel.pal()
 
-    def update(self) -> None:
+        if pyxel.btn(pyxel.MOUSE_BUTTON_LEFT) and self.hovering:
+            with dithering(0.5):
+                with pal_single_color(6):
+                    pyxel.blt(
+                        self.x,
+                        self.y,
+                        self.image,
+                        0,
+                        0,
+                        self.image.width,
+                        self.image.height,
+                        colkey=254,
+                    )
+
+    def update(self) -> bool:
         if (
             self.x <= pyxel.mouse_x <= self.x + self.image.width
             and self.y <= pyxel.mouse_y <= self.y + self.image.height
@@ -848,6 +861,10 @@ class ImageButton:
             self.hovering = True
         else:
             self.hovering = False
+
+        if pyxel.btnr(pyxel.MOUSE_BUTTON_LEFT) and self.hovering:
+            return True
+        return False
 
 
 class ResolvingSide(Enum):
@@ -993,8 +1010,11 @@ class MainScene(Scene):
         for card in self.tmp_card_sprites:
             card.update()
 
-        for button in self.image_buttons:
-            button.update()
+        if self.image_buttons[0].update():
+            self.play_selected()
+
+        if self.image_buttons[1].update():
+            self.end_player_turn()
 
         self.tmp_card_sprites = [
             card for card in self.tmp_card_sprites if not card.is_dead()
@@ -1202,6 +1222,9 @@ class MainScene(Scene):
         self.bundle.end_player_turn()
         self.framing.putup()
         self.futures.append(self.executor.submit(self.bundle.resolve_enemy_actions))
+
+    def queue_up_future(self, *args, **kwargs):
+        self.futures.append(self.executor.submit(*args, **kwargs))
 
     def start_new_turn(self):
         self.bundle.start_new_turn()

@@ -636,7 +636,11 @@ class BattleBundle:
         )
         group = EffectGroup(self)
         for substring in substrings:
-            parsed = parse_effect(substring, self.card_bundle)
+            try:
+                parsed = parse_effect(substring, self.card_bundle)
+            except ValueError:
+                logger.exception("Error parsing effect", substring=substring)
+                continue
             match parsed:
                 case (target, effect):
                     if effect.noop:
