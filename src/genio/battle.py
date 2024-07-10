@@ -714,7 +714,7 @@ class BattleBundle:
         expired_effects.rarity = resolved_results.significance
         return expired_effects
 
-    def resolve_enemy_actions(self) -> None:
+    def resolve_enemy_actions(self) -> ResolvedEffects:
         resolved_results: ResolvedResults = _judge_results(
             [],
             self.player,
@@ -723,7 +723,8 @@ class BattleBundle:
             resolve_player_actions=False,
         )
         self.process_effects(resolved_results.results)
-        self.flush_expired_effects(self.rng)
+        expired_effects = self.flush_expired_effects(self.rng)
+        return expired_effects
 
     def apply_effect(
         self,
@@ -845,11 +846,12 @@ class BattleBundle:
         target.receive_heal(delta_hp)
 
     def end_player_turn(self) -> None:
-        self.card_bundle.flush_hand_resolving_to_graveyard()
         for enemy in self.enemies:
             enemy.on_turn_start()
-        self.resolve_enemy_actions()
         self.on_turn_end()
+
+    def start_new_turn(self) -> None:
+        self.card_bundle.flush_hand_resolving_to_graveyard()
         self.card_bundle.draw_to_hand()
         self._on_turn_start()
         self.player.on_turn_start()

@@ -40,13 +40,13 @@ cards = [
 name = "Slime"
 hit_points = 30
 description = "A malevolent gelatinous creature, the Slime oozes malice as it shifts between offensive and defensive stances."
-pattern = ["attack player for 5 damage", "block for 3 shield points"]
+pattern = ["attack player for 2 damage", "block for 1 shield points"]
 
 [enemies.evil_mask]
 name = "Evil Mask"
 hit_points = 4
 description = "A malevolent gelatinous creature, the Slime oozes malice as it shifts between offensive and defensive stances."
-pattern = ["attack player for 5 damage", "block for 3 shield points"]
+pattern = ["attack player for 2 damage", "block for 1 shield points"]
 
 
 [anims]

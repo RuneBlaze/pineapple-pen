@@ -133,9 +133,7 @@ class CardArtSet:
         )
         rasterized = _image_as_ndarray(rasterized)
         pad_width = MainScene.CARD_HEIGHT - rasterized.shape[1]
-        # print(MainScene.CARD_HEIGHT, rasterized.shape[1], pad_width)
         rasterized = np.pad(rasterized, ((0, pad_width), (0, 0)), constant_values=7)
-        # print(rasterized.shape)
         rasterized = np.rot90(rasterized)
         rasterized = np.pad(rasterized, ((pad_width, 0), (0, 0)), constant_values=7)
         # blt manually
@@ -250,7 +248,7 @@ class CardSprite:
 
         self.tweens.append(
             itertools.chain(
-                range(4 * my_index),
+                range(10 + 4 * my_index),
                 MutableTweening(
                     15, pytweening.easeInOutQuad, self, (target_x, target_y)
                 ),
@@ -259,13 +257,11 @@ class CardSprite:
             )
         )
 
-    def try_transitioning_to_resolved(self, i: int = 0) -> None:
-        if self.state != CardState.RESOLVING:
-            raise ValueError("Cannot transition to resolved")
+    def try_transitioning_to_resolved(self, i: int = 0, baseline: float = 1) -> None:
         self.state = CardState.RESOLVED
         self.tweens.append(
             itertools.chain(
-                range(10 + i * 5),
+                range(int((10 + i * 5) * baseline)),
                 MutableTweening(
                     15,
                     pytweening.easeInOutQuad,
@@ -822,6 +818,43 @@ class ResolvingFraming:
         )
 
 
+class ImageButton:
+    def __init__(self, x: int, y: int, image: pyxel.Image):
+        self.x = x
+        self.y = y
+        self.image = image
+        self.hovering = False
+
+    def draw(self) -> None:
+        if self.hovering:
+            pyxel.pal(1, 5)
+        pyxel.blt(
+            self.x,
+            self.y,
+            self.image,
+            0,
+            0,
+            self.image.width,
+            self.image.height,
+            colkey=254,
+        )
+        pyxel.pal()
+
+    def update(self) -> None:
+        if (
+            self.x <= pyxel.mouse_x <= self.x + self.image.width
+            and self.y <= pyxel.mouse_y <= self.y + self.image.height
+        ):
+            self.hovering = True
+        else:
+            self.hovering = False
+
+
+class ResolvingSide(Enum):
+    PLAYER = 0
+    ENEMY = 1
+
+
 class MainScene(Scene):
     CARD_WIDTH = 43
     CARD_HEIGHT = 60
@@ -836,6 +869,8 @@ class MainScene(Scene):
     card_bundle: CardBundle
     anims: list[Anim]
     futures: deque[Future[ResolvedEffects]]
+
+    card_sprites: list[CardSprite]
 
     def __init__(self):
         self.bundle = setup_battle_bundle(
@@ -891,6 +926,21 @@ class MainScene(Scene):
         self.framing.rarity = 2
         self.executor = ThreadPoolExecutor(max_workers=2)
 
+        self.image_buttons = [
+            ImageButton(
+                WINDOW_WIDTH - 85,
+                WINDOW_HEIGHT - 55 + 3,
+                load_image("ui", "play-button.png"),
+            ),
+            ImageButton(
+                WINDOW_WIDTH - 90,
+                WINDOW_HEIGHT - 30 + 3,
+                load_image("ui", "end-button.png"),
+            ),
+        ]
+
+        self.resolving_side = ResolvingSide.PLAYER
+
     def sprites(self):
         yield self.player_sprite
         yield from self.enemy_sprites
@@ -943,6 +993,9 @@ class MainScene(Scene):
         for card in self.tmp_card_sprites:
             card.update()
 
+        for button in self.image_buttons:
+            button.update()
+
         self.tmp_card_sprites = [
             card for card in self.tmp_card_sprites if not card.is_dead()
         ]
@@ -972,11 +1025,11 @@ class MainScene(Scene):
         selected_cards = [card.card for card in selected_card_sprites]
         self.bundle.card_bundle.hand_to_resolving(selected_cards)
         self.tmp_card_sprites.extend(selected_card_sprites)
-        for i, card in enumerate(selected_card_sprites):
-            card.try_transition_to_resolving()
 
         self.card_sprites = [card for card in self.card_sprites if not card.selected]
         self.framing.putup()
+        for i, card in enumerate(selected_card_sprites):
+            card.try_transition_to_resolving()
         self.futures.append(
             self.executor.submit(self.resolve_selected_cards, selected_cards)
         )
@@ -987,13 +1040,17 @@ class MainScene(Scene):
             self.on_receive_mail(effects)
 
     def on_receive_mail(self, effects: ResolvedEffects) -> None:
-        for in_progress_card in self.tmp_card_sprites:
-            in_progress_card.schedule_shake()
+        if self.resolving_side == ResolvingSide.PLAYER:
+            for in_progress_card in self.tmp_card_sprites:
+                in_progress_card.schedule_shake()
 
         self.framing.on_rarity_determined(effects.rarity)
         self.play_effects(effects)
         self.schedule_in(30, lambda: self.framing.teardown())
-        self.schedule_in(0, lambda: self.move_away_cards())
+        if self.resolving_side == ResolvingSide.PLAYER:
+            self.schedule_in(0, lambda: self.move_away_cards())
+        else:
+            self.schedule_in(0, self.start_new_turn)
 
     def move_away_cards(self):
         for i, card in enumerate(self.tmp_card_sprites):
@@ -1073,8 +1130,8 @@ class MainScene(Scene):
         for card in self.tmp_card_sprites:
             card.draw()
 
-        button(WINDOW_WIDTH - 70, WINDOW_HEIGHT - 20, 55, 15, "End Turn", 7, 5)
-        button(WINDOW_WIDTH - 70, WINDOW_HEIGHT - 50, 55, 15, "Play Cards", 7, 5)
+        for button in self.image_buttons:
+            button.draw()
         self.tooltip.draw()
 
         Anim.draw()
@@ -1137,7 +1194,18 @@ class MainScene(Scene):
         pyxel.line(x, y - 5, x, y + 5, 7)
 
     def end_player_turn(self):
+        for card_sprite in self.card_sprites:
+            card_sprite.selected = False
+        self.resolving_side = ResolvingSide.ENEMY
+        for i, sprite in enumerate(self.card_sprites):
+            sprite.try_transitioning_to_resolved(i, baseline=0.8)
         self.bundle.end_player_turn()
+        self.framing.putup()
+        self.futures.append(self.executor.submit(self.bundle.resolve_enemy_actions))
+
+    def start_new_turn(self):
+        self.bundle.start_new_turn()
+        self.resolving_side = ResolvingSide.PLAYER
 
 
 def gen_scene() -> Scene:

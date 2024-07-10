@@ -75,12 +75,22 @@ def uv_for_16(ix: int) -> tuple[int, int]:
     return col * 8, row * 8
 
 
+class HasPos(Protocol):
+    def screen_pos(self) -> tuple[float, float]:
+        ...
+
+
 class Anim:
     emitters: list[EmitterConfig]
     queued: deque[EmitterConfig]
 
     def __init__(
-        self, x: int, y: int, emitters: list[EmitterConfig], play_speed: float = 1.0
+        self,
+        x: int,
+        y: int,
+        emitters: list[EmitterConfig],
+        play_speed: float = 1.0,
+        attached_to: HasXY | None = None,
     ):
         self.emitters = emitters
         self.inner = []
@@ -89,6 +99,7 @@ class Anim:
         self.timer = 0
         self.dead = False
         self.play_speed = play_speed
+        self.attached_to = attached_to
         self.duration = max(
             ec.duration if ec.duration is not None else 1 for ec in emitters
         )
@@ -145,6 +156,8 @@ class Anim:
         self.inner.append(e)
 
     def update(self):
+        if self.attached_to:
+            self.x, self.y = self.attached_to.screen_pos()
         for e in self.inner:
             e.pos.x = self.x + e.delta_x
             e.pos.y = self.y + e.delta_y
@@ -182,13 +195,19 @@ class Anim:
         lua.globals().draw_calls = lua.table()
 
     @staticmethod
-    def from_predef(name: str, x: int, y: int, play_speed: float = 1.0) -> Anim:
+    def from_predef(
+        name: str,
+        x: int,
+        y: int,
+        play_speed: float = 1.0,
+        attached_to: HasPos | None = None,
+    ) -> Anim:
         if isinstance(name, str):
             config = access_predef(name)
         else:
             config = name
         emitters = convert_to_emitter_configs(config)
-        return Anim(x, y, emitters, play_speed)
+        return Anim(x, y, emitters, play_speed, attached_to)
 
 
 lua = LuaRuntime(unpack_returned_tuples=True)

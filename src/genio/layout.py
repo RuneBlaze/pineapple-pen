@@ -4,6 +4,8 @@ import functools
 import math
 from collections.abc import Sequence
 
+import numpy as np
+
 WINDOW_WIDTH, WINDOW_HEIGHT = 427, 240
 
 
@@ -30,8 +32,12 @@ def pingpong(n: int):
 
 
 def lerp(
-    uv: tuple[float, float] | float, target: tuple[float, float] | float, t: float
+    uv: np.ndarray | tuple[float, float] | float,
+    target: np.ndarray | tuple[float, float] | float,
+    t: float,
 ) -> tuple[float, float]:
+    if isinstance(uv, np.ndarray) or isinstance(target, np.ndarray):
+        return uv + (target - uv) * t
     if isinstance(uv, Sequence):
         return (uv[0] + (target[0] - uv[0]) * t, uv[1] + (target[1] - uv[1]) * t)
     return uv + (target - uv) * t
