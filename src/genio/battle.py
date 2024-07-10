@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import uuid
 import weakref
-from collections import Counter
+from collections import Counter, deque
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from heapq import heappop, heappush
 from itertools import chain
-from typing import Annotated, Generic, Literal, TypeVar
+from typing import Annotated, Any, Generic, Literal, Protocol, TypeVar
 
 import numpy as np
 from parse import parse
@@ -24,6 +24,7 @@ from genio.effect import (
     GlobalEffect,
     SinglePointEffect,
     StatusDefinition,
+    TransformCardEffect,
     parse_effect,
 )
 from genio.subst import Subst
@@ -86,6 +87,7 @@ def _judge_results(
     user: PlayerBattler,
     enemies: list[EnemyBattler],
     battle_context: str,
+    player_hand: list[Card],
     resolve_player_actions: bool = True,
 ) -> ResolvedResults:
     """\
@@ -286,6 +288,31 @@ class BattlePrelude:
         return BattlePrelude("It's a brightly lit cave, with torches lining the walls.")
 
 
+class EventBusListener(Protocol):
+    def __call__(self, topic: str, *userdata: Any) -> None:
+        ...
+
+
+class EventBus:
+    def __init__(self):
+        self.events = deque()
+        self._listener = None
+
+    def append(self, topic: str, *userdata: Any) -> None:
+        if not self._listener:
+            self.events.append((topic, *userdata))
+        else:
+            self._listener(topic, *userdata)
+
+    def register_listener(self, listener: EventBusListener) -> None:
+        if self._listener:
+            raise ValueError("Listener already registered")
+        self._listener = listener
+        while self.events:
+            topic, *userdata = self.events.popleft()
+            listener(topic, *userdata)
+
+
 class CardBundle:
     def __init__(self, deck: list[Card], hand_limit: int = 10) -> None:
         self.hand_limit = hand_limit
@@ -296,7 +323,7 @@ class CardBundle:
         self.graveyard = []
         self.resolving = []
 
-        self.events = []
+        self.events = EventBus()
 
     def seek_card(self, expr: str) -> Card:
         if match := parse(expr, "#{:d}"):
@@ -405,6 +432,11 @@ class CardBundle:
         if not granular:
             return sum(counter.values())
         return counter
+    
+    def transform_card(self, from_card: Card, to_card: Card) -> None:
+        from_card.name = to_card.name
+        from_card.description = to_card.description
+        self.events.append("transform_card", from_card.id)
 
 
 @dataclass
@@ -711,6 +743,7 @@ class BattleBundle:
             self.player,
             self.enemies,
             self.battle_prelude.description,
+            player_hand = self.card_bundle.hand,
             resolve_player_actions=True,
         )
         self.process_effects(resolved_results.results)
@@ -724,6 +757,7 @@ class BattleBundle:
             self.player,
             self.enemies,
             self.battle_prelude.description,
+            player_hand = self.card_bundle.hand,
             resolve_player_actions=False,
         )
         self.process_effects(resolved_results.results)
@@ -788,6 +822,8 @@ class BattleBundle:
                         self.card_bundle.add_to_hand(cards)
                     case "graveyard":
                         self.card_bundle.add_to_graveyard(cards)
+            case TransformCardEffect(_) as transform:
+                self.card_bundle.transform_card(transform.from_card, transform.to_card)
 
     def _apply_targeted_effect(
         self,

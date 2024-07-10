@@ -8,7 +8,7 @@ from collections import deque
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 
 import numpy as np
 import pytweening
@@ -218,6 +218,9 @@ class CardSprite:
             )
         )
         self.hover_timer = -1
+
+    def refresh_art(self):
+        self.image = self.card_art.imprint(self.card.name, int(self.is_rare))
 
     def transition_to_active(self):
         self.state = CardState.ACTIVE
@@ -901,7 +904,7 @@ class MainScene(Scene):
         self.card_sprites = []
         self.tmp_card_sprites = []
         self.background_video = Video("background.npy")
-        self.sync_sprites()
+        self.sync_sprites(None)
         self.tooltip = Tooltip("", "")
         self.draw_deck = DrawDeck(self.bundle.card_bundle)
         self.anims = []
@@ -962,12 +965,13 @@ class MainScene(Scene):
         ]
 
         self.resolving_side = ResolvingSide.PLAYER
+        self.bundle.card_bundle.events.register_listener(self.on_new_event)
 
     def sprites(self):
         yield self.player_sprite
         yield from self.enemy_sprites
 
-    def sync_sprites(self, ev: str | None = None):
+    def sync_sprites(self, ev: str, *userdata: Any):
         existing_card_sprites = {
             card_sprite.card.id: card_sprite for card_sprite in self.card_sprites
         }
@@ -978,6 +982,9 @@ class MainScene(Scene):
         for i, card in enumerate(self.bundle.card_bundle.hand):
             if existing_spr := existing_card_sprites.get(card.id):
                 card_sprites.append(existing_spr)
+                if ev == "transform_card" and userdata[0] == existing_spr.card.id:
+                    existing_spr.refresh_art()
+                    existing_spr.add_anim('anims.transform_card')
             else:
                 card_sprites.append(spr := CardSprite(i, card, self))
                 if ev == "add_to_hand":
@@ -1009,11 +1016,10 @@ class MainScene(Scene):
             and not self.futures
         )
 
-    def update(self):
-        while self.bundle.card_bundle.events:
-            ev = self.bundle.card_bundle.events.pop()
-            self.sync_sprites(ev)
+    def on_new_event(self, ev: str, *others: Any) -> None:
+        self.sync_sprites(ev, *others)
 
+    def update(self):
         if pyxel.btnp(pyxel.KEY_Q):
             pyxel.quit()
 

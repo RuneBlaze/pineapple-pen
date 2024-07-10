@@ -120,10 +120,25 @@ class DuplicateCardEffect(GlobalEffect):
     copies: int = 1
     where: Literal["deck_top", "deck", "hand", "graveyard"] = "hand"
 
+@dataclass(eq=True, frozen=True)
+class TransformCardEffect(GlobalEffect):
+    from_card: Card | None = None
+    to_card: Card | None = None
+
 
 TargetedEffect: TypeAlias = tuple[str, SinglePointEffect]
 Effect: TypeAlias = GlobalEffect | TargetedEffect
 
+
+class ParseEffectError(ValueError):
+    ...
+
+
+def extract_tokens(pattern: str, haystack: str) -> tuple[str, ...]:
+    match = search(pattern, haystack)
+    if not match:
+        raise ParseEffectError(f"Invalid format: {haystack}")
+    return match.fixed
 
 def parse_global_effect(modifier: str, context: CardContext) -> GlobalEffect:
     match = re.match(r"\[(.*)\]", modifier)
@@ -170,8 +185,15 @@ def parse_global_effect(modifier: str, context: CardContext) -> GlobalEffect:
         return DuplicateCardEffect(
             card=card, where=where, copies=mult, **common_modifiers
         )
-    elif "create" in effect:
-        card_desc, postfix, where = search("[create <{}>{}in {:w}", modifier).fixed
+    elif "transform" in effect[:20]:
+        pat = "[transform {} to <{}>"
+        from_card, to_card = extract_tokens(pat, modifier)
+        to_card_desc = f"<{to_card}>"
+        from_card = context.seek_card(from_card)
+        to_card = Card.parse(to_card_desc)
+        return TransformCardEffect(from_card=from_card, to_card=to_card)
+    elif "create" in effect[:20]:
+        card_desc, postfix, where = extract_tokens("[create <{}>{}in {:w}", modifier)
         card_desc = f"<{card_desc}>"
         mult = 1
         if mult_expr := postfix.replace(" ", ""):

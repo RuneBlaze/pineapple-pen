@@ -100,6 +100,7 @@ Your goals for filling in are:
     - `[discard CARD_SPECIFIER..]` - Discard a specific card, or multiple cards. E.g.,`[discard kb5a lruf]` (discard the two cards with short ID `kb5a` and `lruf`).
     - `[duplicate CARD_SPECIFIER in WHERE]` - Duplicate a specific card. E.g., `[duplicate kb5a in deck]` (duplicate the card with short ID `kb5a` and put it in the deck). `WHERE` can be `deck_top`, `deck`, `hand`, or `graveyard`. For multiple copies, do `[duplicate CARD_SPECIFIER * k in WHERE]` where `k` is the number of copies.
     - `[create <card name: card description> in WHERE]` - A specified card is created. See above for `WHERE`, and for multiple copies, do `[create <card name: card description> * k in WHERE]`. A description can be omitted (perfectly valid). For example, when a card calls for the creation of a card A. Remember to use this effect. E.g., `[create <Raise Shield: gain two shield points> in hand]`. Remember the angle brackets.
+    - `[transform CARD_SPECIFIER to <card name: card description>]` - Transform a specific card into another card. E.g., `[transform kb5a to <Raise Shield: gain two shield points>]`. Remember the angle brackets. This is the only way when "transform" is called for.
 1. **Effect Modifiers**:
    - **Critical Chance (crit X)**: Chance of double damage/healing.
        - `[entity: damaged 10 | crit 0.5]`
@@ -134,3 +135,11 @@ In other words, the player played all the cards together: {{ cards | map(attribu
 {%- else %}
 {{ actions_description('Enemies\' Actions', 'Resolve Enemies\' Actions', 'Resolve Enemies\' Actions') }}
 {%- endif %}
+
+#### Player's Hand
+
+These are the player's remaining cards in hand, and are provided for context. The player has yet to play these cards.
+
+{%- for card in player_hand %}
+- {{ loop.index }}. {{ card.to_plaintext() }} (Shord ID: `{{card.short_id()}}`)
+{%- endfor %}
