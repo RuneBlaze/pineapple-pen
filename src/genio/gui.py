@@ -32,7 +32,7 @@ from genio.layout import (
     layout_center_for_n,
     pingpong,
 )
-from genio.ps import Anim
+from genio.ps import Anim, HasPos
 from genio.scene import Scene
 from genio.semantic_search import SerializedCardArt, search_closest_document
 from genio.tween import Instant, MutableTweening, Mutator, Shake, Tweener
@@ -189,7 +189,6 @@ class CardSprite:
         self.index = index
         self.app = app
         self.change_index(index)
-        # 10, 190
         self.x = 10
         self.y = 190
         self.card = card
@@ -222,6 +221,12 @@ class CardSprite:
 
     def transition_to_active(self):
         self.state = CardState.ACTIVE
+
+    def screen_pos(self) -> tuple[float, float]:
+        return self.x + self.width // 2, self.y + self.height // 2
+
+    def add_anim(self, lens: str) -> None:
+        self.app.add_anim(lens, *self.screen_pos(), 1.0, self)
 
     def can_transition_to_resolving(self) -> bool:
         if self.state != CardState.ACTIVE:
@@ -962,19 +967,33 @@ class MainScene(Scene):
         yield self.player_sprite
         yield from self.enemy_sprites
 
-    def sync_sprites(self):
+    def sync_sprites(self, ev: str | None = None):
         existing_card_sprites = {
             card_sprite.card.id: card_sprite for card_sprite in self.card_sprites
         }
-        self.card_sprites = [
-            existing_card_sprites.get(card.id)
-            if existing_card_sprites.get(card.id)
-            else CardSprite(i, card, self)
-            for i, card in enumerate(self.bundle.card_bundle.hand)
-        ]
+
+        card_sprites = []
+        to_move_to_target: list[CardSprite] = []
+
+        for i, card in enumerate(self.bundle.card_bundle.hand):
+            if existing_spr := existing_card_sprites.get(card.id):
+                card_sprites.append(existing_spr)
+            else:
+                card_sprites.append(spr := CardSprite(i, card, self))
+                if ev == "add_to_hand":
+                    spr.add_anim("anims.create_card")
+                    to_move_to_target.append(spr)
+        self.card_sprites = card_sprites
 
         for i, card_sprite in enumerate(self.card_sprites):
             card_sprite.change_index(i)
+
+        for card_sprite in to_move_to_target:
+            tx, ty = card_sprite.calculate_target_coords()
+            card_sprite.x = tx
+            card_sprite.y = ty
+            card_sprite.tweens.clear()
+            card_sprite.state = CardState.ACTIVE
 
     def reorder_card_as_sprites(self):
         self.bundle.card_bundle.hand = [
@@ -992,8 +1011,8 @@ class MainScene(Scene):
 
     def update(self):
         while self.bundle.card_bundle.events:
-            _ev = self.bundle.card_bundle.events.pop()
-            self.sync_sprites()
+            ev = self.bundle.card_bundle.events.pop()
+            self.sync_sprites(ev)
 
         if pyxel.btnp(pyxel.KEY_Q):
             pyxel.quit()
@@ -1108,8 +1127,17 @@ class MainScene(Scene):
                 return sprite
         raise ValueError(f"Sprite with id {id} not found")
 
-    def add_anim(self, name: str, x: int, y: int, play_speed: float = 1.0) -> Anim:
-        self.anims.append(result := Anim.from_predef(name, x, y, play_speed))
+    def add_anim(
+        self,
+        name: str,
+        x: int,
+        y: int,
+        play_speed: float = 1.0,
+        attached_to: HasPos | None = None,
+    ) -> Anim:
+        self.anims.append(
+            result := Anim.from_predef(name, x, y, play_speed, attached_to)
+        )
         return result
 
     def resolve_selected_cards(self, selected_cards: list[Card]) -> ResolvedEffects:

@@ -99,8 +99,8 @@ Your goals for filling in are:
     - `[discard X]` - The player discards X cards.
     - `[discard CARD_SPECIFIER..]` - Discard a specific card, or multiple cards. E.g.,`[discard kb5a lruf]` (discard the two cards with short ID `kb5a` and `lruf`).
     - `[duplicate CARD_SPECIFIER in WHERE]` - Duplicate a specific card. E.g., `[duplicate kb5a in deck]` (duplicate the card with short ID `kb5a` and put it in the deck). `WHERE` can be `deck_top`, `deck`, `hand`, or `graveyard`. For multiple copies, do `[duplicate CARD_SPECIFIER * k in WHERE]` where `k` is the number of copies.
-    - `[create card "card name: card description" in WHERE]` - A specified card is created. See above for `WHERE`, and for multiple copies, do `[create card "card name: card description" * k in WHERE]`. A description can be omitted (perfectly valid).
-6. **Effect Modifiers**:
+    - `[create <card name: card description> in WHERE]` - A specified card is created. See above for `WHERE`, and for multiple copies, do `[create <card name: card description> * k in WHERE]`. A description can be omitted (perfectly valid). For example, when a card calls for the creation of a card A. Remember to use this effect. E.g., `[create <Raise Shield: gain two shield points> in hand]`. Remember the angle brackets.
+1. **Effect Modifiers**:
    - **Critical Chance (crit X)**: Chance of double damage/healing.
        - `[entity: damaged 10 | crit 0.5]`
    - **Delay (delay X)**: Effect delayed by X turns.
@@ -113,9 +113,9 @@ Your goals for filling in are:
        - `[entity: damaged 10 | acc 0.8]`
    - **Multiple Modifiers Example**: `[entity: damaged 10 | crit 0.5 | delay 2 | pierce | drain | acc 0.8]`
    - **Global Effects**: Modifiers also apply, e.g., `[draw 2 | delay 1 | acc 0.9]`
-7. **Coherence**: Ensure the actions make sense in the battle context, considering the opposing side's actions and intents.
-8. **Separate Hits**: If the entity deals damage multiple times, do not merge them. Write them separately so that they are properly registered as multiple hits. E.g., if dealing `2 x 4` damage, write `[entity: damaged 4]` twice.
-9.  **Textual Support**: Ensure all actions have corresponding textual support.
+2. **Coherence**: Ensure the actions make sense in the battle context, considering the opposing side's actions and intents.
+3. **Separate Hits**: If the entity deals damage multiple times, do not merge them. Write them separately so that they are properly registered as multiple hits. E.g., if dealing `2 x 4` damage, write `[entity: damaged 4]` twice.
+4.  **Textual Support**: Ensure all actions have corresponding textual support.
 {% endmacro %}
 
 {%- if resolve_player_actions %}

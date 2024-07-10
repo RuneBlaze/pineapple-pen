@@ -149,3 +149,6 @@ class Tweener:
 
     def __len__(self):
         return len(self.inner)
+
+    def clear(self):
+        self.inner.clear()
