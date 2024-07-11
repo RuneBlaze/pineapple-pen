@@ -1,3 +1,4 @@
+import math
 from enum import Enum
 
 import pytweening
@@ -7,7 +8,9 @@ from pyxelxl import blt_rot
 from genio.base import WINDOW_HEIGHT, WINDOW_WIDTH, load_image
 from genio.battle import setup_battle_bundle
 from genio.card import Card
-from genio.gui import CardSprite, CardState, ResolvingFraming
+from genio.constants import CARD_HEIGHT, CARD_WIDTH
+from genio.gui import CardSprite, CardState, ResolvingFraming, camera_shift
+from genio.layout import layout_center_for_n
 from genio.ps import Anim, HasPos
 from genio.scene import Scene
 from genio.tween import Instant, Mutator, Tweener
@@ -110,6 +113,7 @@ class BoosterPackScene(Scene):
         self.bundle = setup_battle_bundle(
             "initial_deck", "players.starter", ["enemies.evil_mask"] * 2
         )
+        self.timer = 0
 
     def update(self):
         self.framing.update()
@@ -124,23 +128,27 @@ class BoosterPackScene(Scene):
                 elif event == "explode":
                     cards = pack.generate_cards()
                     self.show_cards(cards)
+        self.timer += 1
 
     def draw(self):
         pyxel.cls(9)
-
         for pack in self.booster_packs:
             pack.draw()
-        for spr in self.card_sprites:
-            spr.draw()
+        for i, spr in enumerate(self.card_sprites):
+            shift = math.sin((self.timer + 103 * i) / 10) * 3
+            with camera_shift(0, shift):
+                spr.draw()
         self.framing.draw()
         self.draw_crosshair(pyxel.mouse_x, pyxel.mouse_y)
 
     def show_cards(self, cards: list[Card]) -> None:
         for i, card in enumerate(cards):
+            target_x = layout_center_for_n(len(cards), 400)[i] - CARD_WIDTH // 2
+            target_y = WINDOW_HEIGHT // 2 - CARD_HEIGHT // 2
             spr = CardSprite(i, card, self, False)
             self.card_sprites.append(spr)
-            spr.x = WINDOW_WIDTH // 2 - spr.width // 2
-            spr.y = WINDOW_HEIGHT // 2 - spr.height // 2
+            spr.x = target_x
+            spr.y = target_y
             spr.tweens.clear()
             spr.state = CardState.RESOLVING
 

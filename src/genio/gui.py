@@ -572,7 +572,7 @@ camera_stack = []
 @contextlib.contextmanager
 def camera_shift(x: int, y: int):
     global camera_stack
-    base_coord = camera_shift[-1] if camera_stack else (0, 0)
+    base_coord = camera_stack[-1] if camera_stack else (0, 0)
     pyxel.camera(x + base_coord[0], y + base_coord[1])
     camera_stack.append((x, y))
     yield
