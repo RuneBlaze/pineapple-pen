@@ -10,6 +10,7 @@ import pyxel
 from pyxelxl import Font, LayoutOpts, layout
 
 from genio.base import asset_path
+from genio.battle import CardBundle
 
 retro_font = Font(asset_path("retro-pixel-petty-5h.ttf"))
 retro_text = retro_font.specialize(font_size=5)
@@ -135,3 +136,35 @@ def blt_burning(
         254,
         cmp_op(noise, timer / 30),
     )
+
+
+class DrawDeck:
+    def __init__(self, card_bundle: CardBundle):
+        self.deck_background = pyxel.Image.from_image(asset_path("card-back.png"))
+        self.card_bundle = card_bundle
+
+    def draw(self, x: int, y: int) -> None:
+        num_shadow = max(1, len(self.card_bundle.deck) // 5)
+        if len(self.card_bundle.deck) == 1:
+            num_shadow = 0
+        with pal_single_color(13):
+            for i in range(num_shadow):
+                pyxel.blt(
+                    x - i - 1, y + i + 1, self.deck_background, 0, 0, 43, 60, colkey=0
+                )
+        pyxel.blt(x, y, self.deck_background, 0, 0, 43, 60, colkey=0)
+        self.draw_card_label(x, y)
+
+    def draw_card_label(self, x: int, y: int):
+        width = 43
+        label_width = 22
+        label_x = x + (width - label_width) // 2
+        label_y = y - 3
+        pyxel.rect(label_x, label_y, label_width, 7, 7)
+        retro_text(
+            label_x,
+            label_y,
+            str(len(self.card_bundle.deck)),
+            0,
+            layout=layout(w=label_width, ha="center", h=7, va="center"),
+        )
