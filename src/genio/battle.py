@@ -432,7 +432,7 @@ class CardBundle:
         if not granular:
             return sum(counter.values())
         return counter
-    
+
     def transform_card(self, from_card: Card, to_card: Card) -> None:
         from_card.name = to_card.name
         from_card.description = to_card.description
@@ -743,7 +743,7 @@ class BattleBundle:
             self.player,
             self.enemies,
             self.battle_prelude.description,
-            player_hand = self.card_bundle.hand,
+            player_hand=self.card_bundle.hand,
             resolve_player_actions=True,
         )
         self.process_effects(resolved_results.results)
@@ -757,7 +757,7 @@ class BattleBundle:
             self.player,
             self.enemies,
             self.battle_prelude.description,
-            player_hand = self.card_bundle.hand,
+            player_hand=self.card_bundle.hand,
             resolve_player_actions=False,
         )
         self.process_effects(resolved_results.results)

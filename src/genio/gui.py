@@ -984,7 +984,7 @@ class MainScene(Scene):
                 card_sprites.append(existing_spr)
                 if ev == "transform_card" and userdata[0] == existing_spr.card.id:
                     existing_spr.refresh_art()
-                    existing_spr.add_anim('anims.transform_card')
+                    existing_spr.add_anim("anims.transform_card")
             else:
                 card_sprites.append(spr := CardSprite(i, card, self))
                 if ev == "add_to_hand":

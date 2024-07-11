@@ -120,6 +120,7 @@ class DuplicateCardEffect(GlobalEffect):
     copies: int = 1
     where: Literal["deck_top", "deck", "hand", "graveyard"] = "hand"
 
+
 @dataclass(eq=True, frozen=True)
 class TransformCardEffect(GlobalEffect):
     from_card: Card | None = None
@@ -139,6 +140,7 @@ def extract_tokens(pattern: str, haystack: str) -> tuple[str, ...]:
     if not match:
         raise ParseEffectError(f"Invalid format: {haystack}")
     return match.fixed
+
 
 def parse_global_effect(modifier: str, context: CardContext) -> GlobalEffect:
     match = re.match(r"\[(.*)\]", modifier)
