@@ -25,7 +25,14 @@ from genio.battle import (
 )
 from genio.card import Card
 from genio.card_utils import CanAddAnim
-from genio.components import Popup, cute_text, retro_font, retro_text, shadowed_text
+from genio.components import (
+    Popup,
+    cute_text,
+    pal_single_color,
+    retro_font,
+    retro_text,
+    shadowed_text,
+)
 from genio.constants import (
     CARD_HEIGHT,
     CARD_WIDTH,
@@ -556,14 +563,6 @@ class Tooltip:
         self.title = title
         self.description = description
         self.counter = 60
-
-
-@contextlib.contextmanager
-def pal_single_color(col: int):
-    for i in range(16):
-        pyxel.pal(i, col)
-    yield
-    pyxel.pal()
 
 
 camera_stack = []

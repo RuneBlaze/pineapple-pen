@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import contextlib
 import random
+from operator import gt, lt
+from typing import Literal
 
+import numpy as np
 import pyxel
 from pyxelxl import Font, LayoutOpts, layout
 
@@ -67,3 +71,67 @@ def gauge(x, y, w, h, c0, c1, value, max_value, label=None):
     if label:
         text = f"{label} {text}"
     shadowed_text(x + 2, y + 2, text, 7, layout_opts=layout(w=w, ha="left"))
+
+
+@contextlib.contextmanager
+def pal_single_color(col: int):
+    for i in range(16):
+        pyxel.pal(i, col)
+    yield
+    pyxel.pal()
+
+
+def blt_with_mask(
+    x: int,
+    y: int,
+    image: pyxel.Image,
+    u: int,
+    v: int,
+    w: int,
+    h: int,
+    colkey: int,
+    mask: np.ndarray,
+) -> None:
+    if w != mask.shape[1] or h != mask.shape[0]:
+        raise ValueError("Mask size does not match image size")
+    for j in range(h):
+        for i in range(w):
+            if mask[j, i]:
+                src = image.pget(u + i, v + j)
+                if src != colkey:
+                    pyxel.pset(x + i, y + j, src)
+
+
+def blt_burning(
+    x: int,
+    y: int,
+    image: pyxel.Image,
+    noise: np.ndarray,
+    timer: int,
+    in_or_out: Literal["in", "out"] = "in",
+):
+    cmp_op = gt if in_or_out == "out" else lt
+    delta = 4 if in_or_out == "in" else -4
+    with pal_single_color(7):
+        blt_with_mask(
+            x,
+            y,
+            image,
+            0,
+            0,
+            image.width,
+            image.height,
+            254,
+            cmp_op(noise, (timer + delta) / 30),
+        )
+    blt_with_mask(
+        x,
+        y,
+        image,
+        0,
+        0,
+        image.width,
+        image.height,
+        254,
+        cmp_op(noise, timer / 30),
+    )
