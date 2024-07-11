@@ -1,4 +1,5 @@
 import argparse
+import importlib
 
 import pyxel
 
@@ -18,9 +19,17 @@ def edit_scene_factory():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--edit", action="store_true")
+    parser.add_argument("--module", type=str, default="genio.gui")
 
     args = parser.parse_args()
-    fact = edit_scene_factory if args.edit else main_scene_factory
+    fact = edit_scene_factory if args.edit else None
 
     pyxel.init(427, 240, title="Genio")
-    AppWithScenes(ReloadableScene(fact))
+    if not fact:
+        AppWithScenes(
+            ReloadableScene(
+                lambda: load_scene_from_module(importlib.import_module(args.module))
+            )
+        )
+    else:
+        AppWithScenes(ReloadableScene(fact))

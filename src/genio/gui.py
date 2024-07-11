@@ -23,6 +23,7 @@ from genio.battle import (
     setup_battle_bundle,
 )
 from genio.card import Card
+from genio.card_utils import CanAddAnim
 from genio.components import Popup, cute_text, retro_font, retro_text, shadowed_text
 from genio.effect import SinglePointEffect, SinglePointEffectType
 from genio.layout import (
@@ -717,6 +718,9 @@ def card_back() -> pyxel.Image:
     return pyxel.Image.from_image(asset_path("card-back.png"))
 
 
+rng = np.random.default_rng()
+
+
 class FramingState(Enum):
     INACTIVE = 0
     PUT_UP = 1
@@ -724,15 +728,12 @@ class FramingState(Enum):
     PUT_DOWN = 3
 
 
-rng = np.random.default_rng()
-
-
 class ResolvingFraming:
     """A frame that shows up when resolving cards."""
 
     anim_handles: WeakList[Anim]
 
-    def __init__(self, scene: MainScene) -> None:
+    def __init__(self, scene: CanAddAnim) -> None:
         self.scene = scene
         self.rarity = -1
         self.tweener = Tweener()

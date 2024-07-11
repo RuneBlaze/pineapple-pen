@@ -9,6 +9,7 @@ from typing import Protocol
 import pyxel
 from lupa.lua54 import LuaRuntime
 
+from genio.base import asset_path
 from genio.predef import access_predef
 
 
@@ -211,7 +212,7 @@ class Anim:
 
 
 lua = LuaRuntime(unpack_returned_tuples=True)
-with open("assets/ps.lua54.lua") as f:
+with open(asset_path("ps.lua54.lua")) as f:
     lua.execute(f.read())
 
 # emitters = []
