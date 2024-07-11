@@ -1,6 +1,12 @@
+import itertools
 import math
+from collections import defaultdict
 from enum import Enum
+from functools import cache
+from operator import sub, gt, lt
+from typing import Literal
 
+import numpy as np
 import pytweening
 import pyxel
 from pyxelxl import blt_rot
@@ -9,7 +15,13 @@ from genio.base import WINDOW_HEIGHT, WINDOW_WIDTH, load_image
 from genio.battle import setup_battle_bundle
 from genio.card import Card
 from genio.constants import CARD_HEIGHT, CARD_WIDTH
-from genio.gui import CardSprite, CardState, ResolvingFraming, camera_shift
+from genio.gui import (
+    CardSprite,
+    CardState,
+    ResolvingFraming,
+    camera_shift,
+    pal_single_color,
+)
 from genio.layout import layout_center_for_n
 from genio.ps import Anim, HasPos
 from genio.scene import Scene
@@ -27,6 +39,68 @@ class BoosterPackState(Enum):
     OPENED = 2
 
 
+def blt_with_mask(
+    x: int,
+    y: int,
+    image: pyxel.Image,
+    u: int,
+    v: int,
+    w: int,
+    h: int,
+    colkey: int,
+    mask: np.ndarray,
+) -> None:
+    if w != mask.shape[1] or h != mask.shape[0]:
+        raise ValueError("Mask size does not match image size")
+    for j in range(h):
+        for i in range(w):
+            if mask[j, i]:
+                src = image.pget(u + i, v + j)
+                if src != colkey:
+                    pyxel.pset(x + i, y + j, src)
+
+
+@cache
+def perlin_noise(width: int, height: int, scale: float, replica: int = 0) -> np.ndarray:
+    res = np.zeros((height, width), dtype=np.float32)
+    for j in range(height):
+        for i in range(width):
+            res[j, i] = pyxel.noise(i * scale, j * scale, replica)
+    # normalize it
+    res -= res.min()
+    res /= res.max()
+    res = np.clip(res, 0, 1)
+    return res
+
+
+def blt_burning(x: int, y: int, image: pyxel.Image, noise: np.ndarray, timer: int, in_or_out: Literal["in", "out"] = "in"):
+    cmp_op = gt if in_or_out == "out" else lt
+    delta = 4 if in_or_out == "in" else -4
+    with pal_single_color(7):
+        blt_with_mask(
+            x,
+            y,
+            image,
+            0,
+            0,
+            image.width,
+            image.height,
+            254,
+            cmp_op(noise, (timer + delta) / 30),
+        )
+    blt_with_mask(
+        x,
+        y,
+        image,
+        0,
+        0,
+        image.width,
+        image.height,
+        254,
+        cmp_op(noise, timer / 30),
+    )
+
+
 class BoosterPack:
     def __init__(self, x: int, y: int, pack_type: BoosterPackType) -> None:
         self.x = x
@@ -37,55 +111,79 @@ class BoosterPack:
         self.state = BoosterPackState.CLOSED
         self.angle = 0
         self.hovering = False
-
+        self.noise = perlin_noise(self.image.width, self.image.height, 0.1)
         self.events = []
+        self.timer = 0
+        self.state_timers = defaultdict(int)
 
     def draw(self):
-        blt_rot(
-            self.x,
-            self.y,
-            self.image,
-            0,
-            0,
-            self.image.width,
-            self.image.height,
-            colkey=254,
-            rot=self.angle,
-        )
+        match self.state:
+            case BoosterPackState.CLOSED:
+                blt_rot(
+                    self.x,
+                    self.y,
+                    self.image,
+                    0,
+                    0,
+                    self.image.width,
+                    self.image.height,
+                    colkey=254,
+                    rot=self.angle,
+                )
+            case BoosterPackState.OPENING:
+                blt_rot(
+                    self.x,
+                    self.y,
+                    self.image,
+                    0,
+                    0,
+                    self.image.width,
+                    self.image.height,
+                    colkey=254,
+                    rot=self.angle,
+                )
+            case BoosterPackState.OPENED:
+                blt_burning(self.x, self.y, self.image, self.noise, self.timer, "out")
 
     def update(self):
         self.tweener.update()
+        self.timer += 1
+        self.state_timers[self.state] += 1
 
-        mx, my = pyxel.mouse_x, pyxel.mouse_y
-        if (
-            self.x < mx < self.x + self.image.width
-            and self.y < my < self.y + self.image.height
-        ):
-            if not self.hovering:
-                self.tweener.append(
-                    Mutator(5, pytweening.easeInOutBounce, self, "angle", 5)
-                )
-                self.tweener.append(
-                    Mutator(5, pytweening.easeInOutBounce, self, "angle", -5)
-                )
-                self.tweener.append(
-                    Mutator(5, pytweening.easeInOutBounce, self, "angle", 0)
-                )
-            self.hovering = True
-        else:
-            if self.hovering:
-                self.tweener.append(Mutator(5, pytweening.easeInCirc, self, "angle", 0))
-            self.hovering = False
+        if self.state == BoosterPackState.CLOSED:
+            mx, my = pyxel.mouse_x, pyxel.mouse_y
+            if (
+                self.x < mx < self.x + self.image.width
+                and self.y < my < self.y + self.image.height
+            ):
+                if not self.hovering:
+                    self.tweener.append(
+                        Mutator(5, pytweening.easeInOutBounce, self, "angle", 5)
+                    )
+                    self.tweener.append(
+                        Mutator(5, pytweening.easeInOutBounce, self, "angle", -5)
+                    )
+                    self.tweener.append(
+                        Mutator(5, pytweening.easeInOutBounce, self, "angle", 0)
+                    )
+                self.hovering = True
+            else:
+                if self.hovering:
+                    self.tweener.append(Mutator(5, pytweening.easeInCirc, self, "angle", 0))
+                self.hovering = False
 
-        if pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT):
+        if pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT) and self.state == BoosterPackState.CLOSED:
             self.state = BoosterPackState.OPENING
             tx, ty = WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2
             tx, ty = tx - self.image.width // 2, ty - self.image.height // 2
             self.tweener.append(
-                zip(
+                itertools.zip_longest(
                     Mutator(30, pytweening.easeInCirc, self, "x", tx),
                     Mutator(30, pytweening.easeInCirc, self, "y", ty),
-                    Instant(self.on_explode),
+                    itertools.chain(
+                        range(30),
+                        Instant(self.on_explode),
+                    ),
                 )
             )
 
