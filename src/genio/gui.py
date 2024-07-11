@@ -19,12 +19,22 @@ from pyxelxl.font import _image_as_ndarray
 from genio.base import Video, asset_path, load_image, resize_image_breathing
 from genio.battle import (
     CardBundle,
+    MainSceneLike,
     ResolvedEffects,
     setup_battle_bundle,
 )
 from genio.card import Card
 from genio.card_utils import CanAddAnim
 from genio.components import Popup, cute_text, retro_font, retro_text, shadowed_text
+from genio.constants import (
+    CARD_HEIGHT,
+    CARD_WIDTH,
+    GRID_SPACING_X,
+    GRID_X_START,
+    GRID_Y_START,
+    TOTAL_CARDS,
+    TWEEN_SPEED,
+)
 from genio.effect import SinglePointEffect, SinglePointEffectType
 from genio.layout import (
     WINDOW_HEIGHT,
@@ -114,7 +124,7 @@ class CardArtSet:
             2,
             text,
             col=7,
-            layout=layout(w=MainScene.CARD_WIDTH, ha="center", break_words=True),
+            layout=layout(w=CARD_WIDTH, ha="center", break_words=True),
             target=image,
         )
 
@@ -126,14 +136,14 @@ class CardArtSet:
             fg_col=0,
             bg_col=7,
             layout=layout(
-                w=MainScene.CARD_HEIGHT,
+                w=CARD_HEIGHT,
                 ha="center",
-                h=MainScene.CARD_WIDTH,
+                h=CARD_WIDTH,
                 va="center",
             ),
         )
         rasterized = _image_as_ndarray(rasterized)
-        pad_width = MainScene.CARD_HEIGHT - rasterized.shape[1]
+        pad_width = CARD_HEIGHT - rasterized.shape[1]
         rasterized = np.pad(rasterized, ((0, pad_width), (0, 0)), constant_values=7)
         rasterized = np.rot90(rasterized)
         rasterized = np.pad(rasterized, ((pad_width, 0), (0, 0)), constant_values=7)
@@ -186,15 +196,15 @@ class CardState(Enum):
 
 
 class CardSprite:
-    def __init__(self, index, card: Card, app: MainScene, selected: bool = False):
+    def __init__(self, index, card: Card, app: MainSceneLike, selected: bool = False):
         self.index = index
         self.app = app
         self.change_index(index)
         self.x = 10
         self.y = 190
         self.card = card
-        self.width = app.CARD_WIDTH
-        self.height = app.CARD_HEIGHT
+        self.width = CARD_WIDTH
+        self.height = CARD_HEIGHT
         self.hovered = False
         self.selected = selected
         self.dragging = False
@@ -400,8 +410,8 @@ class CardSprite:
         # Tweening for smooth transition
         if not self.dragging:
             target_x, target_y = self.adjusted_target_coords()
-            dx = (target_x - self.x) * self.app.TWEEN_SPEED
-            dy = (target_y - self.y) * self.app.TWEEN_SPEED
+            dx = (target_x - self.x) * TWEEN_SPEED
+            dy = (target_y - self.y) * TWEEN_SPEED
             dx = clip_magnitude(dx, 13)
             dy = clip_magnitude(dy, 13)
 
@@ -415,10 +425,8 @@ class CardSprite:
             self.hovered = False
 
     def snap_to_grid(self):
-        new_index = (
-            int(self.x) - self.app.GRID_X_START + self.app.GRID_SPACING_X // 2
-        ) // self.app.GRID_SPACING_X
-        new_index = max(0, min(self.app.TOTAL_CARDS - 1, new_index))
+        new_index = (int(self.x) - GRID_X_START + GRID_SPACING_X // 2) // GRID_SPACING_X
+        new_index = max(0, min(TOTAL_CARDS - 1, new_index))
 
         self.app.card_sprites.remove(self)
         self.app.card_sprites.insert(new_index, self)
@@ -437,8 +445,8 @@ class CardSprite:
     def calculate_target_coords(self) -> tuple[int, int]:
         fanout = fan_out_for_N(self.deck_length)[min(self.index, self.deck_length - 1)]
         return (
-            self.app.GRID_X_START + self.index * self.app.GRID_SPACING_X,
-            self.app.GRID_Y_START + pyxel.sin(abs(fanout)) * 60,
+            GRID_X_START + self.index * GRID_SPACING_X,
+            GRID_Y_START + pyxel.sin(abs(fanout)) * 60,
         )
 
 
@@ -882,16 +890,6 @@ class ResolvingSide(Enum):
 
 
 class MainScene(Scene):
-    CARD_WIDTH = 43
-    CARD_HEIGHT = 60
-    CARD_COLOR = 7
-    GRID_X_START = 85
-    GRID_Y_START = 180
-    GRID_SPACING_X = 40
-    GRID_SPACING_Y = 10
-    TOTAL_CARDS = 6
-    TWEEN_SPEED = 0.5
-
     card_bundle: CardBundle
     anims: list[Anim]
     futures: deque[Future[ResolvedEffects]]

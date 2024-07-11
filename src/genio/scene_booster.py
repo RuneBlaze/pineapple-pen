@@ -5,11 +5,12 @@ import pyxel
 from pyxelxl import blt_rot
 
 from genio.base import WINDOW_HEIGHT, WINDOW_WIDTH, load_image
+from genio.battle import setup_battle_bundle
 from genio.card import Card
-from genio.gui import ResolvingFraming
+from genio.gui import CardSprite, CardState, ResolvingFraming
 from genio.ps import Anim, HasPos
 from genio.scene import Scene
-from genio.tween import Mutator, Tweener
+from genio.tween import Instant, Mutator, Tweener
 
 
 class BoosterPackType(Enum):
@@ -81,16 +82,22 @@ class BoosterPack:
                 zip(
                     Mutator(30, pytweening.easeInCirc, self, "x", tx),
                     Mutator(30, pytweening.easeInCirc, self, "y", ty),
+                    Instant(self.on_explode),
                 )
             )
 
             self.events.append("open_pack")
+
+    def on_explode(self) -> None:
+        self.events.append("explode")
 
     def generate_cards(self) -> list[Card]:
         return [Card("OK", "good") for i in range(5)]
 
 
 class BoosterPackScene(Scene):
+    card_sprites: list[CardSprite]
+
     def __init__(self) -> None:
         super().__init__()
 
@@ -99,22 +106,43 @@ class BoosterPackScene(Scene):
         self.booster_packs = []
         self.booster_packs.append(BoosterPack(10, 10, BoosterPackType.SPY_THEMED))
 
+        self.card_sprites = []
+        self.bundle = setup_battle_bundle(
+            "initial_deck", "players.starter", ["enemies.evil_mask"] * 2
+        )
+
     def update(self):
         self.framing.update()
+        for spr in self.card_sprites:
+            spr.update()
         for pack in self.booster_packs:
             pack.update()
             while pack.events:
                 event = pack.events.pop()
                 if event == "open_pack":
                     self.framing.putup()
+                elif event == "explode":
+                    cards = pack.generate_cards()
+                    self.show_cards(cards)
 
     def draw(self):
         pyxel.cls(9)
 
         for pack in self.booster_packs:
             pack.draw()
+        for spr in self.card_sprites:
+            spr.draw()
         self.framing.draw()
         self.draw_crosshair(pyxel.mouse_x, pyxel.mouse_y)
+
+    def show_cards(self, cards: list[Card]) -> None:
+        for i, card in enumerate(cards):
+            spr = CardSprite(i, card, self, False)
+            self.card_sprites.append(spr)
+            spr.x = WINDOW_WIDTH // 2 - spr.width // 2
+            spr.y = WINDOW_HEIGHT // 2 - spr.height // 2
+            spr.tweens.clear()
+            spr.state = CardState.RESOLVING
 
     def draw_crosshair(self, x, y):
         pyxel.line(x - 5, y, x + 5, y, 7)

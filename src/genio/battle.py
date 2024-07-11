@@ -15,6 +15,7 @@ from smallperm import sample, shuffle
 from structlog import get_logger
 
 from genio.card import Card
+from genio.card_utils import CanAddAnim
 from genio.core.base import access, promptly, slurp_toml
 from genio.effect import (
     CreateCardEffect,
@@ -921,3 +922,7 @@ def setup_battle_bundle(
     return BattleBundle(
         player_instance, enemy_instances, BattlePrelude.default(), card_bundle
     )
+
+
+class MainSceneLike(CanAddAnim, Protocol):
+    bundle: BattleBundle
