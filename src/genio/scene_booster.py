@@ -13,7 +13,7 @@ from typing_extensions import assert_never
 from genio.base import WINDOW_HEIGHT, WINDOW_WIDTH, load_image
 from genio.battle import setup_battle_bundle
 from genio.card import Card
-from genio.components import DrawDeck, blt_burning, cute_text, retro_text
+from genio.components import DrawDeck, blt_burning, cute_text, retro_text, arcade_text
 from genio.constants import CARD_HEIGHT, CARD_WIDTH
 from genio.gui import (
     CardArtSet,
@@ -22,11 +22,13 @@ from genio.gui import (
     card_back,
     dithering,
 )
+from dataclasses import dataclass
 from genio.layout import layout_center_for_n
 from genio.ps import Anim, HasPos
 from genio.scene import Scene
 from genio.semantic_search import search_closest_document
 from genio.tween import Instant, Mutator, Tweener
+import textwrap
 
 
 class BoosterPackType(Enum):
@@ -36,9 +38,30 @@ class BoosterPackType(Enum):
     def humanized_name(self) -> str:
         match self:
             case BoosterPackType.SPY_THEMED:
-                return "Spyware Pack"
+                return "Spyware Booster Pack"
             case BoosterPackType.STANDARDIZED_TEST_THEMED:
                 return "SAT Vocabulary Pack"
+            case _:
+                assert_never()
+    
+    def short_humanized_name(self) -> str:
+        match self:
+            case BoosterPackType.SPY_THEMED:
+                return "Spyware"
+            case BoosterPackType.STANDARDIZED_TEST_THEMED:
+                return "SAT Vocab"
+            case _:
+                assert_never()
+    
+    def humanized_description(self) -> str:
+        match self:
+            case BoosterPackType.SPY_THEMED:
+                return "Choose 2 among 5 cards; James Bond, word synthesizers, covert and linguistic manipulations."
+            case BoosterPackType.STANDARDIZED_TEST_THEMED:
+                return (
+                    "Choose 2 among 5 flash cards to help you achieve a higher SAT score! "
+                    "Study with the most effective flashcards available. "
+                )
             case _:
                 assert_never()
 
@@ -137,7 +160,6 @@ class BoosterCardSprite:
                     self.y,
                     self.image,
                     perlin_noise(self.image.width, self.image.height, 0.1, self.ix),
-                    # np.full((self.image.height, self.image.width), 0.5),
                     self.state_timers[self.state],
                     in_or_out,
                 )
@@ -236,7 +258,7 @@ class BoosterPack:
         self.x = x
         self.y = y
         self.pack_type = pack_type
-        self.image = load_image("ui", "card-spy.png")
+        self.image = load_image("ui", "card-spy.png") if pack_type == BoosterPackType.SPY_THEMED else load_image("ui", "card-sat.png")
         self.tweener = Tweener()
         self.state = BoosterPackState.CLOSED
         self.angle = 0
@@ -246,6 +268,7 @@ class BoosterPack:
         self.timer = 0
         self.state_timers = defaultdict(int)
         self.allowed_cards = 2
+        self.dead = False
 
     def screen_pos(self) -> tuple[float, float]:
         return self.x + self.image.width // 2, self.y + self.image.height // 2
@@ -274,16 +297,19 @@ class BoosterPack:
                     "out",
                 )
         self.draw_label()
-            
 
     def draw_label(self) -> None:
+        if self.state == BoosterPackState.OPENED and self.state_timers[self.state] >= 35:
+            self.dead = True
         label_width = 46
         x_offset = self.image.width // 2 - label_width // 2
         mult = 1.0
         if self.state not in [BoosterPackState.CLOSED, BoosterPackState.OPENING]:
             return
         if self.state == BoosterPackState.OPENING:
-            mult = 1.0 - pytweening.easeInOutCubic(min(self.state_timers[self.state] / 20, 1))
+            mult = 1.0 - pytweening.easeInOutCubic(
+                min(self.state_timers[self.state] / 20, 1)
+            )
         with dithering(0.5 * mult):
             draw_rounded_rectangle(
                 self.x + x_offset, self.y + 80, label_width, 10, 3, 0
@@ -329,6 +355,7 @@ class BoosterPack:
         if (
             pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT)
             and self.state == BoosterPackState.CLOSED
+            and self.hovering
         ):
             self.state = BoosterPackState.OPENING
             tx, ty = WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2
@@ -380,6 +407,20 @@ class BoosterPack:
     def generate_cards(self) -> list[Card]:
         return [Card("OK", "good") for i in range(5)]
 
+@dataclass
+class HelpBoxContents:
+    title: str
+    description: str
+
+    def draw(self, dithering_mult: float = 1.0) -> None:
+        width = 200
+        x_offset = (WINDOW_WIDTH - width) // 2
+        with dithering(dithering_mult * 0.5):
+            draw_rounded_rectangle(x_offset, 175, width, 30, 5, 0)
+        with dithering(dithering_mult):
+            cute_text(x_offset + 6, 175 - 7, self.title, 7, layout=layout(w=200 - 6 * 2, h=11, ha="center"))
+            for i, l in enumerate(textwrap.wrap(self.description, 48)):
+                pyxel.text(x_offset + 6, 173 + 10 + i * 7, l, 7)
 
 class BoosterPackScene(Scene):
     card_sprites: list[BoosterCardSprite]
@@ -392,6 +433,7 @@ class BoosterPackScene(Scene):
 
         self.booster_packs = []
         self.booster_packs.append(BoosterPack(10, 10, BoosterPackType.SPY_THEMED))
+        self.booster_packs.append(BoosterPack(120, 10, BoosterPackType.STANDARDIZED_TEST_THEMED))
 
         self.card_sprites = []
         self.bundle = setup_battle_bundle(
@@ -401,6 +443,18 @@ class BoosterPackScene(Scene):
         self.anims = []
         self.draw_deck = DrawDeck(self.bundle.card_bundle)
         self.chosen_pack = None
+        self.info_box_energy = 0.0
+        self.chosen_pack_dup = None
+        self.help_box = HelpBoxContents("Help", "Click on a card to choose it." * 4)
+        self.help_box_energy = 0.0
+    
+    def pump_help_box(self, title: str, description: str) -> None:
+        if title != self.help_box.title or description != self.help_box.description:
+            if self.help_box_energy > 0.55:
+                return
+        self.help_box = HelpBoxContents(title, description)
+        self.help_box_energy += 0.2
+        self.help_box_energy = min(self.help_box_energy, 1.2)
 
     def update(self):
         self.framing.update()
@@ -408,6 +462,8 @@ class BoosterPackScene(Scene):
         for spr in self.card_sprites:
             spr.update()
             aggregate_events.extend(spr.events)
+            if spr.hovering:
+                self.pump_help_box(spr.card.name, spr.card.description or "")
             spr.events.clear()
         for event in aggregate_events:
             match event:
@@ -419,15 +475,23 @@ class BoosterPackScene(Scene):
                         self.rearrange_cards()
                 case ("added", card):
                     self.bundle.card_bundle.add_into_deck_top(card)
-                
-        if self.card_sprites and all(spr.state == BoosterCardSpriteState.DEAD for spr in self.card_sprites):
+
+        if self.card_sprites and all(
+            spr.state == BoosterCardSpriteState.DEAD for spr in self.card_sprites
+        ):
             self.card_sprites.clear()
             self.chosen_pack = None
             self.framing.teardown()
         for anim in self.anims:
             anim.update()
         self.anims = [anim for anim in self.anims if not anim.dead]
+        any_booster_pack_opening = any(
+            pack.state != BoosterPackState.CLOSED for pack in self.booster_packs
+        )
+        any_booster_pack_opening = any_booster_pack_opening or bool(self.chosen_pack) or bool(self.card_sprites)
         for pack in self.booster_packs:
+            if any_booster_pack_opening and pack.state == BoosterPackState.CLOSED:
+                continue
             pack.update()
             while pack.events:
                 event = pack.events.pop()
@@ -439,10 +503,16 @@ class BoosterPackScene(Scene):
                     self.chosen_pack = pack
                 elif event == "faded_out":
                     self.add_anim("anims.burst", *pack.screen_pos())
+            if pack.hovering and pack.state == BoosterPackState.CLOSED:
+                self.pump_help_box(pack.pack_type.humanized_name(), pack.pack_type.humanized_description())
+        self.booster_packs = [pack for pack in self.booster_packs if not pack.dead]
+        if self.chosen_pack:
+            self.info_box_energy = min(self.info_box_energy + 0.1, 1.0)
+        else:
+            self.info_box_energy = max(self.info_box_energy - 0.1, 0.0)
+        self.chosen_pack_dup = self.chosen_pack or self.chosen_pack_dup
+        self.help_box_energy = max(self.help_box_energy - 0.1, 0.0)
         self.timer += 1
-
-        if pyxel.btnp(pyxel.KEY_SPACE):
-            self.destroy_rest_cards()
 
     def draw(self):
         pyxel.cls(9)
@@ -452,29 +522,31 @@ class BoosterPackScene(Scene):
         for i, spr in enumerate(self.card_sprites):
             spr.draw()
         self.draw_deck.draw_card_label(10, 190)
-        if self.chosen_pack:
-            self.draw_info_box()
+        self.draw_info_box()
+        with camera_shift(0, min(self.help_box_energy, 1)*3):
+            self.help_box.draw(min(self.help_box_energy, 1))
         Anim.draw()
         self.framing.draw()
         self.draw_crosshair(pyxel.mouse_x, pyxel.mouse_y)
 
     def draw_info_box(self):
-        from pyxelxl import layout
-
-        with camera_shift(-(WINDOW_WIDTH - 100) // 2, -15):
-            draw_window_frame(0, 10, 100, 30, 5)
-            cute_text(
-                0,
-                10 + 2,
-                self.chosen_pack.pack_type.humanized_name(),
-                7,
-                layout=layout(w=100, h=11, ha="center"),
-            )
-            if (ncards := self.chosen_pack.allowed_cards) <= 1:
-                pyxel.text(22, 26 + 2, "Choose 1 card", 7)
-            else:
-                ncards = max(1, ncards)  # 0 card on the UI seems really weird
-                pyxel.text(20, 26 + 2, f"Choose {ncards} cards", 7)
+        if not self.chosen_pack_dup:
+            return
+        with dithering(self.info_box_energy):
+            with camera_shift(-(WINDOW_WIDTH - 100) // 2, -15):
+                draw_window_frame(0, 10, 100, 30, 5)
+                cute_text(
+                    0,
+                    10 + 2,
+                    self.chosen_pack_dup.pack_type.short_humanized_name(),
+                    7,
+                    layout=layout(w=100, h=11, ha="center"),
+                )
+                if (ncards := self.chosen_pack_dup.allowed_cards) <= 1:
+                    pyxel.text(22, 26 + 2, "Choose 1 card", 7)
+                else:
+                    ncards = max(1, ncards)  # 0 card on the UI seems really weird
+                    pyxel.text(20, 26 + 2, f"Choose {ncards} cards", 7)
 
     def show_cards(self, cards: list[Card]) -> None:
         for i, card in enumerate(cards):
