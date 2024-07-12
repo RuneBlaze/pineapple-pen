@@ -7,12 +7,13 @@ from functools import cache
 import numpy as np
 import pytweening
 import pyxel
-from pyxelxl import blt_rot
+from pyxelxl import blt_rot, layout
+from typing_extensions import assert_never
 
 from genio.base import WINDOW_HEIGHT, WINDOW_WIDTH, load_image
 from genio.battle import setup_battle_bundle
 from genio.card import Card
-from genio.components import DrawDeck, blt_burning, cute_text
+from genio.components import DrawDeck, blt_burning, cute_text, retro_text
 from genio.constants import CARD_HEIGHT, CARD_WIDTH
 from genio.gui import (
     CardArtSet,
@@ -32,6 +33,15 @@ class BoosterPackType(Enum):
     SPY_THEMED = 0
     STANDARDIZED_TEST_THEMED = 1
 
+    def humanized_name(self) -> str:
+        match self:
+            case BoosterPackType.SPY_THEMED:
+                return "Spyware Pack"
+            case BoosterPackType.STANDARDIZED_TEST_THEMED:
+                return "SAT Vocabulary Pack"
+            case _:
+                assert_never()
+
 
 class BoosterPackState(Enum):
     CLOSED = 0
@@ -47,10 +57,6 @@ def draw_rounded_rectangle(x: int, y: int, w: int, h: int, r: int, col: int) -> 
     pyxel.circ(x + w - r, y + r, r, col)
     pyxel.circ(x + r, y + h - r, r, col)
     pyxel.circ(x + w - r, y + h - r, r, col)
-
-
-# draw_rounded_rectangle(9, 9, 102, 102, 5, 7)
-#         draw_rounded_rectangle(10, 10, 100, 100, 5, 1)
 
 
 def draw_window_frame(x: int, y: int, w: int, h: int, col: int) -> None:
@@ -93,6 +99,7 @@ class BoosterCardSprite:
         self.ix = ix
 
         self.wave_mag = 1.0
+        self.card = card
 
         self.state_timers = defaultdict(int)
 
@@ -110,6 +117,13 @@ class BoosterCardSprite:
 
         self.hovering = False
         self.fade_out = 0
+        self.events = []
+        self.inconsequential = False
+
+    def add_event(self, event: str) -> None:
+        self.events.append(event)
+        if event == "chosen":
+            self.inconsequential = True
 
     def draw(self):
         match self.state:
@@ -166,6 +180,7 @@ class BoosterCardSprite:
 
     def transition_in_state(self, state: BoosterCardSpriteState) -> None:
         if state == BoosterCardSpriteState.DISAPPEARING:
+            self.inconsequential = True
             self.tweens.append(
                 range(31),
                 Instant(lambda: self.set_state(BoosterCardSpriteState.DEAD)),
@@ -173,12 +188,14 @@ class BoosterCardSprite:
         elif state == BoosterCardSpriteState.CHOSEN:
             self.tweens.append(
                 itertools.zip_longest(
-                    Mutator(12, pytweening.easeInCirc, self, "x", 10),
-                    Mutator(12, pytweening.easeInCirc, self, "y", 190 - 5),
+                    Mutator(8, pytweening.easeInCirc, self, "x", 10),
+                    Mutator(8, pytweening.easeInCirc, self, "y", 190 - 5),
                 ),
+                Instant(lambda: self.add_event("chosen")),
                 Mutator(5, pytweening.easeInCirc, self, "fade_out", 1),
-                Mutator(12, pytweening.easeInCirc, self, "y", 190 - 10),
-                Mutator(5, pytweening.easeInCirc, self, "y", 190),
+                Instant(lambda: self.add_event(("added", self.card))),
+                Mutator(3, pytweening.easeInCirc, self, "y", 190 - 10),
+                Mutator(5 - 2, pytweening.easeInCirc, self, "y", 190),
                 range(2),
                 Instant(lambda: self.set_state(BoosterCardSpriteState.DEAD)),
             )
@@ -228,6 +245,7 @@ class BoosterPack:
         self.events = []
         self.timer = 0
         self.state_timers = defaultdict(int)
+        self.allowed_cards = 2
 
     def screen_pos(self) -> tuple[float, float]:
         return self.x + self.image.width // 2, self.y + self.image.height // 2
@@ -255,6 +273,29 @@ class BoosterPack:
                     self.state_timers[self.state],
                     "out",
                 )
+        self.draw_label()
+            
+
+    def draw_label(self) -> None:
+        label_width = 46
+        x_offset = self.image.width // 2 - label_width // 2
+        mult = 1.0
+        if self.state not in [BoosterPackState.CLOSED, BoosterPackState.OPENING]:
+            return
+        if self.state == BoosterPackState.OPENING:
+            mult = 1.0 - pytweening.easeInOutCubic(min(self.state_timers[self.state] / 20, 1))
+        with dithering(0.5 * mult):
+            draw_rounded_rectangle(
+                self.x + x_offset, self.y + 80, label_width, 10, 3, 0
+            )
+        with dithering(1.0 * mult):
+            retro_text(
+                self.x + x_offset + 2,
+                self.y + 80 + 1,
+                "$10.00",
+                7,
+                layout=layout(w=label_width - 4, h=10, ha="center"),
+            )
 
     def update(self):
         self.tweener.update()
@@ -342,6 +383,7 @@ class BoosterPack:
 
 class BoosterPackScene(Scene):
     card_sprites: list[BoosterCardSprite]
+    chosen_pack: BoosterPack | None
 
     def __init__(self) -> None:
         super().__init__()
@@ -358,11 +400,30 @@ class BoosterPackScene(Scene):
         self.timer = 0
         self.anims = []
         self.draw_deck = DrawDeck(self.bundle.card_bundle)
+        self.chosen_pack = None
 
     def update(self):
         self.framing.update()
+        aggregate_events = []
         for spr in self.card_sprites:
             spr.update()
+            aggregate_events.extend(spr.events)
+            spr.events.clear()
+        for event in aggregate_events:
+            match event:
+                case "chosen":
+                    self.chosen_pack.allowed_cards -= 1
+                    if self.chosen_pack.allowed_cards <= 0:
+                        self.rearrange_cards(should_disappear=True)
+                    else:
+                        self.rearrange_cards()
+                case ("added", card):
+                    self.bundle.card_bundle.add_into_deck_top(card)
+                
+        if self.card_sprites and all(spr.state == BoosterCardSpriteState.DEAD for spr in self.card_sprites):
+            self.card_sprites.clear()
+            self.chosen_pack = None
+            self.framing.teardown()
         for anim in self.anims:
             anim.update()
         self.anims = [anim for anim in self.anims if not anim.dead]
@@ -375,6 +436,7 @@ class BoosterPackScene(Scene):
                 elif event == "explode":
                     cards = pack.generate_cards()
                     self.show_cards(cards)
+                    self.chosen_pack = pack
                 elif event == "faded_out":
                     self.add_anim("anims.burst", *pack.screen_pos())
         self.timer += 1
@@ -390,7 +452,8 @@ class BoosterPackScene(Scene):
         for i, spr in enumerate(self.card_sprites):
             spr.draw()
         self.draw_deck.draw_card_label(10, 190)
-        self.draw_info_box()
+        if self.chosen_pack:
+            self.draw_info_box()
         Anim.draw()
         self.framing.draw()
         self.draw_crosshair(pyxel.mouse_x, pyxel.mouse_y)
@@ -401,9 +464,17 @@ class BoosterPackScene(Scene):
         with camera_shift(-(WINDOW_WIDTH - 100) // 2, -15):
             draw_window_frame(0, 10, 100, 30, 5)
             cute_text(
-                0, 10 + 2, "Spyware Pack", 7, layout=layout(w=100, h=11, ha="center")
+                0,
+                10 + 2,
+                self.chosen_pack.pack_type.humanized_name(),
+                7,
+                layout=layout(w=100, h=11, ha="center"),
             )
-            pyxel.text(20, 26 + 2, "Choose 2 cards", 7)
+            if (ncards := self.chosen_pack.allowed_cards) <= 1:
+                pyxel.text(22, 26 + 2, "Choose 1 card", 7)
+            else:
+                ncards = max(1, ncards)  # 0 card on the UI seems really weird
+                pyxel.text(20, 26 + 2, f"Choose {ncards} cards", 7)
 
     def show_cards(self, cards: list[Card]) -> None:
         for i, card in enumerate(cards):
@@ -411,6 +482,41 @@ class BoosterPackScene(Scene):
             target_y = WINDOW_HEIGHT // 2 - CARD_HEIGHT // 2
             spr = BoosterCardSprite(target_x, target_y, i, card)
             self.card_sprites.append(spr)
+
+    def make_cards_disappear(self) -> None:
+        for spr in self.card_sprites:
+            if spr.state == BoosterCardSpriteState.ACTIVE and not spr.inconsequential:
+                spr.set_state(BoosterCardSpriteState.DISAPPEARING)
+
+    def rearrange_cards(self, should_disappear: bool = False) -> None:
+        consequential_cards = [
+            spr for spr in self.card_sprites if not spr.inconsequential
+        ]
+        for i, spr in enumerate(consequential_cards):
+            target_x = (
+                layout_center_for_n(len(consequential_cards), 400)[i] - CARD_WIDTH // 2
+            )
+            target_y = WINDOW_HEIGHT // 2 - CARD_HEIGHT // 2
+            spr.tweens.append(
+                itertools.zip_longest(
+                    Mutator(12, pytweening.easeInCirc, spr, "x", target_x),
+                    Mutator(12, pytweening.easeInCirc, spr, "y", target_y),
+                )
+            )
+
+            if should_disappear:
+                spr.tweens.append(
+                    itertools.chain(
+                        range(12 + i * 3),
+                        Instant(
+                            (
+                                lambda spr: lambda: spr.set_state(
+                                    BoosterCardSpriteState.DISAPPEARING
+                                )
+                            )(spr)
+                        ),
+                    )
+                )
 
     def draw_crosshair(self, x, y):
         pyxel.line(x - 5, y, x + 5, y, 7)

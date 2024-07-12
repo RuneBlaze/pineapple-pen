@@ -60,8 +60,8 @@ def _search_closest_document(sentence: str) -> dict:
 
 
 def search_closest_document(sentence: str) -> SerializedCardArt:
-    print(sentence, documents[_search_closest_document(sentence)["index"]].prompt)
-    return documents[_search_closest_document(sentence)["index"]]
+    # FIXME: this feature is deprecated, so returning the first document for now.
+    return documents[0]
 
 
 if __name__ == "__main__":
