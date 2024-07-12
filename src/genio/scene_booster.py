@@ -1,3 +1,4 @@
+from functools import cache
 import itertools
 import math
 import textwrap
@@ -6,19 +7,18 @@ from concurrent.futures import Future
 from concurrent.futures.thread import ThreadPoolExecutor
 from dataclasses import dataclass
 from enum import Enum
-from functools import cache
 from typing import Annotated
 
-import numpy as np
 import pytweening
 import pyxel
 from pyxelxl import blt_rot, layout
+from pyxelxl.font import _image_as_ndarray
 from typing_extensions import assert_never
 
 from genio.base import WINDOW_HEIGHT, WINDOW_WIDTH, load_image
 from genio.battle import setup_battle_bundle
 from genio.card import Card
-from genio.components import DrawDeck, blt_burning, cute_text, retro_text
+from genio.components import DrawDeck, blt_burning, cute_text, perlin_noise, retro_text
 from genio.constants import CARD_HEIGHT, CARD_WIDTH
 from genio.core.base import promptly
 from genio.gui import (
@@ -34,6 +34,8 @@ from genio.scene import Scene
 from genio.semantic_search import search_closest_document
 from genio.tween import Instant, Mutator, Tweener
 
+import numpy as np
+import pytweening
 
 @dataclass
 class GenerateSATFlashCardResult:
@@ -81,8 +83,8 @@ class BoosterPackType(Enum):
                 return "Spyware"
             case BoosterPackType.STANDARDIZED_TEST_THEMED:
                 return "SAT Vocab"
-            case _:
-                assert_never()
+            case arg:
+                return "SAT Vocab"
 
     def humanized_description(self) -> str:
         match self:
@@ -94,7 +96,10 @@ class BoosterPackType(Enum):
                     "Study with the most effective flashcards available. "
                 )
             case _:
-                assert_never()
+                return (
+                    "Choose 2 among 5 flash cards to help you achieve a higher SAT score! "
+                    "Study with the most effective flashcards available. "
+                )
 
 
 class BoosterPackState(Enum):
@@ -116,19 +121,6 @@ def draw_rounded_rectangle(x: int, y: int, w: int, h: int, r: int, col: int) -> 
 def draw_window_frame(x: int, y: int, w: int, h: int, col: int) -> None:
     draw_rounded_rectangle(x - 1, y - 1, w + 2, h + 2, 4, 7)
     draw_rounded_rectangle(x, y, w, h, 4, col)
-
-
-@cache
-def perlin_noise(width: int, height: int, scale: float, replica: int = 0) -> np.ndarray:
-    res = np.zeros((height, width), dtype=np.float32)
-    for j in range(height):
-        for i in range(width):
-            res[j, i] = pyxel.noise(i * scale, j * scale, replica)
-    # normalize it
-    res -= res.min()
-    res /= res.max()
-    res = np.clip(res, 0, 1)
-    return res
 
 
 class BoosterCardSpriteState(Enum):
@@ -599,7 +591,7 @@ class BoosterPackScene(Scene):
         Anim.draw()
         self.framing.draw()
         self.draw_crosshair(pyxel.mouse_x, pyxel.mouse_y)
-
+        
     def draw_info_box(self):
         if not self.chosen_pack_dup:
             return
@@ -669,6 +661,16 @@ class BoosterPackScene(Scene):
         for spr in self.card_sprites:
             if spr.state == BoosterCardSpriteState.ACTIVE:
                 spr.set_state(BoosterCardSpriteState.DISAPPEARING)
+    
+    # def request_next_scene(self) -> Scene | None | str:
+    #     # print("Requesting next scene")
+    #     return super().request_next_scene()
+
+    def request_next_scene(self) -> str | None:
+        # print("Requesting next scene")
+        if pyxel.btnp(pyxel.KEY_Q):
+            print("Reloading scene")
+            return "genio.scene_booster"
 
     def add_anim(
         self,

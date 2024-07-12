@@ -16,7 +16,7 @@ from structlog import get_logger
 
 from genio.card import Card
 from genio.card_utils import CanAddAnim
-from genio.core.base import access, promptly, slurp_toml
+from genio.core.base import access, promptly
 from genio.effect import (
     CreateCardEffect,
     DiscardCardsEffect,
@@ -28,12 +28,10 @@ from genio.effect import (
     TransformCardEffect,
     parse_effect,
 )
+from genio.predef import predef
 from genio.subst import Subst
 
 logger = get_logger()
-
-
-predef = slurp_toml("assets/strings.toml")
 
 
 def parse_card_description(description: str) -> tuple[str, str, int]:
@@ -99,9 +97,6 @@ def _judge_results(
     Let's think step by step.
     """
     ...
-
-
-predef = slurp_toml("assets/strings.toml")
 
 
 @dataclass(eq=True)

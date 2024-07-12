@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import contextlib
+from functools import cache
+import math
 import random
 from operator import gt, lt
 from typing import Literal
@@ -11,6 +13,8 @@ from pyxelxl import Font, LayoutOpts, layout
 
 from genio.base import asset_path
 from genio.battle import CardBundle
+from scipy.ndimage import gaussian_filter
+from pyxelxl.font import _image_as_ndarray
 
 retro_font = Font(asset_path("retro-pixel-petty-5h.ttf"))
 retro_text = retro_font.specialize(font_size=5)
@@ -18,7 +22,6 @@ display_text = Font(asset_path("DMSerifDisplay-Regular.ttf")).specialize(
     font_size=18, threshold=100
 )
 cute_text = Font(asset_path("retro-pixel-cute-prop.ttf")).specialize(font_size=11)
-arcade_text = Font(asset_path("retro-pixel-arcade.ttf")).specialize(font_size=8)
 
 
 def shadowed_text(
@@ -169,3 +172,105 @@ class DrawDeck:
             0,
             layout=layout(w=label_width, ha="center", h=7, va="center"),
         )
+
+
+
+
+@cache
+def perlin_noise(width: int, height: int, scale: float, replica: int = 0) -> np.ndarray:
+    res = np.zeros((height, width), dtype=np.float32)
+    for j in range(height):
+        for i in range(width):
+            res[j, i] = pyxel.noise(i * scale, j * scale, replica)
+    # normalize it
+    res -= res.min()
+    res /= res.max()
+    res = np.clip(res, 0, 1)
+    return res
+
+
+
+@cache
+def perlin_noise_with_horizontal_gradient(
+    width: int, height: int, scale: float, replica: int = 0
+) -> np.ndarray:
+    res = np.zeros((height, width), dtype=np.float32)
+    for j in range(height):
+        for i in range(width):
+            n1 = pyxel.noise(i * scale, j * scale * 1, replica)
+            n2 = pyxel.noise(i * scale, j * scale * 1, replica + 17)
+            n3 = pyxel.noise(0.1 * math.atan2(n1, n2), 0.1 * np.sqrt(n1 ** 2 + n2 ** 2) * scale, replica)
+            res[j, i] = 0.5 * n3 + 2 * i / height - j / height
+    res -= res.min()
+    res /= res.max()
+    res = gaussian_filter(res, sigma=20, radius=200)
+    res = spherize(res)
+    res = np.clip(res, 0, 1)
+    return res
+
+def spherize(a: np.ndarray) -> np.ndarray:
+    h, w = a.shape
+    center = np.array([h, w]) / 2
+    res = np.zeros((h, w), dtype=np.float32)
+    for j in range(h):
+        for i in range(w):
+            u, v = i - center[1], j - center[0]
+            u, v = u / center[1], v / center[0]
+            r = np.sqrt(u ** 2 + v ** 2)
+            if r == 0:
+                res[j, i] = 0
+            else:
+                theta = np.arctan2(v, u)
+                x = r * np.cos(theta)
+                y = r * np.sin(theta)
+                x = (x + 1) / 2
+                y = (y + 1) / 2
+                x = int(x * w)
+                y = int(y * h)
+                if x >= w:
+                    x = w - 1
+                if y >= h:
+                    y = h - 1
+                res[j, i] = a[y, x]
+    return res
+
+def mask_screen(
+    mask: np.ndarray,
+    threshold: float,
+    fill_color: int,
+) -> None:
+    if threshold >= 1.5:
+        return
+    threshold = threshold ** 0.8
+    screen = np.full_like(_image_as_ndarray(pyxel.screen), 254, dtype=np.uint8)
+    dither_matrix = np.zeros((pyxel.height, pyxel.width), dtype=bool)
+    # only true when x + y is 3 mod 4
+    dither_matrix[::4, 3::4] = True
+    screen[(mask > threshold - 0.1) & dither_matrix] = fill_color
+    dither_matrix[::2, ::2] = True
+    screen[(mask > threshold - 0.05) & dither_matrix] = fill_color
+    screen[(mask > threshold)] = fill_color
+    new_image = pyxel.Image(*screen.shape[::-1])
+    _image_as_ndarray(new_image)[:] = screen
+    pyxel.blt(0, 0, new_image, 0, 0, new_image.width, new_image.height, 254)
+
+def mask_screen_out(
+    mask: np.ndarray,
+    threshold: float,
+    fill_color: int,
+) -> None:
+    if threshold >= 1.5:
+        pyxel.cls(fill_color)
+        return
+    threshold = threshold ** 0.8
+    screen = np.full_like(_image_as_ndarray(pyxel.screen), 254, dtype=np.uint8)
+    dither_matrix = np.zeros((pyxel.height, pyxel.width), dtype=bool)
+    # only true when x + y is 3 mod 4
+    dither_matrix[::4, 3::4] = True
+    screen[(mask < threshold + 0.1) & dither_matrix] = fill_color
+    dither_matrix[::2, ::2] = True
+    screen[(mask < threshold + 0.05) & dither_matrix] = fill_color
+    screen[(mask < threshold)] = fill_color
+    new_image = pyxel.Image(*screen.shape[::-1])
+    _image_as_ndarray(new_image)[:] = screen
+    pyxel.blt(0, 0, new_image, 0, 0, new_image.width, new_image.height, 254)
