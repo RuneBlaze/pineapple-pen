@@ -411,7 +411,11 @@ def generate_using_docstring(
 def typescriptize_type(typ: str | type) -> str:
     if is_dataclass(typ):
         # Assuming that they will be parsed from JSON string.
-        return "string"
+        return "object"
+    if get_origin(typ) is dict or typ == dict:
+        return "object"
+    if typ == "dict":
+        return "object"
     if typ == str:
         return "string"
     if typ == int:

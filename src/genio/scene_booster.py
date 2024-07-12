@@ -1,8 +1,13 @@
 import itertools
 import math
-from collections import defaultdict
+import textwrap
+from collections import defaultdict, deque
+from concurrent.futures import Future
+from concurrent.futures.thread import ThreadPoolExecutor
+from dataclasses import dataclass
 from enum import Enum
 from functools import cache
+from typing import Annotated
 
 import numpy as np
 import pytweening
@@ -13,8 +18,9 @@ from typing_extensions import assert_never
 from genio.base import WINDOW_HEIGHT, WINDOW_WIDTH, load_image
 from genio.battle import setup_battle_bundle
 from genio.card import Card
-from genio.components import DrawDeck, blt_burning, cute_text, retro_text, arcade_text
+from genio.components import DrawDeck, blt_burning, cute_text, retro_text
 from genio.constants import CARD_HEIGHT, CARD_WIDTH
+from genio.core.base import promptly
 from genio.gui import (
     CardArtSet,
     ResolvingFraming,
@@ -22,13 +28,38 @@ from genio.gui import (
     card_back,
     dithering,
 )
-from dataclasses import dataclass
 from genio.layout import layout_center_for_n
 from genio.ps import Anim, HasPos
 from genio.scene import Scene
 from genio.semantic_search import search_closest_document
 from genio.tween import Instant, Mutator, Tweener
-import textwrap
+
+
+@dataclass
+class GenerateSATFlashCardResult:
+    """A set of precisely 5 flashcards for SAT preparation."""
+
+    flashcards: Annotated[
+        list[dict],
+        (
+            "A list of flashcards, objects containing two keys: 'word' and 'definition', "
+            "each corresponding to the word and its definition from dictionary. Definition "
+            "should be in dictionary form, like (noun) a person who is very interested in [...]"
+        ),
+    ]
+
+
+@promptly
+def generate_sat_flashcards() -> GenerateSATFlashCardResult:
+    """\
+    Act as an excellent tutor and a test prep professional by designing
+    a set of 5 flashcards for SAT preparation, as if pulled from a dictionary.
+
+    Write words in their entire form, and provide their definitions.
+    Choose words that are no longer than 9 characters.
+
+    {{ formatting_instructions }}
+    """
 
 
 class BoosterPackType(Enum):
@@ -43,7 +74,7 @@ class BoosterPackType(Enum):
                 return "SAT Vocabulary Pack"
             case _:
                 assert_never()
-    
+
     def short_humanized_name(self) -> str:
         match self:
             case BoosterPackType.SPY_THEMED:
@@ -52,7 +83,7 @@ class BoosterPackType(Enum):
                 return "SAT Vocab"
             case _:
                 assert_never()
-    
+
     def humanized_description(self) -> str:
         match self:
             case BoosterPackType.SPY_THEMED:
@@ -258,7 +289,11 @@ class BoosterPack:
         self.x = x
         self.y = y
         self.pack_type = pack_type
-        self.image = load_image("ui", "card-spy.png") if pack_type == BoosterPackType.SPY_THEMED else load_image("ui", "card-sat.png")
+        self.image = (
+            load_image("ui", "card-spy.png")
+            if pack_type == BoosterPackType.SPY_THEMED
+            else load_image("ui", "card-sat.png")
+        )
         self.tweener = Tweener()
         self.state = BoosterPackState.CLOSED
         self.angle = 0
@@ -299,7 +334,10 @@ class BoosterPack:
         self.draw_label()
 
     def draw_label(self) -> None:
-        if self.state == BoosterPackState.OPENED and self.state_timers[self.state] >= 35:
+        if (
+            self.state == BoosterPackState.OPENED
+            and self.state_timers[self.state] >= 35
+        ):
             self.dead = True
         label_width = 46
         x_offset = self.image.width // 2 - label_width // 2
@@ -405,7 +443,12 @@ class BoosterPack:
         self.events.append("faded_out")
 
     def generate_cards(self) -> list[Card]:
-        return [Card("OK", "good") for i in range(5)]
+        generated = generate_sat_flashcards()
+        return [
+            Card(name=card["word"], description=card["definition"])
+            for card in generated.flashcards
+        ]
+
 
 @dataclass
 class HelpBoxContents:
@@ -418,13 +461,22 @@ class HelpBoxContents:
         with dithering(dithering_mult * 0.5):
             draw_rounded_rectangle(x_offset, 175, width, 30, 5, 0)
         with dithering(dithering_mult):
-            cute_text(x_offset + 6, 175 - 7, self.title, 7, layout=layout(w=200 - 6 * 2, h=11, ha="center"))
+            cute_text(
+                x_offset + 6,
+                175 - 7,
+                self.title,
+                7,
+                layout=layout(w=200 - 6 * 2, h=11, ha="center"),
+            )
             for i, l in enumerate(textwrap.wrap(self.description, 48)):
                 pyxel.text(x_offset + 6, 173 + 10 + i * 7, l, 7)
+
 
 class BoosterPackScene(Scene):
     card_sprites: list[BoosterCardSprite]
     chosen_pack: BoosterPack | None
+    mailbox: deque[Future[list[Card]]]
+    check_mail_signal = deque[BoosterPack]
 
     def __init__(self) -> None:
         super().__init__()
@@ -433,7 +485,9 @@ class BoosterPackScene(Scene):
 
         self.booster_packs = []
         self.booster_packs.append(BoosterPack(10, 10, BoosterPackType.SPY_THEMED))
-        self.booster_packs.append(BoosterPack(120, 10, BoosterPackType.STANDARDIZED_TEST_THEMED))
+        self.booster_packs.append(
+            BoosterPack(120, 10, BoosterPackType.STANDARDIZED_TEST_THEMED)
+        )
 
         self.card_sprites = []
         self.bundle = setup_battle_bundle(
@@ -447,7 +501,10 @@ class BoosterPackScene(Scene):
         self.chosen_pack_dup = None
         self.help_box = HelpBoxContents("Help", "Click on a card to choose it." * 4)
         self.help_box_energy = 0.0
-    
+        self.mailbox = deque()
+        self.check_mail_signal = deque()
+        self.executor = ThreadPoolExecutor(2)
+
     def pump_help_box(self, title: str, description: str) -> None:
         if title != self.help_box.title or description != self.help_box.description:
             if self.help_box_energy > 0.55:
@@ -458,6 +515,7 @@ class BoosterPackScene(Scene):
 
     def update(self):
         self.framing.update()
+        self.tick_check_mail()
         aggregate_events = []
         for spr in self.card_sprites:
             spr.update()
@@ -488,7 +546,11 @@ class BoosterPackScene(Scene):
         any_booster_pack_opening = any(
             pack.state != BoosterPackState.CLOSED for pack in self.booster_packs
         )
-        any_booster_pack_opening = any_booster_pack_opening or bool(self.chosen_pack) or bool(self.card_sprites)
+        any_booster_pack_opening = (
+            any_booster_pack_opening
+            or bool(self.chosen_pack)
+            or bool(self.card_sprites)
+        )
         for pack in self.booster_packs:
             if any_booster_pack_opening and pack.state == BoosterPackState.CLOSED:
                 continue
@@ -497,14 +559,17 @@ class BoosterPackScene(Scene):
                 event = pack.events.pop()
                 if event == "open_pack":
                     self.framing.putup()
+                    self.mailbox.append(self.executor.submit(pack.generate_cards))
                 elif event == "explode":
-                    cards = pack.generate_cards()
-                    self.show_cards(cards)
-                    self.chosen_pack = pack
+                    self.check_mail_signal.append(pack)
+                    self.tick_check_mail()
                 elif event == "faded_out":
                     self.add_anim("anims.burst", *pack.screen_pos())
             if pack.hovering and pack.state == BoosterPackState.CLOSED:
-                self.pump_help_box(pack.pack_type.humanized_name(), pack.pack_type.humanized_description())
+                self.pump_help_box(
+                    pack.pack_type.humanized_name(),
+                    pack.pack_type.humanized_description(),
+                )
         self.booster_packs = [pack for pack in self.booster_packs if not pack.dead]
         if self.chosen_pack:
             self.info_box_energy = min(self.info_box_energy + 0.1, 1.0)
@@ -513,6 +578,12 @@ class BoosterPackScene(Scene):
         self.chosen_pack_dup = self.chosen_pack or self.chosen_pack_dup
         self.help_box_energy = max(self.help_box_energy - 0.1, 0.0)
         self.timer += 1
+
+    def tick_check_mail(self):
+        if self.check_mail_signal and self.mailbox[0].done():
+            pack = self.check_mail_signal.popleft()
+            self.show_cards(self.mailbox.popleft().result())
+            self.chosen_pack = pack
 
     def draw(self):
         pyxel.cls(9)
@@ -523,7 +594,7 @@ class BoosterPackScene(Scene):
             spr.draw()
         self.draw_deck.draw_card_label(10, 190)
         self.draw_info_box()
-        with camera_shift(0, min(self.help_box_energy, 1)*3):
+        with camera_shift(0, min(self.help_box_energy, 1) * 3):
             self.help_box.draw(min(self.help_box_energy, 1))
         Anim.draw()
         self.framing.draw()
