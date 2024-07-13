@@ -1,4 +1,3 @@
-from functools import cache
 import itertools
 import math
 import textwrap
@@ -12,7 +11,6 @@ from typing import Annotated
 import pytweening
 import pyxel
 from pyxelxl import blt_rot, layout
-from pyxelxl.font import _image_as_ndarray
 from typing_extensions import assert_never
 
 from genio.base import WINDOW_HEIGHT, WINDOW_WIDTH, load_image
@@ -34,8 +32,6 @@ from genio.scene import Scene
 from genio.semantic_search import search_closest_document
 from genio.tween import Instant, Mutator, Tweener
 
-import numpy as np
-import pytweening
 
 @dataclass
 class GenerateSATFlashCardResult:
@@ -591,7 +587,7 @@ class BoosterPackScene(Scene):
         Anim.draw()
         self.framing.draw()
         self.draw_crosshair(pyxel.mouse_x, pyxel.mouse_y)
-        
+
     def draw_info_box(self):
         if not self.chosen_pack_dup:
             return

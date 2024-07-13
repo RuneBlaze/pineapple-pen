@@ -1,20 +1,20 @@
 from __future__ import annotations
 
 import contextlib
-from functools import cache
 import math
 import random
+from functools import cache
 from operator import gt, lt
 from typing import Literal
 
 import numpy as np
 import pyxel
 from pyxelxl import Font, LayoutOpts, layout
+from pyxelxl.font import _image_as_ndarray
+from scipy.ndimage import gaussian_filter
 
 from genio.base import asset_path
 from genio.battle import CardBundle
-from scipy.ndimage import gaussian_filter
-from pyxelxl.font import _image_as_ndarray
 
 retro_font = Font(asset_path("retro-pixel-petty-5h.ttf"))
 retro_text = retro_font.specialize(font_size=5)
@@ -174,8 +174,6 @@ class DrawDeck:
         )
 
 
-
-
 @cache
 def perlin_noise(width: int, height: int, scale: float, replica: int = 0) -> np.ndarray:
     res = np.zeros((height, width), dtype=np.float32)
@@ -189,7 +187,6 @@ def perlin_noise(width: int, height: int, scale: float, replica: int = 0) -> np.
     return res
 
 
-
 @cache
 def perlin_noise_with_horizontal_gradient(
     width: int, height: int, scale: float, replica: int = 0
@@ -199,7 +196,9 @@ def perlin_noise_with_horizontal_gradient(
         for i in range(width):
             n1 = pyxel.noise(i * scale, j * scale * 1, replica)
             n2 = pyxel.noise(i * scale, j * scale * 1, replica + 17)
-            n3 = pyxel.noise(0.1 * math.atan2(n1, n2), 0.1 * np.sqrt(n1 ** 2 + n2 ** 2) * scale, replica)
+            n3 = pyxel.noise(
+                0.1 * math.atan2(n1, n2), 0.1 * np.sqrt(n1**2 + n2**2) * scale, replica
+            )
             res[j, i] = 0.5 * n3 + 2 * i / height - j / height
     res -= res.min()
     res /= res.max()
@@ -207,6 +206,7 @@ def perlin_noise_with_horizontal_gradient(
     res = spherize(res)
     res = np.clip(res, 0, 1)
     return res
+
 
 def spherize(a: np.ndarray) -> np.ndarray:
     h, w = a.shape
@@ -216,7 +216,7 @@ def spherize(a: np.ndarray) -> np.ndarray:
         for i in range(w):
             u, v = i - center[1], j - center[0]
             u, v = u / center[1], v / center[0]
-            r = np.sqrt(u ** 2 + v ** 2)
+            r = np.sqrt(u**2 + v**2)
             if r == 0:
                 res[j, i] = 0
             else:
@@ -234,6 +234,7 @@ def spherize(a: np.ndarray) -> np.ndarray:
                 res[j, i] = a[y, x]
     return res
 
+
 def mask_screen(
     mask: np.ndarray,
     threshold: float,
@@ -241,7 +242,7 @@ def mask_screen(
 ) -> None:
     if threshold >= 1.5:
         return
-    threshold = threshold ** 0.8
+    threshold = threshold**0.8
     screen = np.full_like(_image_as_ndarray(pyxel.screen), 254, dtype=np.uint8)
     dither_matrix = np.zeros((pyxel.height, pyxel.width), dtype=bool)
     # only true when x + y is 3 mod 4
@@ -254,6 +255,7 @@ def mask_screen(
     _image_as_ndarray(new_image)[:] = screen
     pyxel.blt(0, 0, new_image, 0, 0, new_image.width, new_image.height, 254)
 
+
 def mask_screen_out(
     mask: np.ndarray,
     threshold: float,
@@ -262,7 +264,7 @@ def mask_screen_out(
     if threshold >= 1.5:
         pyxel.cls(fill_color)
         return
-    threshold = threshold ** 0.8
+    threshold = threshold**0.8
     screen = np.full_like(_image_as_ndarray(pyxel.screen), 254, dtype=np.uint8)
     dither_matrix = np.zeros((pyxel.height, pyxel.width), dtype=bool)
     dither_matrix[::4, 3::4] = True

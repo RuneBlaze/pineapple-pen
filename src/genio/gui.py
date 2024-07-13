@@ -1118,7 +1118,7 @@ class MainScene(Scene):
 
     def add_popup(self, text: str, x: int, y: int, color: int):
         self.popups.append(Popup(text, x, y, color))
-    
+
     def request_next_scene(self) -> str | None:
         if pyxel.btnp(pyxel.KEY_Q):
             return "genio.scene_booster"

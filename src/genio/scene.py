@@ -1,20 +1,23 @@
 from __future__ import annotations
-from enum import Enum
+
 import imp
-from abc import ABC, abstractmethod
-from collections.abc import Callable
-from collections import Counter
 import importlib
+from abc import ABC, abstractmethod
+from collections import Counter, deque
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from enum import Enum
 
 import pyxel
 from structlog import get_logger
 
 from genio.base import WINDOW_HEIGHT, WINDOW_WIDTH, asset_path
-from genio.components import mask_screen, mask_screen_out, perlin_noise_with_horizontal_gradient
+from genio.components import (
+    mask_screen,
+    mask_screen_out,
+    perlin_noise_with_horizontal_gradient,
+)
 from genio.predef import refresh_predef
-from collections import deque
-
-from concurrent.futures import ThreadPoolExecutor
 
 logger = get_logger()
 
@@ -69,12 +72,15 @@ class AppState(Enum):
 
 class AppWithScenes:
     scenes: deque[Scene]
+
     def __init__(self, scene: Scene):
         self.scenes = deque()
         self.add_scene(scene)
         self.state = AppState.RUNNING
         self.state_timers = Counter()
-        self.noise = perlin_noise_with_horizontal_gradient(WINDOW_WIDTH, WINDOW_HEIGHT, 0.01)
+        self.noise = perlin_noise_with_horizontal_gradient(
+            WINDOW_WIDTH, WINDOW_HEIGHT, 0.01
+        )
         self.executor = ThreadPoolExecutor(1)
         self.futures = deque()
         pyxel.load(asset_path("sprites.pyxres"))
@@ -95,9 +101,14 @@ class AppWithScenes:
 
     def update(self):
         self.scenes[0].update()
-        if not self.futures and (next_scene := self.scenes[0].request_next_scene()) is not None:
+        if (
+            not self.futures
+            and (next_scene := self.scenes[0].request_next_scene()) is not None
+        ):
             if isinstance(next_scene, str):
-                fut = self.executor.submit(lambda: load_scene_from_module(importlib.import_module(next_scene)))
+                fut = self.executor.submit(
+                    lambda: load_scene_from_module(importlib.import_module(next_scene))
+                )
                 self.futures.append(fut)
             else:
                 raise NotImplementedError
