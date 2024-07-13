@@ -265,7 +265,6 @@ def mask_screen_out(
     threshold = threshold ** 0.8
     screen = np.full_like(_image_as_ndarray(pyxel.screen), 254, dtype=np.uint8)
     dither_matrix = np.zeros((pyxel.height, pyxel.width), dtype=bool)
-    # only true when x + y is 3 mod 4
     dither_matrix[::4, 3::4] = True
     screen[(mask < threshold + 0.1) & dither_matrix] = fill_color
     dither_matrix[::2, ::2] = True

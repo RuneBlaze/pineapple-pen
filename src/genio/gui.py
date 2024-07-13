@@ -990,9 +990,6 @@ class MainScene(Scene):
         self.sync_sprites(ev, *others)
 
     def update(self):
-        if pyxel.btnp(pyxel.KEY_Q):
-            pyxel.quit()
-
         if pyxel.btnp(pyxel.KEY_SPACE) and self.can_resolve_new_cards():
             self.play_selected()
 
@@ -1121,6 +1118,10 @@ class MainScene(Scene):
 
     def add_popup(self, text: str, x: int, y: int, color: int):
         self.popups.append(Popup(text, x, y, color))
+    
+    def request_next_scene(self) -> str | None:
+        if pyxel.btnp(pyxel.KEY_Q):
+            return "genio.scene_booster"
 
     def _draw_hearts_and_shields(self, x: int, y: int, hp: int, shield: int) -> None:
         icons = load_image("ui", "icons.png")

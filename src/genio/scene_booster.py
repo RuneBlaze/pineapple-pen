@@ -661,16 +661,10 @@ class BoosterPackScene(Scene):
         for spr in self.card_sprites:
             if spr.state == BoosterCardSpriteState.ACTIVE:
                 spr.set_state(BoosterCardSpriteState.DISAPPEARING)
-    
-    # def request_next_scene(self) -> Scene | None | str:
-    #     # print("Requesting next scene")
-    #     return super().request_next_scene()
 
     def request_next_scene(self) -> str | None:
-        # print("Requesting next scene")
         if pyxel.btnp(pyxel.KEY_Q):
-            print("Reloading scene")
-            return "genio.scene_booster"
+            return "genio.gui"
 
     def add_anim(
         self,

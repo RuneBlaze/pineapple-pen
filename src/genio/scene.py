@@ -14,6 +14,8 @@ from genio.components import mask_screen, mask_screen_out, perlin_noise_with_hor
 from genio.predef import refresh_predef
 from collections import deque
 
+from concurrent.futures import ThreadPoolExecutor
+
 logger = get_logger()
 
 
@@ -73,6 +75,8 @@ class AppWithScenes:
         self.state = AppState.RUNNING
         self.state_timers = Counter()
         self.noise = perlin_noise_with_horizontal_gradient(WINDOW_WIDTH, WINDOW_HEIGHT, 0.01)
+        self.executor = ThreadPoolExecutor(1)
+        self.futures = deque()
         pyxel.load(asset_path("sprites.pyxres"))
         pyxel.run(self.update, self.draw)
 
@@ -91,19 +95,24 @@ class AppWithScenes:
 
     def update(self):
         self.scenes[0].update()
-        if (next_scene := self.scenes[0].request_next_scene()) is not None:
+        if not self.futures and (next_scene := self.scenes[0].request_next_scene()) is not None:
             if isinstance(next_scene, str):
-                next_scene = load_scene_from_module(importlib.import_module(next_scene))
-            self.queue_scene(next_scene)
-        if pyxel.btnp(pyxel.KEY_R) and self.state == AppState.RUNNING:
-            self.scenes[0].on_request_reload()
-        if len(self.scenes) > 1 and self.state == AppState.RUNNING:
-            self.set_state(AppState.TRANSITION_OUT)
+                fut = self.executor.submit(lambda: load_scene_from_module(importlib.import_module(next_scene)))
+                self.futures.append(fut)
+            else:
+                raise NotImplementedError
+        if self.futures and self.futures[0].done():
+            self.queue_scene(self.futures.popleft().result())
+        if self.state == AppState.RUNNING:
+            if pyxel.btnp(pyxel.KEY_R):
+                self.scenes[0].on_request_reload()
+            if self.futures:
+                self.set_state(AppState.TRANSITION_OUT)
         self.state_timers[self.state] += 1
 
         match self.state:
             case AppState.TRANSITION_OUT:
-                if self.state_timers[self.state] >= 90:
+                if self.state_timers[self.state] >= 90 and not self.futures:
                     self.scenes.popleft()
                     self.set_state(AppState.TRANSITION_IN)
             case AppState.TRANSITION_IN:
