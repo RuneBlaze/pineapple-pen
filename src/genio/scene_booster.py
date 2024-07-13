@@ -357,7 +357,7 @@ class BoosterPack:
         if self.state == BoosterPackState.CLOSED:
             mx, my = pyxel.mouse_x, pyxel.mouse_y
             if (
-                self.x < mx < self.x + self.image.width
+                self.x + 10 < mx < self.x + self.image.width - 10
                 and self.y < my < self.y + self.image.height
             ):
                 if not self.hovering:

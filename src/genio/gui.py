@@ -576,7 +576,8 @@ def camera_shift(x: int, y: int):
     pyxel.camera(x + base_coord[0], y + base_coord[1])
     camera_stack.append((x, y))
     yield
-    camera_stack.pop()
+    if camera_stack:
+        camera_stack.pop()
     pyxel.camera(base_coord[0], base_coord[1])
 
 
@@ -1172,7 +1173,8 @@ class MainScene(Scene):
         pyxel.pal(3, 5)
         pyxel.pal(11, 12)
         buffer_as_arr[:] = 0
-        pyxel.blt(0, 0, self.background_video.current_image, 0, 0, 427, 240, 0)
+        self.background_video.draw_image()
+        # pyxel.blt(0, 0, self.background_video.current_image, 0, 0, 427, 240, 0)
         t = pytweening.easeOutCirc(min(self.background_video.actual_timer / 500.0, 1))
         buffer_as_arr[m < t] = 254
         pyxel.pal()

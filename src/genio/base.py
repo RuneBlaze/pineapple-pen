@@ -1,4 +1,6 @@
 import os
+from collections import Counter
+from enum import Enum
 from functools import cache
 
 import numpy as np
@@ -15,6 +17,11 @@ def asset_path(*args: str):
     return os.path.join(WORKING_DIR, "assets", *args)
 
 
+class VideoState(Enum):
+    PLAYING = 1
+    REWINDING = 2
+
+
 class Video:
     def __init__(self, *args: str) -> None:
         self.raw = np.load(asset_path(*args))
@@ -26,17 +33,38 @@ class Video:
             buffer_to_image(self.generate_mask(thres))
             for thres in [0.7, 0.6, 0.8, 0.5, 0.3]
         ]
+        self.state = VideoState.PLAYING
+        self.state_timers = Counter()
         self.appearance = np.random.rand(WINDOW_HEIGHT, WINDOW_WIDTH)
 
-    def update(self):
-        self.actual_timer += 1
-        self.timer += self.actual_timer % 3
-        if self.timer == self.num_frames:
-            self.timer = 0
+    def update(self) -> None:
+        if self.state == VideoState.PLAYING:
+            self.actual_timer += 1
+            self.timer += self.actual_timer % 3
+            if self.timer == self.num_frames:
+                self.timer = 0
+                self.state = VideoState.REWINDING
+                self.state_timers[self.state] = 0
+        else:
+            if self.state_timers[self.state] >= 30:
+                self.state = VideoState.PLAYING
+                self.state_timers[self.state] = 0
+        self.state_timers[self.state] += 1
 
     @property
     def current_image(self):
         return self.images[self.timer]
+
+    def draw_image(self) -> None:
+        match self.state:
+            case VideoState.PLAYING:
+                pyxel.blt(0, 0, self.current_image, 0, 0, 427, 240, 0)
+            case VideoState.REWINDING:
+                pyxel.blt(0, 0, self.images[-1], 0, 0, 427, 240, 0)
+                dither_factor = min(self.state_timers[self.state] / 30, 1)
+                pyxel.dither(dither_factor)
+                pyxel.blt(0, 0, self.images[self.timer], 0, 0, 427, 240, 0)
+                pyxel.dither(1.0)
 
     def generate_mask(self, threshold) -> np.ndarray:
         mask = np.zeros((WINDOW_HEIGHT, WINDOW_WIDTH), dtype=np.float32)
