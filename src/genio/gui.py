@@ -501,11 +501,18 @@ def horizontal_gradient(x, y, w, h, c0, c1):
     pyxel.dither(1.0)
 
 
+dithering_stack = []
+
+
 @contextlib.contextmanager
 def dithering(f: float):
-    pyxel.dither(f)
+    global dithering_stack
+    current_dither = dithering_stack[-1] if dithering_stack else 1.0
+    dithering_stack.append(f * current_dither)
+    pyxel.dither(f * current_dither)
     yield
-    pyxel.dither(1.0)
+    dithering_stack.pop()
+    pyxel.dither(dithering_stack[-1] if dithering_stack else 1.0)
 
 
 class Tooltip:

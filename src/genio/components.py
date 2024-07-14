@@ -22,6 +22,7 @@ display_text = Font(asset_path("DMSerifDisplay-Regular.ttf")).specialize(
     font_size=18, threshold=100
 )
 cute_text = Font(asset_path("retro-pixel-cute-prop.ttf")).specialize(font_size=11)
+arcade_text = Font(asset_path("retro-pixel-arcade.ttf")).specialize(font_size=8)
 
 
 def shadowed_text(

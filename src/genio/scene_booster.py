@@ -1,13 +1,14 @@
 import itertools
 import math
 import textwrap
-from collections import defaultdict, deque
+from collections import Counter, defaultdict, deque
 from concurrent.futures import Future
 from concurrent.futures.thread import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import Annotated
+from typing import Annotated, TypeAlias
 
+import numpy as np
 import pytweening
 import pyxel
 from pyxelxl import blt_rot, layout
@@ -16,7 +17,14 @@ from typing_extensions import assert_never
 from genio.base import WINDOW_HEIGHT, WINDOW_WIDTH, load_image
 from genio.battle import setup_battle_bundle
 from genio.card import Card
-from genio.components import DrawDeck, blt_burning, cute_text, perlin_noise, retro_text
+from genio.components import (
+    DrawDeck,
+    arcade_text,
+    blt_burning,
+    cute_text,
+    perlin_noise,
+    retro_text,
+)
 from genio.constants import CARD_HEIGHT, CARD_WIDTH
 from genio.core.base import promptly
 from genio.gui import (
@@ -29,6 +37,7 @@ from genio.gui import (
 from genio.layout import layout_center_for_n
 from genio.ps import Anim, HasPos
 from genio.scene import Scene
+from genio.scene_stages import draw_lush_background
 from genio.semantic_search import search_closest_document
 from genio.tween import Instant, Mutator, Tweener
 
@@ -297,28 +306,29 @@ class BoosterPack:
         return self.x + self.image.width // 2, self.y + self.image.height // 2
 
     def draw(self):
-        match self.state:
-            case BoosterPackState.CLOSED | BoosterPackState.OPENING:
-                blt_rot(
-                    self.x,
-                    self.y,
-                    self.image,
-                    0,
-                    0,
-                    self.image.width,
-                    self.image.height,
-                    colkey=254,
-                    rot=self.angle,
-                )
-            case BoosterPackState.OPENED:
-                blt_burning(
-                    self.x,
-                    self.y,
-                    self.image,
-                    self.noise,
-                    self.state_timers[self.state],
-                    "out",
-                )
+        with dithering(1.0):
+            match self.state:
+                case BoosterPackState.CLOSED | BoosterPackState.OPENING:
+                    blt_rot(
+                        self.x,
+                        self.y,
+                        self.image,
+                        0,
+                        0,
+                        self.image.width,
+                        self.image.height,
+                        colkey=254,
+                        rot=self.angle,
+                    )
+                case BoosterPackState.OPENED:
+                    blt_burning(
+                        self.x,
+                        self.y,
+                        self.image,
+                        self.noise,
+                        self.state_timers[self.state],
+                        "out",
+                    )
         self.draw_label()
 
     def draw_label(self) -> None:
@@ -439,6 +449,70 @@ class BoosterPack:
 
 
 @dataclass
+class ColorScheme:
+    primary: int
+    secondary: int
+
+
+COLOR_SCHEME_PRIMARY = ColorScheme(3, 11)
+COLOR_SCHEME_SECONDARY = ColorScheme(4, 8)
+
+
+Vec2: TypeAlias = np.ndarray
+
+
+def vec2(x: int, y: int) -> Vec2:
+    return np.array([x, y], dtype=int)
+
+
+def is_mouse_in_rect(xy: Vec2, wh: Vec2) -> bool:
+    return (
+        xy[0] <= pyxel.mouse_x
+        and pyxel.mouse_x < xy[0] + wh[0]
+        and xy[1] <= pyxel.mouse_y
+        and pyxel.mouse_y < xy[1] + wh[1]
+    )
+
+
+@dataclass
+class ButtonElement:
+    text: str
+    color_scheme: ColorScheme
+    position: Vec2
+
+    hovering: bool = False
+    btnp: bool = False
+
+    def draw_at(self) -> Vec2:
+        xy = self.position
+        button_width = 55
+        c1, c2 = self.color_scheme.primary, self.color_scheme.secondary
+        if self.hovering:
+            draw_rounded_rectangle(*(xy + vec2(0, 1)), button_width, 16, 4, c1)
+            draw_rounded_rectangle(*xy, button_width, 16, 4, c1)
+            if not pyxel.btn(pyxel.MOUSE_BUTTON_LEFT):
+                with dithering(0.5):
+                    draw_rounded_rectangle(*xy, button_width, 16, 4, c2)
+            cute_text(*xy, self.text, 7, layout=layout(w=button_width, ha="center"))
+        else:
+            draw_rounded_rectangle(*(xy + vec2(0, 1)), button_width, 16, 4, c1)
+            draw_rounded_rectangle(*xy, button_width, 16, 4, c2)
+            cute_text(*xy, self.text, 7, layout=layout(w=button_width, ha="center"))
+        return vec2(button_width + 2, 16)
+
+    def update(self) -> None:
+        xy = self.position
+        if is_mouse_in_rect(xy, vec2(55, 16)):
+            self.hovering = True
+            if pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT):
+                self.btnp = True
+                return
+        else:
+            self.hovering = False
+        self.btnp = False
+
+
+@dataclass
 class HelpBoxContents:
     title: str
     description: str
@@ -460,21 +534,126 @@ class HelpBoxContents:
                 pyxel.text(x_offset + 6, 173 + 10 + i * 7, l, 7)
 
 
+def draw_tiled(img: pyxel.Image) -> None:
+    w, h = img.width, img.height
+    for x, y in itertools.product(
+        range(0, WINDOW_WIDTH, w), range(0, WINDOW_HEIGHT, h)
+    ):
+        pyxel.blt(x, y, img, 0, 0, w, h, 1)
+
+
+@dataclass
+class ScoreItem:
+    name: str
+    add_mult: float
+
+    x: int
+    y: int
+    opacity: float
+
+    label: str | None = None
+
+    tweener: Tweener = field(default_factory=Tweener)
+
+    def draw(self) -> None:
+        label_width = 80
+        mult = self.opacity
+        with dithering(0.5 * mult):
+            draw_rounded_rectangle(self.x, self.y, label_width, 10, 3, 0)
+        with dithering(1.0 * mult):
+            retro_text(
+                self.x + 2,
+                self.y + 1,
+                self.name,
+                7,
+                layout=layout(w=label_width - 4, h=10, ha="left"),
+            )
+            monetary_value = f"{self.add_mult:04.2f}"
+            retro_text(
+                self.x + 2,
+                self.y + 1,
+                f"${monetary_value}" if not self.label else self.label,
+                7,
+                layout=layout(w=label_width - 4, h=10, ha="right"),
+            )
+
+    def fade_in(self) -> None:
+        self.opacity = 0.0
+        self.tweener.append(
+            itertools.zip_longest(
+                Mutator(18, pytweening.easeInCirc, self, "opacity", 1.0),
+                Mutator(18, pytweening.easeInCirc, self, "y", self.y + 3),
+            )
+        )
+
+    def update(self) -> None:
+        self.tweener.update()
+
+
+class BoosterPackSceneState(Enum):
+    RESULTS = 0
+    SHOP = 1
+    PRE_RESULTS = 2
+    PRE_SHOP = 3
+
+    def is_results_like(self) -> bool:
+        return self in [
+            BoosterPackSceneState.RESULTS,
+            BoosterPackSceneState.PRE_RESULTS,
+        ]
+
+    def is_shop_like(self) -> bool:
+        return self in [BoosterPackSceneState.SHOP, BoosterPackSceneState.PRE_SHOP]
+
+
 class BoosterPackScene(Scene):
     card_sprites: list[BoosterCardSprite]
     chosen_pack: BoosterPack | None
     mailbox: deque[Future[list[Card]]]
     check_mail_signal = deque[BoosterPack]
 
+    booster_packs: list[BoosterPack]
+
     def __init__(self) -> None:
         super().__init__()
 
         self.framing = ResolvingFraming(self)
+        self.money_accumulated = 0.0
 
         self.booster_packs = []
-        self.booster_packs.append(BoosterPack(10, 10, BoosterPackType.SPY_THEMED))
         self.booster_packs.append(
-            BoosterPack(120, 10, BoosterPackType.STANDARDIZED_TEST_THEMED)
+            BoosterPack(300 + 17, 47 + 30, BoosterPackType.SPY_THEMED)
+        )
+        self.booster_packs.append(
+            BoosterPack(230 + 17, 47 + 30, BoosterPackType.STANDARDIZED_TEST_THEMED)
+        )
+
+        self.state_timers = Counter()
+
+        self.tweener = Tweener()
+
+        y_offset = 80
+        x_offset = 260
+        self.score_items = [
+            ScoreItem("Overkill", 0.5, x_offset, 0 + y_offset, 1.0),
+            ScoreItem("Combo", 0.2, x_offset + 20, 12 + y_offset, 1.0),
+            ScoreItem("Total", 0.2, x_offset, 12 + 12 + y_offset, 1.0, "$12.00"),
+        ]
+
+        for i, item in enumerate(self.score_items):
+            item.opacity = 0.0
+            item.y -= 3
+            self.tweener.append(
+                itertools.chain(
+                    range(3),
+                    Instant(item.fade_in),
+                )
+            )
+        self.tweener.append(
+            itertools.chain(
+                range(3),
+                Mutator(60, pytweening.easeInOutCubic, self, "money_accumulated", 12.0),
+            )
         )
 
         self.card_sprites = []
@@ -492,6 +671,10 @@ class BoosterPackScene(Scene):
         self.mailbox = deque()
         self.check_mail_signal = deque()
         self.executor = ThreadPoolExecutor(2)
+        self.state = BoosterPackSceneState.PRE_RESULTS
+        self.next_button = ButtonElement("Next", ColorScheme(0, 1), vec2(320, 180))
+        self.results_fade = 0.0
+        self.shop_fade_in = 0.0
 
     def pump_help_box(self, title: str, description: str) -> None:
         if title != self.help_box.title or description != self.help_box.description:
@@ -504,13 +687,33 @@ class BoosterPackScene(Scene):
     def update(self):
         self.framing.update()
         self.tick_check_mail()
+        self.tweener.update()
+        self.next_button.update()
+        if self.next_button.btnp:
+            self.state = BoosterPackSceneState.PRE_SHOP
+            for score_item in self.score_items:
+                score_item.tweener.append(
+                    Mutator(18, pytweening.easeInCirc, score_item, "opacity", 0.0)
+                )
+            self.tweener.append(
+                itertools.chain(
+                    Mutator(18, pytweening.easeInCirc, self, "results_fade", 1.0),
+                )
+            )
+            self.tweener.append(
+                Mutator(18, pytweening.easeInCirc, self, "shop_fade_in", 1.0)
+            )
+
         aggregate_events = []
+        self.state_timers[self.state] += 1
         for spr in self.card_sprites:
             spr.update()
             aggregate_events.extend(spr.events)
             if spr.hovering:
                 self.pump_help_box(spr.card.name, spr.card.description or "")
             spr.events.clear()
+        for score_item in self.score_items:
+            score_item.update()
         for event in aggregate_events:
             match event:
                 case "chosen":
@@ -531,6 +734,13 @@ class BoosterPackScene(Scene):
         for anim in self.anims:
             anim.update()
         self.anims = [anim for anim in self.anims if not anim.dead]
+        self.update_booster_packs()
+        self.help_box_energy = max(self.help_box_energy - 0.1, 0.0)
+        self.timer += 1
+
+    def update_booster_packs(self):
+        if self.state.is_results_like():
+            return
         any_booster_pack_opening = any(
             pack.state != BoosterPackState.CLOSED for pack in self.booster_packs
         )
@@ -564,8 +774,6 @@ class BoosterPackScene(Scene):
         else:
             self.info_box_energy = max(self.info_box_energy - 0.1, 0.0)
         self.chosen_pack_dup = self.chosen_pack or self.chosen_pack_dup
-        self.help_box_energy = max(self.help_box_energy - 0.1, 0.0)
-        self.timer += 1
 
     def tick_check_mail(self):
         if self.check_mail_signal and self.mailbox[0].done():
@@ -574,19 +782,59 @@ class BoosterPackScene(Scene):
             self.chosen_pack = pack
 
     def draw(self):
-        pyxel.cls(9)
+        draw_lush_background()
+        pyxel.blt(
+            50,
+            50,
+            img := load_image("ui", "window-image.png"),
+            0,
+            0,
+            img.width,
+            img.height,
+            5,
+        )
         self.draw_deck.draw(10, 190)
-        for pack in self.booster_packs:
-            pack.draw()
-        for i, spr in enumerate(self.card_sprites):
-            spr.draw()
-        self.draw_deck.draw_card_label(10, 190)
+        with dithering(0.5 * (1 - self.results_fade)):
+            # draw_rounded_rectangle(200, 40, 190, 160, 5, col=1)
+            draw_rounded_rectangle(250, 40, 140, 160, 5, col=1)
+        c1 = 7
+        w = 100
+        x = 270
+        y = 40
+        with dithering(1.0 - self.results_fade):
+            arcade_text(x, y + 5, "1-1", c1, layout=layout(w=w, ha="center"))
+            retro_text(x, y + 20, "Beginnings", c1, layout=layout(w=w, ha="center"))
+
+        self.draw_results()
         self.draw_info_box()
+
+        if not self.state.is_results_like():
+            with dithering(self.shop_fade_in):
+                with camera_shift(-3 * (1 - self.shop_fade_in), 0):
+                    for pack in self.booster_packs:
+                        pack.draw()
+
+                    for i, spr in enumerate(self.card_sprites):
+                        spr.draw()
+
         with camera_shift(0, min(self.help_box_energy, 1) * 3):
             self.help_box.draw(min(self.help_box_energy, 1))
         Anim.draw()
         self.framing.draw()
+
         self.draw_crosshair(pyxel.mouse_x, pyxel.mouse_y)
+
+    def draw_results(self):
+        with dithering(1.0 - self.results_fade):
+            pyxel.text(270, 40 + 20 + 10, "- Stage Cleared -", 7)
+
+            formatted_money = f"${self.money_accumulated:04.2f}"
+            arcade_text(270, 183, formatted_money, 7)
+            self.next_button.draw_at()
+            self.draw_deck.draw_card_label(10, 190)
+
+        for item in self.score_items:
+            item.draw()
 
     def draw_info_box(self):
         if not self.chosen_pack_dup:
