@@ -5,7 +5,6 @@ import itertools
 import textwrap
 from collections import Counter
 from concurrent.futures.thread import ThreadPoolExecutor
-from dataclasses import dataclass
 from enum import Enum
 
 import pytweening
@@ -17,11 +16,13 @@ from genio.components import (
     arcade_text,
     retro_text,
 )
+from genio.gamestate import StageDescription
 from genio.gui import dithering
 from genio.layout import pingpong
 from genio.ps import Anim
 from genio.scene import Scene
 from genio.tween import Mutator, Tweener
+from genio.gamestate import game_state
 
 
 def draw_tiled(img: pyxel.Image) -> None:
@@ -67,23 +68,6 @@ class Camera:
         pyxel.camera(self.x, self.y)
         yield
         pyxel.camera(0, 0)
-
-
-@dataclass(frozen=True, eq=True)
-class StageDescription:
-    name: str
-    subtitle: str
-    lore: str
-    danger_level: int
-
-    @staticmethod
-    def default() -> StageDescription:
-        return StageDescription(
-            "1-2",
-            "Beneath the Soil",
-            "Beneath the sturdy bamboo, even sturdier roots spread out. Only foolish humans and youkai can see nothing but the surface.",
-            3,
-        )
 
 
 class StageInfoBox:

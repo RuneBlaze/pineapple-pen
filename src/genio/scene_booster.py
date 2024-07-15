@@ -40,6 +40,7 @@ from genio.scene import Scene
 from genio.scene_stages import draw_lush_background
 from genio.semantic_search import search_closest_document
 from genio.tween import Instant, Mutator, Tweener
+from genio.gamestate import game_state
 
 
 @dataclass
@@ -280,6 +281,9 @@ class BoosterCardSprite:
                 )
             self.hovering = False
 
+def draw_dotted_vertical_line(x: int, y: int, height: int, segment_length: int, col: int) -> None:
+    for i in range(0, height, segment_length):
+        pyxel.line(x, y + i, x, y + i + segment_length - 4, col)
 
 class BoosterPack:
     def __init__(self, x: int, y: int, pack_type: BoosterPackType) -> None:
@@ -367,7 +371,7 @@ class BoosterPack:
         if self.state == BoosterPackState.CLOSED:
             mx, my = pyxel.mouse_x, pyxel.mouse_y
             if (
-                self.x + 10 < mx < self.x + self.image.width - 10
+                self.x + 13 < mx < self.x + self.image.width - 13
                 and self.y < my < self.y + self.image.height
             ):
                 if not self.hovering:
@@ -479,6 +483,7 @@ class ButtonElement:
     text: str
     color_scheme: ColorScheme
     position: Vec2
+    secondary_text: str | None = None
 
     hovering: bool = False
     btnp: bool = False
@@ -493,12 +498,24 @@ class ButtonElement:
             if not pyxel.btn(pyxel.MOUSE_BUTTON_LEFT):
                 with dithering(0.5):
                     draw_rounded_rectangle(*xy, button_width, 16, 4, c2)
-            cute_text(*xy, self.text, 7, layout=layout(w=button_width, ha="center"))
+            self.draw_text_centered(xy, button_width)
         else:
             draw_rounded_rectangle(*(xy + vec2(0, 1)), button_width, 16, 4, c1)
             draw_rounded_rectangle(*xy, button_width, 16, 4, c2)
-            cute_text(*xy, self.text, 7, layout=layout(w=button_width, ha="center"))
+            self.draw_text_centered(xy, button_width)
         return vec2(button_width + 2, 16)
+
+    def draw_text_centered(self, xy, button_width):
+        if self.secondary_text == "":
+            x_offset = (55 - 3 * len(self.text)) // 2
+            pyxel.text(xy[0] + x_offset, xy[1] + 4, self.text, 7)
+        elif self.secondary_text is None:
+            cute_text(*xy, self.text, 7, layout=layout(w=button_width, ha="center"))
+        else:
+            x_offset = (55 - 3 * len(self.text)) // 2
+            pyxel.text(xy[0] + x_offset, xy[1] + 2, self.text, 7)
+            retro_text(xy[0], xy[1] + 7, self.secondary_text, 7, layout=layout(w=button_width, ha="center"))
+
 
     def update(self) -> None:
         xy = self.position
@@ -672,7 +689,12 @@ class BoosterPackScene(Scene):
         self.check_mail_signal = deque()
         self.executor = ThreadPoolExecutor(2)
         self.state = BoosterPackSceneState.PRE_RESULTS
-        self.next_button = ButtonElement("Next", ColorScheme(0, 1), vec2(320, 180))
+        self.to_shop()
+        self.next_button = ButtonElement("Next", ColorScheme(0, 1), vec2(320, 180), "")
+        self.shop_buttons = [
+            ButtonElement("Reroll", COLOR_SCHEME_SECONDARY, vec2(320 - 55 - 1, 173), "$3"),
+            ButtonElement("Next", COLOR_SCHEME_PRIMARY, vec2(320 + 1, 173),""),
+        ]
         self.results_fade = 0.0
         self.shop_fade_in = 0.0
 
@@ -690,19 +712,10 @@ class BoosterPackScene(Scene):
         self.tweener.update()
         self.next_button.update()
         if self.next_button.btnp:
-            self.state = BoosterPackSceneState.PRE_SHOP
-            for score_item in self.score_items:
-                score_item.tweener.append(
-                    Mutator(18, pytweening.easeInCirc, score_item, "opacity", 0.0)
-                )
-            self.tweener.append(
-                itertools.chain(
-                    Mutator(18, pytweening.easeInCirc, self, "results_fade", 1.0),
-                )
-            )
-            self.tweener.append(
-                Mutator(18, pytweening.easeInCirc, self, "shop_fade_in", 1.0)
-            )
+            self.to_shop()
+        if self.state.is_shop_like():
+            for button in self.shop_buttons:
+                button.update()
 
         aggregate_events = []
         self.state_timers[self.state] += 1
@@ -737,6 +750,21 @@ class BoosterPackScene(Scene):
         self.update_booster_packs()
         self.help_box_energy = max(self.help_box_energy - 0.1, 0.0)
         self.timer += 1
+
+    def to_shop(self):
+        self.state = BoosterPackSceneState.PRE_SHOP
+        for score_item in self.score_items:
+            score_item.tweener.append(
+                    Mutator(18, pytweening.easeInCirc, score_item, "opacity", 0.0)
+                )
+        self.tweener.append(
+                itertools.chain(
+                    Mutator(18, pytweening.easeInCirc, self, "results_fade", 1.0),
+                )
+            )
+        self.tweener.append(
+                Mutator(18, pytweening.easeInCirc, self, "shop_fade_in", 1.0)
+            )
 
     def update_booster_packs(self):
         if self.state.is_results_like():
@@ -795,27 +823,20 @@ class BoosterPackScene(Scene):
         )
         self.draw_deck.draw(10, 190)
         with dithering(0.5 * (1 - self.results_fade)):
-            # draw_rounded_rectangle(200, 40, 190, 160, 5, col=1)
             draw_rounded_rectangle(250, 40, 140, 160, 5, col=1)
         c1 = 7
         w = 100
         x = 270
         y = 40
+        stage = game_state.stage
         with dithering(1.0 - self.results_fade):
-            arcade_text(x, y + 5, "1-1", c1, layout=layout(w=w, ha="center"))
-            retro_text(x, y + 20, "Beginnings", c1, layout=layout(w=w, ha="center"))
-
+            arcade_text(x, y + 5, stage.name, c1, layout=layout(w=w, ha="center"))
+            retro_text(x, y + 20, stage.subtitle, c1, layout=layout(w=w, ha="center"))
         self.draw_results()
         self.draw_info_box()
 
         if not self.state.is_results_like():
-            with dithering(self.shop_fade_in):
-                with camera_shift(-3 * (1 - self.shop_fade_in), 0):
-                    for pack in self.booster_packs:
-                        pack.draw()
-
-                    for i, spr in enumerate(self.card_sprites):
-                        spr.draw()
+            self.draw_shop()
 
         with camera_shift(0, min(self.help_box_energy, 1) * 3):
             self.help_box.draw(min(self.help_box_energy, 1))
@@ -823,6 +844,36 @@ class BoosterPackScene(Scene):
         self.framing.draw()
 
         self.draw_crosshair(pyxel.mouse_x, pyxel.mouse_y)
+
+    def draw_shop(self):
+        with dithering(self.shop_fade_in):
+            with camera_shift(-3 * (1 - self.shop_fade_in), 0):
+                self._draw_shop_inner()
+
+    def _draw_shop_inner(self):
+        stage = game_state.stage
+        c1 = 7
+        w = 100
+        x = 270
+        y = 40
+        with dithering(0.5):
+            draw_rounded_rectangle(250, 40, 140, 160, 5, col=1)
+        arcade_text(x, y + 5, "Shop", c1, layout=layout(w=w, ha="center"))
+        retro_text(x, y + 20, stage.subtitle, c1, layout=layout(w=w, ha="center"))
+        with dithering(0.5):
+            sw = 12
+            draw_rounded_rectangle(250 + sw, 40 + 40, 140 - sw * 2, 73, 5, col=0)
+            draw_dotted_vertical_line(250 + sw + (140 - sw * 2) // 2, 40 + 40 + 20, 73 - 40, 8, col=7)
+        
+        # ButtonElement("Reroll", ColorScheme(0, 1), vec2(320 - 55 - 1, 173), "$3").draw_at()
+        # ButtonElement("Next", ColorScheme(0, 1), vec2(320 + 1, 173),"").draw_at()
+        for button in self.shop_buttons:
+            button.draw_at()
+
+        for pack in self.booster_packs:
+            pack.draw()
+        for i, spr in enumerate(self.card_sprites):
+            spr.draw()
 
     def draw_results(self):
         with dithering(1.0 - self.results_fade):

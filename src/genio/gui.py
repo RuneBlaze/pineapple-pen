@@ -511,7 +511,8 @@ def dithering(f: float):
     dithering_stack.append(f * current_dither)
     pyxel.dither(f * current_dither)
     yield
-    dithering_stack.pop()
+    if dithering_stack:
+        dithering_stack.pop()
     pyxel.dither(dithering_stack[-1] if dithering_stack else 1.0)
 
 

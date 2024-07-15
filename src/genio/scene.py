@@ -72,6 +72,7 @@ class AppState(Enum):
 
 class AppWithScenes:
     scenes: deque[Scene]
+    screenshot: pyxel.Image | None
 
     def __init__(self, scene: Scene):
         self.scenes = deque()
@@ -85,6 +86,8 @@ class AppWithScenes:
         self.futures = deque()
         pyxel.load(asset_path("sprites.pyxres"))
         pyxel.run(self.update, self.draw)
+
+        self.screenshot = None
 
     def add_scene(self, scene: Scene):
         self.scenes.append(scene)
@@ -105,13 +108,21 @@ class AppWithScenes:
             not self.futures
             and (next_scene := self.scenes[0].request_next_scene()) is not None
         ):
-            if isinstance(next_scene, str):
-                fut = self.executor.submit(
-                    lambda: load_scene_from_module(importlib.import_module(next_scene))
-                )
-                self.futures.append(fut)
-            else:
-                raise NotImplementedError
+            match next_scene:
+                case (next_scene, fade_image) if isinstance(next_scene, str):
+                    self.screenshot = fade_image
+                    fut = self.executor.submit(
+                        lambda: load_scene_from_module(importlib.import_module(next_scene))
+                    )
+                    self.futures.append(fut)
+                case next_scene if isinstance(next_scene, str):
+                    fut = self.executor.submit(
+                        lambda: load_scene_from_module(importlib.import_module(next_scene))
+                    )
+                    self.screenshot = None
+                    self.futures.append(fut)
+                case _:
+                    raise NotImplementedError
         if self.futures and self.futures[0].done():
             self.queue_scene(self.futures.popleft().result())
         if self.state == AppState.RUNNING:
@@ -129,11 +140,24 @@ class AppWithScenes:
             case AppState.TRANSITION_IN:
                 if self.state_timers[self.state] >= 90:
                     self.set_state(AppState.RUNNING)
+                    self.screenshot = None
 
     def draw(self):
         self.scenes[0].draw()
         timer = self.state_timers[self.state]
         if self.state == AppState.TRANSITION_OUT:
-            mask_screen_out(self.noise, timer / 60, 0)
+            if self.screenshot:
+                opacity = 1 - min(timer / 60, 1)
+                pyxel.dither(opacity)
+                pyxel.blt(0, 0, self.screenshot, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
+                pyxel.dither(1.0)
+            else:
+                mask_screen_out(self.noise, timer / 60, 0)
         elif self.state == AppState.TRANSITION_IN:
-            mask_screen(self.noise, timer / 60, 0)
+            if self.screenshot:
+                opacity = min(timer / 60, 1)
+                pyxel.dither(opacity)
+                pyxel.blt(0, 0, self.screenshot, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
+                pyxel.dither(1.0)
+            else:
+                mask_screen(self.noise, timer / 60, 0)
