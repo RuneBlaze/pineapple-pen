@@ -45,6 +45,26 @@ from genio.tween import Instant, Mutator, Tweener
 
 
 @dataclass
+class ScoreItems:
+    items: Annotated[list[dict], ""]
+
+@promptly
+def score_item(
+    base_money: float,
+    battle_logs: list[str]
+) -> ScoreItems:
+    """\
+    Calculate the score for the player based on the battle logs.
+
+    The score is based on the player's performance in the battle. The player
+    will receive a monetary reward based on the score.
+
+    The battle logs contain the events that happened during the battle.
+
+    {{ formatting_instructions }}
+    """
+
+@dataclass
 class GenerateSATFlashCardResult:
     """A set of precisely 5 flashcards for SAT preparation."""
 
