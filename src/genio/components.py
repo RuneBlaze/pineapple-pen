@@ -276,3 +276,9 @@ def mask_screen_out(
     new_image = pyxel.Image(*screen.shape[::-1])
     _image_as_ndarray(new_image)[:] = screen
     pyxel.blt(0, 0, new_image, 0, 0, new_image.width, new_image.height, 254)
+
+
+def copy_image(image: pyxel.Image) -> pyxel.Image:
+    new_image = pyxel.Image(image.width, image.height)
+    _image_as_ndarray(new_image)[:] = _image_as_ndarray(image)
+    return new_image

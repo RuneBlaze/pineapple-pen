@@ -7,6 +7,7 @@ from collections import Counter, deque
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
+from pyxelxl.font import _image_as_ndarray
 
 import pyxel
 from structlog import get_logger
@@ -84,10 +85,14 @@ class AppWithScenes:
         )
         self.executor = ThreadPoolExecutor(1)
         self.futures = deque()
+        self.all_black = pyxel.Image(WINDOW_WIDTH, WINDOW_HEIGHT)
+        _image_as_ndarray(self.all_black)[:] = 0
+        self.screenshot = None
+
+        
         pyxel.load(asset_path("sprites.pyxres"))
         pyxel.run(self.update, self.draw)
-
-        self.screenshot = None
+        
 
     def add_scene(self, scene: Scene):
         self.scenes.append(scene)
@@ -147,17 +152,19 @@ class AppWithScenes:
         timer = self.state_timers[self.state]
         if self.state == AppState.TRANSITION_OUT:
             if self.screenshot:
-                opacity = 1 - min(timer / 60, 1)
+                opacity = min(timer / 60, 1)
                 pyxel.dither(opacity)
                 pyxel.blt(0, 0, self.screenshot, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
+                pyxel.blt(0, 0, self.all_black, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0)
                 pyxel.dither(1.0)
             else:
                 mask_screen_out(self.noise, timer / 60, 0)
         elif self.state == AppState.TRANSITION_IN:
             if self.screenshot:
-                opacity = min(timer / 60, 1)
+                opacity = 1 - min(timer / 60, 1)
                 pyxel.dither(opacity)
                 pyxel.blt(0, 0, self.screenshot, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
+                pyxel.blt(0, 0, self.all_black, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, 0)
                 pyxel.dither(1.0)
             else:
                 mask_screen(self.noise, timer / 60, 0)

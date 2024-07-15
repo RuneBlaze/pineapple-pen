@@ -232,7 +232,7 @@ class StageSelectScene(Scene):
             MapMarker(0, 100, cam, stage_descriptions[1]),
             MapMarker(150, 150, cam, stage_descriptions[2]),
         ]
-        self.camera.follow = self.map_markers[0]
+        # self.camera.follow = self.map_markers[0]
 
         self.info_box = StageInfoBox()
 

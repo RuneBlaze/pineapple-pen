@@ -21,6 +21,7 @@ from genio.components import (
     DrawDeck,
     arcade_text,
     blt_burning,
+    copy_image,
     cute_text,
     perlin_noise,
     retro_text,
@@ -689,7 +690,7 @@ class BoosterPackScene(Scene):
         self.check_mail_signal = deque()
         self.executor = ThreadPoolExecutor(2)
         self.state = BoosterPackSceneState.PRE_RESULTS
-        self.to_shop()
+        # self.to_shop()
         self.next_button = ButtonElement("Next", ColorScheme(0, 1), vec2(320, 180), "")
         self.shop_buttons = [
             ButtonElement("Reroll", COLOR_SCHEME_SECONDARY, vec2(320 - 55 - 1, 173), "$3"),
@@ -750,6 +751,11 @@ class BoosterPackScene(Scene):
         self.update_booster_packs()
         self.help_box_energy = max(self.help_box_energy - 0.1, 0.0)
         self.timer += 1
+
+    # def on_request_reload(self):
+    #     if pyxel.btnp(pyxel.KEY_Q):
+    #         copy_of_screen = copy_image(pyxel.screen)
+    #         return "genio.scene_stages", copy_of_screen
 
     def to_shop(self):
         self.state = BoosterPackSceneState.PRE_SHOP
@@ -959,7 +965,10 @@ class BoosterPackScene(Scene):
 
     def request_next_scene(self) -> str | None:
         if pyxel.btnp(pyxel.KEY_Q):
-            return "genio.gui"
+            copy_of_screen = copy_image(pyxel.screen)
+            return "genio.scene_stages", copy_of_screen
+        # if pyxel.btnp(pyxel.KEY_Q):
+        #     return "genio.gui"
 
     def add_anim(
         self,
