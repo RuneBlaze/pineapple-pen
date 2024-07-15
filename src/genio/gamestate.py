@@ -19,8 +19,10 @@ class StageDescription:
             3,
         )
 
+
 class GameState:
     def __init__(self) -> None:
         self.stage = StageDescription.default()
+
 
 game_state = GameState()

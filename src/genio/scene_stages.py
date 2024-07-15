@@ -22,7 +22,6 @@ from genio.layout import pingpong
 from genio.ps import Anim
 from genio.scene import Scene
 from genio.tween import Mutator, Tweener
-from genio.gamestate import game_state
 
 
 def draw_tiled(img: pyxel.Image) -> None:

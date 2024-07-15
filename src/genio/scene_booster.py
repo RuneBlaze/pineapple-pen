@@ -28,6 +28,7 @@ from genio.components import (
 )
 from genio.constants import CARD_HEIGHT, CARD_WIDTH
 from genio.core.base import promptly
+from genio.gamestate import game_state
 from genio.gui import (
     CardArtSet,
     ResolvingFraming,
@@ -41,7 +42,6 @@ from genio.scene import Scene
 from genio.scene_stages import draw_lush_background
 from genio.semantic_search import search_closest_document
 from genio.tween import Instant, Mutator, Tweener
-from genio.gamestate import game_state
 
 
 @dataclass
@@ -282,9 +282,13 @@ class BoosterCardSprite:
                 )
             self.hovering = False
 
-def draw_dotted_vertical_line(x: int, y: int, height: int, segment_length: int, col: int) -> None:
+
+def draw_dotted_vertical_line(
+    x: int, y: int, height: int, segment_length: int, col: int
+) -> None:
     for i in range(0, height, segment_length):
         pyxel.line(x, y + i, x, y + i + segment_length - 4, col)
+
 
 class BoosterPack:
     def __init__(self, x: int, y: int, pack_type: BoosterPackType) -> None:
@@ -515,8 +519,13 @@ class ButtonElement:
         else:
             x_offset = (55 - 3 * len(self.text)) // 2
             pyxel.text(xy[0] + x_offset, xy[1] + 2, self.text, 7)
-            retro_text(xy[0], xy[1] + 7, self.secondary_text, 7, layout=layout(w=button_width, ha="center"))
-
+            retro_text(
+                xy[0],
+                xy[1] + 7,
+                self.secondary_text,
+                7,
+                layout=layout(w=button_width, ha="center"),
+            )
 
     def update(self) -> None:
         xy = self.position
@@ -693,8 +702,10 @@ class BoosterPackScene(Scene):
         # self.to_shop()
         self.next_button = ButtonElement("Next", ColorScheme(0, 1), vec2(320, 180), "")
         self.shop_buttons = [
-            ButtonElement("Reroll", COLOR_SCHEME_SECONDARY, vec2(320 - 55 - 1, 173), "$3"),
-            ButtonElement("Next", COLOR_SCHEME_PRIMARY, vec2(320 + 1, 173),""),
+            ButtonElement(
+                "Reroll", COLOR_SCHEME_SECONDARY, vec2(320 - 55 - 1, 173), "$3"
+            ),
+            ButtonElement("Next", COLOR_SCHEME_PRIMARY, vec2(320 + 1, 173), ""),
         ]
         self.results_fade = 0.0
         self.shop_fade_in = 0.0
@@ -752,25 +763,20 @@ class BoosterPackScene(Scene):
         self.help_box_energy = max(self.help_box_energy - 0.1, 0.0)
         self.timer += 1
 
-    # def on_request_reload(self):
-    #     if pyxel.btnp(pyxel.KEY_Q):
-    #         copy_of_screen = copy_image(pyxel.screen)
-    #         return "genio.scene_stages", copy_of_screen
-
     def to_shop(self):
         self.state = BoosterPackSceneState.PRE_SHOP
         for score_item in self.score_items:
             score_item.tweener.append(
-                    Mutator(18, pytweening.easeInCirc, score_item, "opacity", 0.0)
-                )
-        self.tweener.append(
-                itertools.chain(
-                    Mutator(18, pytweening.easeInCirc, self, "results_fade", 1.0),
-                )
+                Mutator(18, pytweening.easeInCirc, score_item, "opacity", 0.0)
             )
         self.tweener.append(
-                Mutator(18, pytweening.easeInCirc, self, "shop_fade_in", 1.0)
+            itertools.chain(
+                Mutator(18, pytweening.easeInCirc, self, "results_fade", 1.0),
             )
+        )
+        self.tweener.append(
+            Mutator(18, pytweening.easeInCirc, self, "shop_fade_in", 1.0)
+        )
 
     def update_booster_packs(self):
         if self.state.is_results_like():
@@ -869,8 +875,10 @@ class BoosterPackScene(Scene):
         with dithering(0.5):
             sw = 12
             draw_rounded_rectangle(250 + sw, 40 + 40, 140 - sw * 2, 73, 5, col=0)
-            draw_dotted_vertical_line(250 + sw + (140 - sw * 2) // 2, 40 + 40 + 20, 73 - 40, 8, col=7)
-        
+            draw_dotted_vertical_line(
+                250 + sw + (140 - sw * 2) // 2, 40 + 40 + 20, 73 - 40, 8, col=7
+            )
+
         # ButtonElement("Reroll", ColorScheme(0, 1), vec2(320 - 55 - 1, 173), "$3").draw_at()
         # ButtonElement("Next", ColorScheme(0, 1), vec2(320 + 1, 173),"").draw_at()
         for button in self.shop_buttons:

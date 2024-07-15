@@ -7,9 +7,9 @@ from collections import Counter, deque
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
-from pyxelxl.font import _image_as_ndarray
 
 import pyxel
+from pyxelxl.font import _image_as_ndarray
 from structlog import get_logger
 
 from genio.base import WINDOW_HEIGHT, WINDOW_WIDTH, asset_path
@@ -89,10 +89,8 @@ class AppWithScenes:
         _image_as_ndarray(self.all_black)[:] = 0
         self.screenshot = None
 
-        
         pyxel.load(asset_path("sprites.pyxres"))
         pyxel.run(self.update, self.draw)
-        
 
     def add_scene(self, scene: Scene):
         self.scenes.append(scene)
@@ -117,12 +115,16 @@ class AppWithScenes:
                 case (next_scene, fade_image) if isinstance(next_scene, str):
                     self.screenshot = fade_image
                     fut = self.executor.submit(
-                        lambda: load_scene_from_module(importlib.import_module(next_scene))
+                        lambda: load_scene_from_module(
+                            importlib.import_module(next_scene)
+                        )
                     )
                     self.futures.append(fut)
                 case next_scene if isinstance(next_scene, str):
                     fut = self.executor.submit(
-                        lambda: load_scene_from_module(importlib.import_module(next_scene))
+                        lambda: load_scene_from_module(
+                            importlib.import_module(next_scene)
+                        )
                     )
                     self.screenshot = None
                     self.futures.append(fut)
