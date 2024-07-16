@@ -402,11 +402,9 @@ def generate_using_docstring(
     chain = (
         template
         | llm
-        | OutputFixingParser.from_llm(
-            parser=JsonParser(cls=klass, predefined_args=predefined_args), llm=llm
-        )
+        | JsonParser(cls=klass, predefined_args=predefined_args)
     )
-    return chain.with_retry().invoke({})
+    return chain.invoke({})
 
 
 def typescriptize_type(typ: str | type) -> str:

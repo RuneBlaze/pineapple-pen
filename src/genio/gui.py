@@ -45,7 +45,7 @@ from genio.constants import (
     TOTAL_CARDS,
     TWEEN_SPEED,
 )
-from genio.effect import SinglePointEffect, SinglePointEffectType
+from genio.effect import SinglePointEffect, SinglePointEffectType, StatusDefinition
 from genio.gamestate import game_state
 from genio.layout import (
     WINDOW_HEIGHT,
@@ -801,6 +801,10 @@ class ResolvingFraming:
             Instant(lambda: self.set_state(FramingState.INACTIVE)),
         )
 
+class ImageButtonState(Enum):
+    NORMAL = 0
+    FLASHING = 1
+    DISABLED = 2
 
 class ImageButton:
     def __init__(self, x: int, y: int, image: pyxel.Image):
@@ -808,9 +812,37 @@ class ImageButton:
         self.y = y
         self.image = image
         self.hovering = False
+        self.state = ImageButtonState.NORMAL
+        self.pingpong_flashing = pingpong(8, 3)
+        self.pingpong_state = 0
 
     def draw(self) -> None:
-        if self.hovering:
+        if self.state == ImageButtonState.DISABLED:
+            with dithering(0.75):
+                pyxel.blt(
+                        self.x,
+                        self.y,
+                        self.image,
+                        0,
+                        0,
+                        self.image.width,
+                        self.image.height,
+                        colkey=254,
+                    )
+            with dithering(0.5):
+                with pal_single_color(13):
+                    pyxel.blt(
+                        self.x,
+                        self.y,
+                        self.image,
+                        0,
+                        0,
+                        self.image.width,
+                        self.image.height,
+                        colkey=254,
+                    )
+            return
+        if self.hovering and not self.state == ImageButtonState.DISABLED:
             pyxel.pal(1, 5)
         pyxel.blt(
             self.x,
@@ -824,8 +856,8 @@ class ImageButton:
         )
         pyxel.pal()
 
-        if pyxel.btn(pyxel.MOUSE_BUTTON_LEFT) and self.hovering:
-            with dithering(0.5):
+        if not self.hovering and self.state == ImageButtonState.FLASHING:
+            with dithering((self.pingpong_state / 7) * 0.25):
                 with pal_single_color(6):
                     pyxel.blt(
                         self.x,
@@ -838,7 +870,42 @@ class ImageButton:
                         colkey=254,
                     )
 
+        if self.hovering:
+            with dithering(0.25):
+                with pal_single_color(1):
+                    pyxel.blt(
+                        self.x,
+                        self.y,
+                        self.image,
+                        0,
+                        0,
+                        self.image.width,
+                        self.image.height,
+                        colkey=254,
+                    )
+
+        if pyxel.btn(pyxel.MOUSE_BUTTON_LEFT) and self.hovering:
+            with dithering(0.5):
+                with pal_single_color(1):
+                    pyxel.blt(
+                        self.x,
+                        self.y,
+                        self.image,
+                        0,
+                        0,
+                        self.image.width,
+                        self.image.height,
+                        colkey=254,
+                    )
+
     def update(self) -> bool:
+        if self.state == ImageButtonState.DISABLED:
+            self.hovering = False
+            return False
+        
+        if self.state == ImageButtonState.FLASHING:
+            self.pingpong_state = next(self.pingpong_flashing)
+        
         if (
             self.x <= pyxel.mouse_x <= self.x + self.image.width
             and self.y <= pyxel.mouse_y <= self.y + self.image.height
@@ -921,15 +988,18 @@ class MainScene(Scene):
         self.image_buttons = [
             ImageButton(
                 WINDOW_WIDTH - 85,
-                WINDOW_HEIGHT - 55 + 3,
+                WINDOW_HEIGHT - 52,
                 load_image("ui", "play-button.png"),
             ),
             ImageButton(
                 WINDOW_WIDTH - 90,
-                WINDOW_HEIGHT - 30 + 3,
+                WINDOW_HEIGHT - 27,
                 load_image("ui", "end-button.png"),
             ),
         ]
+
+        self.end_button = self.image_buttons[1]
+        self.play_button = self.image_buttons[0]
 
         self.resolving_side = ResolvingSide.PLAYER
         self.bundle.card_bundle.events.register_listener(self.on_new_event)
@@ -1027,8 +1097,20 @@ class MainScene(Scene):
             sprite.update()
         self.framing.update()
         self.check_mailbox()
+        self.update_buttons_state()
         self.background_video.update()
         self.timer += 1
+
+    def update_buttons_state(self):
+        if self.bundle.energy <= 0:
+            self.play_button.state = ImageButtonState.DISABLED
+            self.end_button.state = ImageButtonState.FLASHING
+        else:
+            self.play_button.state = ImageButtonState.NORMAL
+            self.end_button.state = ImageButtonState.NORMAL
+
+        if self.bundle.energy - self.bundle.tentative_energy_cost() < 0:
+            self.play_button.state = ImageButtonState.DISABLED
 
     def schedule_in(self, delay: int, fn: Callable[[], None]) -> None:
         self.tweener.append(range(delay), Instant(fn))
@@ -1094,9 +1176,11 @@ class MainScene(Scene):
                         sprite.add_popup(f"shield {effect.delta_shield}", 7)
                         sprite.add_animation("anims.debuff")
                     case SinglePointEffectType.STATUS:
-                        for status_effect, counter in effect.add_status:
-                            sprite.add_popup(f"+ {status_effect.name}", 7)
-                        sprite.add_animation("anims.buff")
+                        status_effect, counter = effect.add_status
+                        if not isinstance(status_effect, StatusDefinition):
+                            raise ValueError("Status effect not valid")
+                        sprite.add_popup(f"+ {status_effect.name}", 7)
+                        sprite.add_animation("anims.debuff")
 
     def sprite_by_id(self, id: str) -> WrappedImage:
         for sprite in self.sprites():
