@@ -48,11 +48,9 @@ from genio.tween import Instant, Mutator, Tweener
 class ScoreItems:
     items: Annotated[list[dict], ""]
 
+
 @promptly
-def score_item(
-    base_money: float,
-    battle_logs: list[str]
-) -> ScoreItems:
+def score_item(base_money: float, battle_logs: list[str]) -> ScoreItems:
     """\
     Calculate the score for the player based on the battle logs.
 
@@ -63,6 +61,7 @@ def score_item(
 
     {{ formatting_instructions }}
     """
+
 
 @dataclass
 class GenerateSATFlashCardResult:
@@ -995,8 +994,6 @@ class BoosterPackScene(Scene):
         if pyxel.btnp(pyxel.KEY_Q):
             copy_of_screen = copy_image(pyxel.screen)
             return "genio.scene_stages", copy_of_screen
-        # if pyxel.btnp(pyxel.KEY_Q):
-        #     return "genio.gui"
 
     def add_anim(
         self,

@@ -53,6 +53,16 @@ pattern = ["attack player for 2 damage", "block for 1 shield points"]
 
 [anims]
 
+[[anims.energy]]
+frequency = 5
+max_p = 200
+area = [18, 18]
+size = [1, 0, 1, 0]
+speed = 1
+life = [1, 0.5]
+colors = [9, 10, 15]
+duration = 0
+
 [[anims.create_card]]
 frequency = 50
 max_p = 50

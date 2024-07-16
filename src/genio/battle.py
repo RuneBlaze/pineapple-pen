@@ -1,15 +1,18 @@
 from __future__ import annotations
 
+import math
 import uuid
 import weakref
 from collections import Counter, deque
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
+from functools import cache
 from heapq import heappop, heappush
 from itertools import chain
 from typing import Annotated, Any, Generic, Literal, Protocol, TypeVar
 
 import numpy as np
+import tiktoken
 from parse import parse
 from smallperm import sample, shuffle
 from structlog import get_logger
@@ -624,9 +627,20 @@ class ResolvedEffects(
         return self._total_attribute("shield_loss")
 
 
+@cache
+def _calculate_total_cost(cards: tuple[Card, ...]) -> int:
+    return calculate_energy_cost(cards)
+
+
+def calculate_total_cost(cards: list[Card]) -> int:
+    sorted_cards = sorted(cards, key=lambda card: card.name)
+    return _calculate_total_cost(tuple(sorted_cards))
+
+
 class BattleBundle:
     effects: SortedList[tuple[Battler | None, SinglePointEffect | GlobalEffect]]
     postprocessors: list[weakref.WeakMethod]
+    proposed_cards: list[Card]
 
     def __init__(
         self,
@@ -644,6 +658,12 @@ class BattleBundle:
         self.rng = np.random.default_rng()
         self.postprocessors = []
         self.event_listeners = []  # remember to use weakrefs
+        self.default_energy = 2
+        self.energy = self.default_energy
+        self.proposed_cards = []
+
+    def tentative_energy_cost(self) -> int:
+        return calculate_total_cost(self.proposed_cards)
 
     def battlers(self) -> Iterator[Battler]:
         yield self.player
@@ -889,16 +909,21 @@ class BattleBundle:
     def start_new_turn(self) -> None:
         self.card_bundle.flush_hand_resolving_to_graveyard()
         self.card_bundle.draw_to_hand()
+        self.replenish_energy()
         self._on_turn_start()
         self.player.on_turn_start()
 
+    def replenish_energy(self) -> None:
+        self.energy = max(self.default_energy, self.energy)
+
     def clear_dead(self) -> None:
-        return
         if self.player.is_dead():
-            raise ValueError("Player is dead")
+            # TODO: actually provide game over.
+            raise ValueError("Player is dead. Game Over.")
         self.enemies = [enemy for enemy in self.enemies if not enemy.is_dead()]
-        if not self.enemies:
-            raise ValueError("All enemies are dead")
+
+    def is_player_victory(self) -> bool:
+        return not self.enemies
 
 
 def setup_battle_bundle(
@@ -921,3 +946,26 @@ def setup_battle_bundle(
 
 class MainSceneLike(CanAddAnim, Protocol):
     bundle: BattleBundle
+
+
+enc = tiktoken.get_encoding("o200k_base")
+
+
+def num_tokens(s: str) -> int:
+    return len(enc.encode(s, allowed_special="all"))
+
+
+def calculate_energy_cost(cards: Sequence[Card]) -> int:
+    if not cards:
+        return 0
+    cost = 1
+    num_effective_tokens = 0
+    for card in cards:
+        num_effective_tokens += math.sqrt(max(num_tokens(card.description) - 5, 0))
+        num_effective_tokens += math.sqrt(max(num_tokens(card.name) - 5, 0))
+    if num_effective_tokens > 20:
+        cost += 1
+    if num_effective_tokens > 10:
+        cost += 1
+    print(cost)
+    return cost

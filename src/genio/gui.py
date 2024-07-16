@@ -27,8 +27,10 @@ from genio.card import Card
 from genio.card_utils import CanAddAnim
 from genio.components import (
     DrawDeck,
+    EnergyRenderer,
     Popup,
     cute_text,
+    dithering,
     pal_single_color,
     retro_font,
     retro_text,
@@ -501,21 +503,6 @@ def horizontal_gradient(x, y, w, h, c0, c1):
     pyxel.dither(1.0)
 
 
-dithering_stack = []
-
-
-@contextlib.contextmanager
-def dithering(f: float):
-    global dithering_stack
-    current_dither = dithering_stack[-1] if dithering_stack else 1.0
-    dithering_stack.append(f * current_dither)
-    pyxel.dither(f * current_dither)
-    yield
-    if dithering_stack:
-        dithering_stack.pop()
-    pyxel.dither(dithering_stack[-1] if dithering_stack else 1.0)
-
-
 class Tooltip:
     def __init__(self, title: str, description: str):
         self.title = title
@@ -890,6 +877,7 @@ class MainScene(Scene):
         self.popups = []
         self.timer = 0
         self.tweener = Tweener()
+        self.energy_renderer = EnergyRenderer(self.bundle, self)
         self.enemy_sprites = [
             WrappedImage(
                 load_image("char", "enemy_killer_flower.png"),
@@ -1017,8 +1005,14 @@ class MainScene(Scene):
         if self.image_buttons[1].update():
             self.end_player_turn()
 
+        self.energy_renderer.update()
+
         self.tmp_card_sprites = [
             card for card in self.tmp_card_sprites if not card.is_dead()
+        ]
+
+        self.bundle.proposed_cards = [
+            card.card for card in self.card_sprites if card.selected
         ]
 
         self.tweener.update()
@@ -1169,6 +1163,7 @@ class MainScene(Scene):
         self.tooltip.draw()
 
         Anim.draw()
+        self.energy_renderer.draw()
         for popup in self.popups:
             popup.draw()
         self.framing.draw()

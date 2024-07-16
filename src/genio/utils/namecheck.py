@@ -78,11 +78,3 @@ class NameHighlighter:
             text = text[: start + offset] + replaced + text[end + 1 + offset :]
             offset += len(replaced) - len(original_value)
         return text
-
-
-# if __name__ == "__main__":
-#     names = ["Alice Ayi", "Bob Shuhui", "Charlie BB", "David DDD", "Eve EEE"]
-#     highlighter = NameHighlighter(names)
-#     text = "Alice Ayi and Bob Shuhui and Charlie & Eve and DDD & DDD & EEE."
-#     hi, mentions = highlighter.label_text(text)
-#     print(hi, mentions)

@@ -6,6 +6,8 @@ import numpy as np
 import safetensors.numpy as stnp
 from sentence_transformers import SentenceTransformer
 
+from genio.base import asset_path
+
 
 def fix_palette(quantized_image):
     correct_mapping = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 13, 11, 12, 14, 15]
@@ -35,7 +37,7 @@ class SerializedCardArt:
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
-tar = tarfile.open("assets/cards.tar.gz", "r:gz")
+tar = tarfile.open(asset_path("cards.tar.gz"), "r:gz")
 
 documents = []
 for member in tar.getmembers():
@@ -44,6 +46,7 @@ for member in tar.getmembers():
         if "._" in member.name:
             continue
         documents.append(stnp.load(f.read()))
+        break
 tar.close()
 
 documents = [SerializedCardArt(**d) for d in documents]

@@ -13,3 +13,5 @@ play:
 
 ps:
     poetry run python -m genio.main --edit
+
+# Use `pv` to rate-limit.

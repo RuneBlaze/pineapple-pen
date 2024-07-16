@@ -40,3 +40,6 @@ class Card:
     def duplicate(self) -> Card:
         """Copy, but with a new ID."""
         return Card(name=self.name, description=self.description)
+
+    def __hash__(self) -> int:
+        return hash(self.id)

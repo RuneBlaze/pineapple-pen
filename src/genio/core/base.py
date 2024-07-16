@@ -22,6 +22,8 @@ from typing import (
 import tomlkit
 import tomlkit as tomllib
 import yaml
+from genio.base import asset_path
+from genio.utils.robustyaml import cleaning_parse
 from icecream import ic
 from jinja2 import BaseLoader, Environment, StrictUndefined, TemplateNotFound
 from langchain.output_parsers import OutputFixingParser
@@ -30,8 +32,6 @@ from langchain_core.output_parsers import BaseOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from scipy.stats import norm
 from structlog import get_logger
-
-from genio.utils.robustyaml import cleaning_parse
 
 from .llm import aux_llm
 
@@ -93,7 +93,8 @@ class TemplateRegistryLoader(BaseLoader):
             target_path := (PROJECT_ROOT / Path("assets/includes") / template)
         ).exists():
             return target_path.read_text(), str(target_path), lambda: True
-        predef = slurp_toml("assets/strings.toml")
+        # predef = slurp_toml("assets/strings.toml")
+        predef = slurp_toml(asset_path("strings.toml"))
         if can_access(predef, template):
             return access(predef, template), template, lambda: True
         raise TemplateNotFound(template)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import imp
 import importlib
+import sys
 from abc import ABC, abstractmethod
 from collections import Counter, deque
 from collections.abc import Callable
@@ -53,6 +54,16 @@ class ReloadableScene(Scene):
 
     def on_request_reload(self):
         refresh_predef()
+        to_reload_modules = [
+            module
+            for module in sys.modules.values()
+            if module.__name__.startswith("genio")
+        ]
+        for module in to_reload_modules:
+            # filter out everything not named genio
+            if not module.__name__.startswith("genio"):
+                continue
+            importlib.reload(module)
         self.current_version = self.scene_factory()
 
     def request_next_scene(self) -> Scene | None | str:
@@ -135,6 +146,8 @@ class AppWithScenes:
         if self.state == AppState.RUNNING:
             if pyxel.btnp(pyxel.KEY_R):
                 self.scenes[0].on_request_reload()
+                self.state = AppState.RUNNING
+                self.state_timers.clear()
             if self.futures:
                 self.set_state(AppState.TRANSITION_OUT)
         self.state_timers[self.state] += 1

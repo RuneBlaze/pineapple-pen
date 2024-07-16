@@ -2,11 +2,10 @@ import re
 from collections.abc import Mapping
 
 import json5 as json
+from genio.core.llm import aux_llm
 from yaml import safe_load
 from yaml.parser import ParserError
 from yaml.scanner import ScannerError
-
-from ..core.llm import aux_llm
 
 
 def is_nested_dict(d):
@@ -65,26 +64,3 @@ def fix_invalid_yaml_string(s: str) -> str:
         else:
             text = response
         return fix_invalid_yaml_string(text)
-
-
-# def fix_yaml_for_keys(s: str, ks: list[str]) -> dict:
-#     # Parse the YAML string
-#     try:
-#         d = safe_load(s)
-#
-#         # Check if the keys match, return the dictionary if they do
-#         if set(ks) == set(d.keys()):
-#             return d
-#     except ParserError:
-#         pass
-#
-#     # Iterate over the keys and replace incorrect format
-#     for k in ks:
-#         # Create a pattern that matches '- k:' with any leading spaces
-#         pattern = re.compile(rf"^\s*-\s+{{k}}:", re.MULTILINE)
-#
-#         # Replace the incorrect format with the correct one
-#         s = re.sub(pattern, rf"{{k}}:", s)
-#
-#     # Parse and return the corrected YAML
-#     return safe_load(s)

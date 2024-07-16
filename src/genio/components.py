@@ -5,7 +5,7 @@ import math
 import random
 from functools import cache
 from operator import gt, lt
-from typing import Literal
+from typing import Literal, Protocol
 
 import numpy as np
 import pyxel
@@ -15,6 +15,8 @@ from scipy.ndimage import gaussian_filter
 
 from genio.base import asset_path
 from genio.battle import CardBundle
+from genio.card_utils import CanAddAnim
+from genio.layout import pingpong
 
 retro_font = Font(asset_path("retro-pixel-petty-5h.ttf"))
 retro_text = retro_font.specialize(font_size=5)
@@ -282,3 +284,90 @@ def copy_image(image: pyxel.Image) -> pyxel.Image:
     new_image = pyxel.Image(image.width, image.height)
     _image_as_ndarray(new_image)[:] = _image_as_ndarray(image)
     return new_image
+
+
+class HasEnergy(Protocol):
+    energy: int
+    default_energy: int
+
+    def tentative_energy_cost(self) -> int:
+        ...
+
+
+def _uv_for_16(ix: int) -> tuple[int, int]:
+    col = ix % 8
+    row = ix // 8
+    return col * 8, row * 8
+
+
+def draw_spr(x: int, y: int, ix: int) -> None:
+    u, v = _uv_for_16(ix)
+    pyxel.blt(x, y, 0, u, v, 8, 8, 0)
+
+
+dithering_stack = []
+
+
+@contextlib.contextmanager
+def dithering(f: float):
+    global dithering_stack
+    current_dither = dithering_stack[-1] if dithering_stack else 1.0
+    dithering_stack.append(f * current_dither)
+    pyxel.dither(f * current_dither)
+    yield
+    if dithering_stack:
+        dithering_stack.pop()
+    pyxel.dither(dithering_stack[-1] if dithering_stack else 1.0)
+
+
+class EnergyRenderer:
+    def __init__(
+        self, target: HasEnergy, scene: CanAddAnim, x: int = 340, y: int = 170
+    ) -> None:
+        self.target = target
+        self.scene = scene
+        self.x = x
+        self.y = y
+        self.anim = self.scene.add_anim("anims.energy", x, y)
+        self.pingpong = pingpong(11, 3)
+        self.timer = 0
+
+    def update(self) -> None:
+        ...
+
+    def draw(self) -> None:
+        pyxel.circ(self.x, self.y, 8, 9)
+        self.timer += 1
+        opacity = next(self.pingpong) / 10
+        with dithering(opacity):
+            text = f"{self.target.energy}/{self.target.default_energy}"
+            retro_text(
+                self.x - 8 + 1,
+                self.y - 8,
+                text,
+                5,
+                layout=layout(w=16, h=16, ha="center", va="center"),
+            )
+            retro_text(
+                self.x - 8,
+                self.y - 8,
+                text,
+                7,
+                layout=layout(w=16, h=16, ha="center", va="center"),
+            )
+        with dithering(1 - opacity):
+            text = f"{self.target.energy - self.target.tentative_energy_cost()}/{self.target.default_energy}"
+            retro_text(
+                self.x - 8 + 1,
+                self.y - 8,
+                text,
+                5,
+                layout=layout(w=16, h=16, ha="center", va="center"),
+            )
+            retro_text(
+                self.x - 8,
+                self.y - 8,
+                text,
+                7,
+                layout=layout(w=16, h=16, ha="center", va="center"),
+            )

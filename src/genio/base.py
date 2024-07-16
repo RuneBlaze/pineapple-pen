@@ -2,13 +2,14 @@ import os
 from collections import Counter
 from enum import Enum
 from functools import cache
+from pathlib import Path
 
 import numpy as np
 import pyxel
 from PIL import Image
 from pyxelxl.font import _image_as_ndarray
 
-WORKING_DIR = os.getcwd()
+WORKING_DIR = str(Path(__file__).parent.parent.parent)
 
 WINDOW_WIDTH, WINDOW_HEIGHT = 427, 240
 
