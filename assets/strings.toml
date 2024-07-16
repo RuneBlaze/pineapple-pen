@@ -24,17 +24,12 @@ Driven by a quest for justice and an insatiable curiosity, Celine ventures throu
 [initial_deck]
 
 cards = [
-    # "left * 3",
-    # "right * 3",
-    # "repeat all previous",
-    # "Slash * 3 # Takes sword and slashes at the enemy. Deals 2 times 4 base damage.", # two copies of this card
-    # "Block * 2 # Raises shield to block incoming attacks. Gains 2 shield points.",
-    # "Flower Burst * 5 # Strikes one enemy with a powerful blow. Deals 8 base damage and applies 2 vulnerable.",
-    # "Duplicate * 5 # Create copies of ALL other cards played with this card into the hand, but not the card itself.",
-    # "Blank Eye * 30 # Create a card shiv that deals 1 damage. This card is added to hand. "
-    "Anagram Zapper * 15 # Transform all cards only in hand. Rearrange the letters of the card names to create new cards, with new effects.",
-    "Lives * 5",
-    "Evangelist * 5",
+    "left * 3",
+    "right * 3",
+    "Bash * 1 # Deal 1 damage and apply vulnerable for 1 turn.",
+    "Slash * 4 # Deal 2 damage to a target.",
+    "Parry * 3 # Gain 1 shield point.",
+    "4 of Spades * 2",
 ]
 
 

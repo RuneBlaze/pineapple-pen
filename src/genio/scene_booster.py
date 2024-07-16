@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import itertools
 import math
 import textwrap
@@ -40,7 +42,11 @@ from genio.ps import Anim, HasPos
 from genio.scene import Scene
 from genio.scene_stages import draw_lush_background
 from genio.semantic_search import search_closest_document
-from genio.stagegen import generate_sat_flashcards
+from genio.stagegen import (
+    IndividualBonusItem,
+    generate_bonus_items,
+    generate_sat_flashcards,
+)
 from genio.tween import Instant, Mutator, Tweener
 
 
@@ -542,6 +548,13 @@ def draw_tiled(img: pyxel.Image) -> None:
         pyxel.blt(x, y, img, 0, 0, w, h, 1)
 
 
+def generate_score_items() -> list[IndividualBonusItem]:
+    return generate_bonus_items(
+        game_state.stage.generate_base_money(),
+        battle_logs=game_state.battle_bundle.battle_logs,
+    ).to_individual_items()
+
+
 @dataclass
 class ScoreItem:
     name: str
@@ -606,12 +619,30 @@ class BoosterPackSceneState(Enum):
         return self in [BoosterPackSceneState.SHOP, BoosterPackSceneState.PRE_SHOP]
 
 
+class ScoreBox:
+    mailbox: deque[Future[list[IndividualBonusItem]]]
+
+    def __init__(self, target: BoosterPackScene) -> None:
+        self.mailbox = deque()
+        self.target = target
+
+    def update(self) -> None:
+        while self.mailbox and self.mailbox[0].done():
+            items = self.mailbox.popleft().result()
+            self.on_receive_items(items)
+
+    def launch(self) -> None:
+        self.mailbox.append(self.target.executor.submit(generate_score_items))
+
+    def on_receive_items(self, items: list[IndividualBonusItem]) -> None:
+        self.target.animate_score_items(items)
+
+
 class BoosterPackScene(Scene):
     card_sprites: list[BoosterCardSprite]
     chosen_pack: BoosterPack | None
     mailbox: deque[Future[list[Card]]]
     check_mail_signal = deque[BoosterPack]
-
     booster_packs: list[BoosterPack]
 
     def __init__(self) -> None:
@@ -632,30 +663,6 @@ class BoosterPackScene(Scene):
 
         self.tweener = Tweener()
 
-        y_offset = 80
-        x_offset = 260
-        self.score_items = [
-            ScoreItem("Overkill", 0.5, x_offset, 0 + y_offset, 1.0),
-            ScoreItem("Combo", 0.2, x_offset + 20, 12 + y_offset, 1.0),
-            ScoreItem("Total", 0.2, x_offset, 12 + 12 + y_offset, 1.0, "$12.00"),
-        ]
-
-        for i, item in enumerate(self.score_items):
-            item.opacity = 0.0
-            item.y -= 3
-            self.tweener.append(
-                itertools.chain(
-                    range(3),
-                    Instant(item.fade_in),
-                )
-            )
-        self.tweener.append(
-            itertools.chain(
-                range(3),
-                Mutator(60, pytweening.easeInOutCubic, self, "money_accumulated", 12.0),
-            )
-        )
-
         self.card_sprites = []
         self.bundle = setup_battle_bundle(
             "initial_deck", "players.starter", ["enemies.evil_mask"] * 2
@@ -672,7 +679,9 @@ class BoosterPackScene(Scene):
         self.check_mail_signal = deque()
         self.executor = ThreadPoolExecutor(2)
         self.state = BoosterPackSceneState.PRE_RESULTS
-        # self.to_shop()
+        self.score_items = []
+        self.score_box = ScoreBox(self)
+        self.score_box.launch()
         self.next_button = ButtonElement("Next", ColorScheme(0, 1), vec2(320, 180), "")
         self.shop_buttons = [
             ButtonElement(
@@ -682,6 +691,37 @@ class BoosterPackScene(Scene):
         ]
         self.results_fade = 0.0
         self.shop_fade_in = 0.0
+
+    def animate_score_items(self, items: list[IndividualBonusItem]) -> None:
+        y_offset = 80
+        x_offset = 260
+        self.score_items = [
+            ScoreItem(item.title, item.delta, x_offset, i * 12 + y_offset, 1.0)
+            for i, item in enumerate(items)
+        ]
+        for i, item in enumerate(self.score_items):
+            item.opacity = 0.0
+            item.y -= 3
+            self.tweener.append(
+                itertools.chain(
+                    range(3),
+                    Instant(item.fade_in),
+                )
+            )
+        base_money = game_state.stage.generate_base_money()
+        total_money = sum(item.delta for item in items) + base_money
+        self.tweener.append(
+            itertools.chain(
+                range(3),
+                Mutator(
+                    60,
+                    pytweening.easeInOutCubic,
+                    self,
+                    "money_accumulated",
+                    total_money,
+                ),
+            )
+        )
 
     def pump_help_box(self, title: str, description: str) -> None:
         if title != self.help_box.title or description != self.help_box.description:
@@ -735,6 +775,7 @@ class BoosterPackScene(Scene):
         self.update_booster_packs()
         self.help_box_energy = max(self.help_box_energy - 0.1, 0.0)
         self.timer += 1
+        self.score_box.update()
 
     def to_shop(self):
         self.state = BoosterPackSceneState.PRE_SHOP

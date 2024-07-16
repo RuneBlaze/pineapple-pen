@@ -9,13 +9,19 @@ from dataclasses import dataclass, field
 from functools import cache
 from heapq import heappop, heappush
 from itertools import chain
-from typing import Annotated, Any, Generic, Literal, Protocol, TypeVar
+from typing import Annotated, Generic, Literal
 
 import numpy as np
 import tiktoken
 from parse import parse
 from smallperm import sample, shuffle
 from structlog import get_logger
+from typing_extensions import (
+    Any,
+    Protocol,
+    TypeVar,
+    assert_never,
+)
 
 from genio.card import Card
 from genio.card_utils import CanAddAnim
@@ -27,6 +33,7 @@ from genio.effect import (
     DuplicateCardEffect,
     GlobalEffect,
     SinglePointEffect,
+    SinglePointEffectType,
     StatusDefinition,
     TransformCardEffect,
     parse_effect,
@@ -661,6 +668,7 @@ class BattleBundle:
         self.default_energy = 2
         self.energy = self.default_energy
         self.proposed_cards = []
+        self.battle_logs = []
 
     def tentative_energy_cost(self) -> int:
         return calculate_total_cost(self.proposed_cards)
@@ -754,6 +762,7 @@ class BattleBundle:
             self.emit_battler_event(battler, "end of turn")
 
     def resolve_player_cards(self, cards: list[Card]) -> ResolvedEffects:
+        self.deduct_energy(calculate_total_cost(cards))
         resolved_results: ResolvedResults = _judge_results(
             cards,
             self.player,
@@ -780,6 +789,74 @@ class BattleBundle:
         expired_effects = self.flush_expired_effects(self.rng)
         return expired_effects
 
+    def record_to_battle_logs(self, effects: ResolvedEffects) -> None:
+        logs = self._transform_to_battle_logs(effects)
+        self.battle_logs.extend(logs)
+        print(self.battle_logs)
+
+    def _transform_to_battle_logs(self, effects: ResolvedEffects) -> list[str]:
+        logs = []
+
+        def append_log(msg: str) -> None:
+            logs.append(f"Turn {self.turn_counter}: {msg}")
+
+        def humanize_cards(cards: list[Card]) -> str:
+            return ", ".join([card.name for card in cards])
+
+        for effect in effects:
+            match effect:
+                case (None, global_effect) if isinstance(global_effect, GlobalEffect):
+                    match global_effect:
+                        case DrawCardsEffect(_) as draw:
+                            append_log(f"Draw {draw.count} cards")
+                        case DiscardCardsEffect(_) as discard:
+                            append_log(
+                                f"Discard {discard.count} cards: specifically {humanize_cards(discard.specifics)}"
+                            )
+                        case CreateCardEffect(_) as create_card:
+                            append_log(
+                                f"Create {create_card.copies} {create_card.card.name}"
+                            )
+                        case DuplicateCardEffect(_) as duplicate:
+                            append_log(
+                                f"Duplicate {duplicate.copies} {duplicate.card.name}"
+                            )
+                        case TransformCardEffect(_) as transform:
+                            append_log(
+                                f"Transform {transform.from_card.name} to {transform.to_card.name}"
+                            )
+                        case other:
+                            assert_never(other)
+                case (battler, single_effect) if isinstance(
+                    single_effect, SinglePointEffect
+                ):
+                    match single_effect.classify_type():
+                        case SinglePointEffectType.DAMAGE:
+                            append_log(
+                                f"{battler.name} received damage {single_effect.damage}"
+                            )
+                        case SinglePointEffectType.HEAL:
+                            append_log(
+                                f"{battler.name} received healing {single_effect.heal}"
+                            )
+                        case SinglePointEffectType.SHIELD_GAIN:
+                            append_log(
+                                f"{battler.name} gained shield {single_effect.shield_gain}"
+                            )
+                        case SinglePointEffectType.SHIELD_LOSS:
+                            append_log(
+                                f"{battler.name} lost shield {single_effect.shield_loss}"
+                            )
+                        case SinglePointEffectType.STATUS:
+                            append_log(
+                                f"{battler.name} received status {single_effect.add_status[0].name}"
+                            )
+                        case SinglePointEffectType.OTHER:
+                            append_log(f"{battler.name} received other effect...")
+                case _:
+                    raise ValueError("Invalid effect type")
+        return logs
+
     def apply_effect(
         self,
         caster: Battler | None,
@@ -791,6 +868,9 @@ class BattleBundle:
             self._apply_global_effect(effect)
         else:
             self._apply_targeted_effect(caster, target, effect, rng)
+    
+    def deduct_energy(self, cost: int) -> None:
+        self.energy = max(0, self.energy - cost)
 
     def _next_seed(self) -> int:
         return self.rng.integers(2**32)
@@ -969,5 +1049,4 @@ def calculate_energy_cost(cards: Sequence[Card]) -> int:
         cost += 1
     if num_effective_tokens > 10:
         cost += 1
-    print(cost)
     return cost

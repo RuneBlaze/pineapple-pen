@@ -3,7 +3,8 @@ from __future__ import annotations
 import contextlib
 import itertools
 import textwrap
-from collections import Counter
+from collections import Counter, deque
+from concurrent.futures import Future
 from concurrent.futures.thread import ThreadPoolExecutor
 from enum import Enum
 
@@ -16,12 +17,27 @@ from genio.components import (
     arcade_text,
     retro_text,
 )
-from genio.gamestate import StageDescription
+from genio.gamestate import StageDescription, game_state
 from genio.gui import dithering
 from genio.layout import pingpong
 from genio.ps import Anim
 from genio.scene import Scene
+from genio.stagegen import (
+    generate_stage_description as generate_stage_description_low_level,
+)
 from genio.tween import Mutator, Tweener
+
+
+def generate_stage_description(stage_name: str) -> StageDescription:
+    results = generate_stage_description_low_level(
+        stage_name, game_state.battle_bundle.battle_logs
+    )
+    return StageDescription(
+        name=stage_name,
+        subtitle=results.subtitle,
+        lore=results.lore,
+        danger_level=results.danger_level,
+    )
 
 
 def draw_tiled(img: pyxel.Image, ignore_col: int | None = 0) -> None:
@@ -30,6 +46,17 @@ def draw_tiled(img: pyxel.Image, ignore_col: int | None = 0) -> None:
         range(-w * 2, WINDOW_WIDTH, w), range(-h * 2, WINDOW_HEIGHT, h)
     ):
         pyxel.blt(x, y, img, 0, 0, w, h, ignore_col)
+
+
+def placement_of_marker(desc: StageDescription) -> tuple[int, int]:
+    # FIXME: do more advanced placement
+    match desc.name:
+        case "1-2A":
+            return 120, 100
+        case "1-2B":
+            return 200, 80
+        case _:
+            return 120, 100
 
 
 class Camera:
@@ -99,14 +126,15 @@ class StageInfoBox:
     def _draw(self) -> None:
         if not self.description:
             return
+        d = self.description
         w = 120
         x = 240
         y = 40
         with dithering(0.5):
             draw_rounded_rectangle(x, y, w, 140, 4, 5)
         c1 = 7
-        arcade_text(x, y + 5, "1-2", c1, layout=layout(w=w, ha="center"))
-        retro_text(x, y + 20, "Beneath the Soil", c1, layout=layout(w=w, ha="center"))
+        arcade_text(x, y + 5, d.name, c1, layout=layout(w=w, ha="center"))
+        retro_text(x, y + 20, d.subtitle, c1, layout=layout(w=w, ha="center"))
 
         self.draw_danger_level(w, x, y)
 
@@ -118,9 +146,14 @@ class StageInfoBox:
         with dithering(1):
             pyxel.rect(x + w // 2 - 50, y + 39, 48 + 53, 16 + 20, 1)
         with dithering(0.5):
-            pyxel.blt(x + w // 2 - 50, y + 39, background_image, 40, 54, 48 + 53, 16 + 20, 254)
+            pyxel.blt(
+                x + w // 2 - 50, y + 39, background_image, 40, 54, 48 + 53, 16 + 20, 254
+            )
         pyxel.text(x + w // 2 - 24, y + 57, "Danger Level", 7)
-        pyxel.blt(x + w // 2 - 4, y + 49, 0, 8, 120, 8, 8, 0)
+        total_num_stars = self.description.danger_level
+        left_shift = (total_num_stars - 1) * 4
+        for i in range(total_num_stars):
+            pyxel.blt(x + w // 2 - 4 - left_shift + i * 8, y + 49, 0, 8, 120, 8, 8, 0)
 
 
 def draw_rounded_rectangle(x: int, y: int, w: int, h: int, r: int, col: int) -> None:
@@ -209,9 +242,10 @@ class MapMarker:
             self.camera.follow = self
             self.set_state(MapMarkerState.SELECTED)
 
+
 def draw_wallpaper() -> None:
     ...
-    
+
 
 def draw_lush_background() -> None:
     pyxel.clip()
@@ -228,6 +262,8 @@ def draw_lush_background() -> None:
 
 
 class StageSelectScene(Scene):
+    futures: deque[Future[StageDescription]]
+
     def __init__(self) -> None:
         super().__init__()
         self.executor = ThreadPoolExecutor(2)
@@ -235,25 +271,48 @@ class StageSelectScene(Scene):
 
         stage_descriptions = [
             StageDescription.default(),
-            StageDescription.default(),
-            StageDescription.default(),
         ]
         self.not_any_hovered_deadline = 0
 
         self.map_markers = [
-            MapMarker(100, 50, cam, stage_descriptions[0]),
-            MapMarker(0, 100, cam, stage_descriptions[1]),
-            MapMarker(150, 150, cam, stage_descriptions[2]),
+            MapMarker(140, 150, cam, stage_descriptions[0]),
         ]
-        # self.camera.follow = self.map_markers[0]
-
+        self.executor = ThreadPoolExecutor(2)
+        self.futures = deque()
         self.info_box = StageInfoBox()
+
+        self.start_generation()
+
+    def start_generation(self) -> None:
+        self.futures.append(
+            self.executor.submit(
+                lambda: generate_stage_description("1-2A"),
+            ),
+        )
+
+        self.futures.append(
+            self.executor.submit(
+                lambda: generate_stage_description("1-2B"),
+            ),
+        )
+
+    def check_mailbox(self) -> None:
+        while self.futures and self.futures[0].done():
+            stage_description = self.futures.popleft().result()
+            self.map_markers.append(
+                MapMarker(
+                    *placement_of_marker(stage_description),
+                    self.camera,
+                    stage_description,
+                )
+            )
 
     def update(self) -> None:
         for marker in self.map_markers:
             marker.update()
         self.camera.update()
         self.info_box.update()
+        self.check_mailbox()
 
         for i, marker in enumerate(self.map_markers):
             if marker.hovering or marker.state == MapMarkerState.SELECTED:
@@ -290,13 +349,6 @@ class StageSelectScene(Scene):
                 if marker.state == MapMarkerState.SELECTED and not marker.hovering:
                     marker.set_state(MapMarkerState.IDLE)
                     self.camera.follow = None
-                    # self.not_any_hovered_deadline = 0
-            # self.camera.tweener.append_and_flush_previous(
-            #     itertools.zip_longest(
-            #         Mutator(50, pytweening.easeInBounce, self.camera, "y", 0),
-            #         Mutator(50, pytweening.easeInBounce, self.camera, "x", 0),
-            #     )
-            # )
 
     def draw(self) -> None:
         pyxel.cls(0)

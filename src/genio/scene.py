@@ -103,20 +103,20 @@ class AppWithScenes:
         pyxel.load(asset_path("sprites.pyxres"))
         pyxel.run(self.update, self.draw)
 
-    def add_scene(self, scene: Scene):
+    def add_scene(self, scene: Scene) -> None:
         self.scenes.append(scene)
 
-    def queue_scene(self, scene: Scene):
+    def queue_scene(self, scene: Scene) -> None:
         self.scenes.append(scene)
 
     def pop_scene(self) -> None:
         self.scenes.pop()
 
-    def set_state(self, state: AppState):
+    def set_state(self, state: AppState) -> None:
         self.state = state
         self.state_timers[state] = 0
 
-    def update(self):
+    def update(self) -> None:
         self.scenes[0].update()
         if (
             not self.futures

@@ -18,10 +18,10 @@ from pyxelxl.font import _image_as_ndarray
 
 from genio.base import Video, asset_path, load_image, resize_image_breathing
 from genio.battle import (
+    BattleBundle,
     CardBundle,
     MainSceneLike,
     ResolvedEffects,
-    setup_battle_bundle,
 )
 from genio.card import Card
 from genio.card_utils import CanAddAnim
@@ -46,6 +46,7 @@ from genio.constants import (
     TWEEN_SPEED,
 )
 from genio.effect import SinglePointEffect, SinglePointEffectType
+from genio.gamestate import game_state
 from genio.layout import (
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
@@ -862,11 +863,10 @@ class MainScene(Scene):
     futures: deque[Future[ResolvedEffects]]
 
     card_sprites: list[CardSprite]
+    bundle: BattleBundle
 
     def __init__(self):
-        self.bundle = setup_battle_bundle(
-            "initial_deck", "players.starter", ["enemies.evil_mask"] * 2
-        )
+        self.bundle = game_state.battle_bundle
         self.card_sprites = []
         self.tmp_card_sprites = []
         self.background_video = Video("background.npy")
@@ -1061,6 +1061,7 @@ class MainScene(Scene):
 
         self.framing.on_rarity_determined(effects.rarity)
         self.play_effects(effects)
+        self.bundle.record_to_battle_logs(effects)
         self.schedule_in(30, lambda: self.framing.teardown())
         if self.resolving_side == ResolvingSide.PLAYER:
             self.schedule_in(0, lambda: self.move_away_cards())

@@ -17,8 +17,20 @@ class BonusItems:
         ),
     ]
 
+    def to_individual_items(self) -> list["IndividualBonusItem"]:
+        return [
+            IndividualBonusItem(title=item["title"], delta=item["delta"])
+            for item in self.items
+        ]
 
-@promptly
+
+@dataclass(frozen=True)
+class IndividualBonusItem:
+    title: str
+    delta: float
+
+
+@promptly()
 def generate_bonus_items(base_money: float, battle_logs: list[str]) -> BonusItems:
     """\
     Act as an excellent GM. 
@@ -37,6 +49,7 @@ def generate_bonus_items(base_money: float, battle_logs: list[str]) -> BonusItem
     very interesting happens then the bonus can be higher, e.g., `+50%`.
 
     Your format should be roughly of the form of a list of objects.
+    More smaller bonuses are preferred fewer larger bonuses.
     Consult the battle logs to judge the player's behaviors:
 
     {% for log in battle_logs %}
@@ -86,7 +99,7 @@ class GenerateStageResult:
     lore: Annotated[
         str,
         (
-            "A short two or three sentence of lore text, written as if by an excelllent game writer. The lore text style should be mystical, eerie, and contemplative."
+            "A short twenty words of lore text, written as if by an excelllent game writer. The lore text style should be mystical, eerie, and contemplative."
         ),
     ]
     danger_level: Annotated[
@@ -94,6 +107,7 @@ class GenerateStageResult:
     ]
 
 
+@promptly
 def generate_stage_description(
     stage_name: str, adventure_logs: list[str]
 ) -> GenerateStageResult:
@@ -105,12 +119,15 @@ def generate_stage_description(
     First, provide a subtitle for the stage. The subtitle should be short,
     capturing your main inspiration.
 
-    Next, write a short lore text of two or three sentences that captures the essence of the stage. Your writing style should be mystical, eerie, and contemplative.
+    Next, write a short lore text of no more than twenty words that captures the
+    essence of the stage. Your writing style should be mystical, eerie, and contemplative.
 
     Finally, assign a danger level to the stage, a number between 1 and 5.
     1 should indicate a beginner level stage, 3 is a somewhat challenging
     stage, and 5 is a stage that is extremely dangerous (e.g., optional level,
-    for final boss).
+    for final boss). World 1 should only occasionally feature a danger level
+    above 2, but otherwise the danger level should increase as the player
+    progresses through the worlds.
 
     For your context, the player's adventure logs are as follows:
 
