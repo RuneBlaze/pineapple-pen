@@ -24,12 +24,12 @@ from genio.scene import Scene
 from genio.tween import Mutator, Tweener
 
 
-def draw_tiled(img: pyxel.Image) -> None:
+def draw_tiled(img: pyxel.Image, ignore_col: int | None = 0) -> None:
     w, h = img.width, img.height
     for x, y in itertools.product(
-        range(0, WINDOW_WIDTH, w), range(0, WINDOW_HEIGHT, h)
+        range(-w * 2, WINDOW_WIDTH, w), range(-h * 2, WINDOW_HEIGHT, h)
     ):
-        pyxel.blt(x, y, img, 0, 0, w, h, 0)
+        pyxel.blt(x, y, img, 0, 0, w, h, ignore_col)
 
 
 class Camera:
@@ -107,11 +107,20 @@ class StageInfoBox:
         c1 = 7
         arcade_text(x, y + 5, "1-2", c1, layout=layout(w=w, ha="center"))
         retro_text(x, y + 20, "Beneath the Soil", c1, layout=layout(w=w, ha="center"))
-        pyxel.text(x + w // 2 - 4 - 20, y + 57, "Danger Level", 7)
-        pyxel.blt(x + w // 2 - 4, y + 50 - 1, 0, 8, 120, 8, 8, 0)
 
-        for i, line in enumerate(textwrap.wrap(self.description.lore, 28)):
-            pyxel.text(x + 5, y + 80 + i * 7, line, 7)
+        self.draw_danger_level(w, x, y)
+
+        for i, line in enumerate(textwrap.wrap(self.description.lore, 26)):
+            pyxel.text(x + 8, y + 84 + i * 7, line, 7)
+
+    def draw_danger_level(self, w, x, y):
+        background_image = load_image("ui", "yellow-ruins.png")
+        with dithering(1):
+            pyxel.rect(x + w // 2 - 50, y + 39, 48 + 53, 16 + 20, 1)
+        with dithering(0.5):
+            pyxel.blt(x + w // 2 - 50, y + 39, background_image, 40, 54, 48 + 53, 16 + 20, 254)
+        pyxel.text(x + w // 2 - 24, y + 57, "Danger Level", 7)
+        pyxel.blt(x + w // 2 - 4, y + 49, 0, 8, 120, 8, 8, 0)
 
 
 def draw_rounded_rectangle(x: int, y: int, w: int, h: int, r: int, col: int) -> None:
@@ -200,11 +209,16 @@ class MapMarker:
             self.camera.follow = self
             self.set_state(MapMarkerState.SELECTED)
 
+def draw_wallpaper() -> None:
+    ...
+    
 
 def draw_lush_background() -> None:
-    pyxel.cls(0)
+    pyxel.clip()
+    with dithering(0.25):
+        draw_tiled(load_image("tiles-black.png"), 4)
     pyxel.clip(0 + 30, 0 + 30, WINDOW_WIDTH - 60, WINDOW_HEIGHT - 60)
-    draw_tiled(load_image("tiles-black.png"))
+    draw_tiled(load_image("tiles-black.png"), None)
     pyxel.dither(0.5)
     pyxel.blt(100, 60, img := load_image("flowers.png"), 0, 0, 427, 240, 254)
     pyxel.dither(1)
@@ -286,6 +300,7 @@ class StageSelectScene(Scene):
 
     def draw(self) -> None:
         pyxel.cls(0)
+        draw_wallpaper()
         with self.camera.focus():
             draw_lush_background()
 

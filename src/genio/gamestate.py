@@ -18,6 +18,9 @@ class StageDescription:
             "Beneath the sturdy bamboo, even sturdier roots spread out. Only foolish humans and youkai can see nothing but the surface.",
             3,
         )
+    
+    def generate_base_money(self) -> int:
+        return 10 + 5 * self.danger_level
 
 
 class GameState:

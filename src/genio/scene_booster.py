@@ -6,7 +6,7 @@ from concurrent.futures import Future
 from concurrent.futures.thread import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Annotated, TypeAlias
+from typing import TypeAlias
 
 import numpy as np
 import pytweening
@@ -27,7 +27,6 @@ from genio.components import (
     retro_text,
 )
 from genio.constants import CARD_HEIGHT, CARD_WIDTH
-from genio.core.base import promptly
 from genio.gamestate import game_state
 from genio.gui import (
     CardArtSet,
@@ -41,53 +40,8 @@ from genio.ps import Anim, HasPos
 from genio.scene import Scene
 from genio.scene_stages import draw_lush_background
 from genio.semantic_search import search_closest_document
+from genio.stagegen import generate_sat_flashcards
 from genio.tween import Instant, Mutator, Tweener
-
-
-@dataclass
-class ScoreItems:
-    items: Annotated[list[dict], ""]
-
-
-@promptly
-def score_item(base_money: float, battle_logs: list[str]) -> ScoreItems:
-    """\
-    Calculate the score for the player based on the battle logs.
-
-    The score is based on the player's performance in the battle. The player
-    will receive a monetary reward based on the score.
-
-    The battle logs contain the events that happened during the battle.
-
-    {{ formatting_instructions }}
-    """
-
-
-@dataclass
-class GenerateSATFlashCardResult:
-    """A set of precisely 5 flashcards for SAT preparation."""
-
-    flashcards: Annotated[
-        list[dict],
-        (
-            "A list of flashcards, objects containing two keys: 'word' and 'definition', "
-            "each corresponding to the word and its definition from dictionary. Definition "
-            "should be in dictionary form, like (noun) a person who is very interested in [...]"
-        ),
-    ]
-
-
-@promptly
-def generate_sat_flashcards() -> GenerateSATFlashCardResult:
-    """\
-    Act as an excellent tutor and a test prep professional by designing
-    a set of 5 flashcards for SAT preparation, as if pulled from a dictionary.
-
-    Write words in their entire form, and provide their definitions.
-    Choose words that are no longer than 9 characters.
-
-    {{ formatting_instructions }}
-    """
 
 
 class BoosterPackType(Enum):

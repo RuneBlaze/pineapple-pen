@@ -951,7 +951,9 @@ class MainSceneLike(CanAddAnim, Protocol):
 enc = tiktoken.get_encoding("o200k_base")
 
 
-def num_tokens(s: str) -> int:
+def num_tokens(s: str | None) -> int:
+    if not s:
+        return 0
     return len(enc.encode(s, allowed_special="all"))
 
 
