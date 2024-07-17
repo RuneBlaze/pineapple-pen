@@ -208,6 +208,9 @@ class CardState(Enum):
     INITIALIZE = 3
 
 
+def sin_01(t: float, dilation: float) -> float:
+    return (math.sin(t * dilation) + 1) / 2
+
 class CardSprite:
     def __init__(self, index, card: Card, app: MainSceneLike, selected: bool = False):
         self.index = index
@@ -219,6 +222,7 @@ class CardSprite:
         self.width = CARD_WIDTH
         self.height = CARD_HEIGHT
         self.hovered = False
+        self.highlight_timer = 0
         self.selected = selected
         self.dragging = False
         self.drag_offset_x = 0
@@ -308,6 +312,9 @@ class CardSprite:
     def schedule_shake(self):
         self.tweens.append(Shake(self, 5, 15))
 
+    def schedule_small_shake(self):
+        self.tweens.append(Shake(self, 20, 5))
+
     def draw(self):
         shift = 0
         if self.hover_timer > 0:
@@ -359,6 +366,7 @@ class CardSprite:
                 colkey=254,
                 rot=self.rotation,
             )
+            # self.draw_highlighted_edges()
             pyxel.pal()
             if not self.selected and any(
                 card for card in self.app.card_sprites if card.selected
@@ -376,6 +384,21 @@ class CardSprite:
                             colkey=254,
                             rot=self.rotation,
                         )
+
+    def draw_highlighted_edges(self):
+        if self.highlight_timer > 0:
+            with dithering(0.5 * sin_01(self.highlight_timer, 0.1)):
+                blt_rot(
+                        self.x,
+                        self.y,
+                        load_image("card_flashing_overlay.png"),
+                        0,
+                        0,
+                        self.width,
+                        self.height,
+                        colkey=254,
+                        rot=self.rotation,
+                    )
 
     @property
     def deck_length(self) -> int:
@@ -432,9 +455,27 @@ class CardSprite:
             self.y += dy
 
         if self.is_mouse_over():
+            if self.hovered:
+                self.highlight_timer += 1
+            else:
+                self.highlight_timer = 0
+                if rng.random() < 0.5:
+                    next_rot = rng.uniform(-5, -2)
+                else:
+                    next_rot = rng.uniform(2, 5)
+                self.tweens.append(
+                    Mutator(10, pytweening.easeInOutQuad, self, "rotation", next_rot),
+                    range(20),
+                    Mutator(10, pytweening.easeInOutQuad, self, "rotation", 0),
+                )
             self.hovered = True
             self.app.tooltip.pump_energy(self.card.name, self.card.description or "")
         else:
+            if self.hovered:
+                self.tweens.clear()
+                self.tweens.append(
+                    Mutator(10, pytweening.easeInOutQuad, self, "rotation", 0)
+                )
             self.hovered = False
 
     def snap_to_grid(self):
@@ -561,6 +602,7 @@ class Tooltip:
         if self.counter <= 0:
             self.title = ""
             self.description = ""
+            self.counter = 0
 
     def pump_energy(self, title: str, description: str):
         if self.counter >= 40 and (
