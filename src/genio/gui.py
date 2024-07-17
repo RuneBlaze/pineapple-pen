@@ -433,7 +433,7 @@ class CardSprite:
 
         if self.is_mouse_over():
             self.hovered = True
-            self.app.tooltip.reset(self.card.name, self.card.description or "")
+            self.app.tooltip.pump_energy(self.card.name, self.card.description or "")
         else:
             self.hovered = False
 
@@ -516,6 +516,8 @@ def draw_mixed_rounded_rect(
 
 
 class Tooltip:
+    """The help box."""
+
     def __init__(self, title: str, description: str):
         self.title = title
         self.description = description
@@ -545,14 +547,14 @@ class Tooltip:
                 7,
                 layout=layout(w=rect_width, ha="center", va="center", h=14),
             )
-        if self.description:
-            retro_text(
-                amx - 50,
-                amy + 10,
-                self.description,
-                7,
-                layout=layout(w=100, ha="left", va="center", h=14),
-            )
+            if self.description:
+                retro_text(
+                    amx - 50,
+                    amy + 10,
+                    self.description,
+                    7,
+                    layout=layout(w=100, ha="left", va="center", h=14),
+                )
 
     def update(self):
         self.counter -= 3
@@ -560,10 +562,15 @@ class Tooltip:
             self.title = ""
             self.description = ""
 
-    def reset(self, title: str, description: str):
+    def pump_energy(self, title: str, description: str):
+        if self.counter >= 40 and (
+            self.title != title or self.description != description
+        ):
+            return
+        self.counter += 10
+        self.counter = min(60, self.counter)
         self.title = title
         self.description = description
-        self.counter = 60
 
 
 def button(
