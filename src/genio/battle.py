@@ -792,7 +792,6 @@ class BattleBundle:
     def record_to_battle_logs(self, effects: ResolvedEffects) -> None:
         logs = self._transform_to_battle_logs(effects)
         self.battle_logs.extend(logs)
-        print(self.battle_logs)
 
     def _transform_to_battle_logs(self, effects: ResolvedEffects) -> list[str]:
         logs = []
@@ -868,7 +867,7 @@ class BattleBundle:
             self._apply_global_effect(effect)
         else:
             self._apply_targeted_effect(caster, target, effect, rng)
-    
+
     def deduct_energy(self, cost: int) -> None:
         self.energy = max(0, self.energy - cost)
 
@@ -1000,6 +999,11 @@ class BattleBundle:
         if self.player.is_dead():
             # TODO: actually provide game over.
             raise ValueError("Player is dead. Game Over.")
+        for enemy in self.enemies:
+            if enemy.is_dead():
+                self.battle_logs.append(
+                    f"Turn {self.turn_counter}: {enemy.name} has fallen."
+                )
         self.enemies = [enemy for enemy in self.enemies if not enemy.is_dead()]
 
     def is_player_victory(self) -> bool:

@@ -29,6 +29,7 @@ from genio.components import (
     DrawDeck,
     EnergyRenderer,
     Popup,
+    camera_shift,
     cute_text,
     dithering,
     pal_single_color,
@@ -56,6 +57,7 @@ from genio.layout import (
 )
 from genio.ps import Anim, HasPos
 from genio.scene import Scene
+from genio.scene_stages import draw_rounded_rectangle
 from genio.semantic_search import SerializedCardArt, search_closest_document
 from genio.tween import Instant, MutableTweening, Mutator, Shake, Tweener
 from genio.utils.weaklist import WeakList
@@ -504,6 +506,15 @@ def horizontal_gradient(x, y, w, h, c0, c1):
     pyxel.dither(1.0)
 
 
+def draw_mixed_rounded_rect(
+    dither_amount: float, x: int, y: int, w: int = 80, h: int = 14
+) -> None:
+    with dithering(dither_amount * 1.0):
+        draw_rounded_rectangle(x - w // 2, y, w, h, 3, 1)
+    with dithering(dither_amount * 0.5):
+        draw_rounded_rectangle(x - w // 2, y, w, h, 3, 0)
+
+
 class Tooltip:
     def __init__(self, title: str, description: str):
         self.title = title
@@ -516,39 +527,32 @@ class Tooltip:
         # Draw on mouse, and fade with counter if counter < 50
         mx, my = pyxel.mouse_x, pyxel.mouse_y
         amx, amy = mx, my
-        t = 0.6
+        t = 0.05
         amx = mx * t + ((1 - t) * pyxel.width / 2)
-        amy = my * t + ((1 - t) * pyxel.height / 2)
+        amy = my * t + ((1 - t) * pyxel.height * 0.9) - 60
         dither_amount = 1.0 if self.counter > 50 else (self.counter / 50) ** 2
+        rect_width = 80
+        rect_height = 14
+        if self.description:
+            rect_width *= 2
+            rect_height *= 2
+        draw_mixed_rounded_rect(dither_amount, amx, amy, w=rect_width, h=rect_height)
         with dithering(dither_amount):
-            rect_width = 125
-            rect_height = 60
-            offset = 60
-            pyxel.rect(amx - rect_width // 2, amy - offset, rect_width, rect_height, 0)
-            pyxel.tri(
-                mx,
-                my,
-                amx - 10,
-                amy - offset,
-                amx + 10,
-                amy - offset,
-                0,
-            )
             cute_text(
-                amx - 50,
-                amy - offset + 5,
+                amx - rect_width // 2,
+                amy,
                 self.title,
                 7,
-                layout=layout(w=100, ha="left"),
+                layout=layout(w=rect_width, ha="center", va="center", h=14),
             )
-            if self.description:
-                retro_text(
-                    amx - 50,
-                    amy - offset + 20,
-                    self.description,
-                    7,
-                    layout=layout(w=100, ha="left"),
-                )
+        if self.description:
+            retro_text(
+                amx - 50,
+                amy + 10,
+                self.description,
+                7,
+                layout=layout(w=100, ha="left", va="center", h=14),
+            )
 
     def update(self):
         self.counter -= 3
@@ -560,21 +564,6 @@ class Tooltip:
         self.title = title
         self.description = description
         self.counter = 60
-
-
-camera_stack = []
-
-
-@contextlib.contextmanager
-def camera_shift(x: int, y: int):
-    global camera_stack
-    base_coord = camera_stack[-1] if camera_stack else (0, 0)
-    pyxel.camera(x + base_coord[0], y + base_coord[1])
-    camera_stack.append((x, y))
-    yield
-    if camera_stack:
-        camera_stack.pop()
-    pyxel.camera(base_coord[0], base_coord[1])
 
 
 def button(
@@ -801,10 +790,12 @@ class ResolvingFraming:
             Instant(lambda: self.set_state(FramingState.INACTIVE)),
         )
 
+
 class ImageButtonState(Enum):
     NORMAL = 0
     FLASHING = 1
     DISABLED = 2
+
 
 class ImageButton:
     def __init__(self, x: int, y: int, image: pyxel.Image):
@@ -820,15 +811,15 @@ class ImageButton:
         if self.state == ImageButtonState.DISABLED:
             with dithering(0.75):
                 pyxel.blt(
-                        self.x,
-                        self.y,
-                        self.image,
-                        0,
-                        0,
-                        self.image.width,
-                        self.image.height,
-                        colkey=254,
-                    )
+                    self.x,
+                    self.y,
+                    self.image,
+                    0,
+                    0,
+                    self.image.width,
+                    self.image.height,
+                    colkey=254,
+                )
             with dithering(0.5):
                 with pal_single_color(13):
                     pyxel.blt(
@@ -902,10 +893,10 @@ class ImageButton:
         if self.state == ImageButtonState.DISABLED:
             self.hovering = False
             return False
-        
+
         if self.state == ImageButtonState.FLASHING:
             self.pingpong_state = next(self.pingpong_flashing)
-        
+
         if (
             self.x <= pyxel.mouse_x <= self.x + self.image.width
             and self.y <= pyxel.mouse_y <= self.y + self.image.height
@@ -1262,7 +1253,6 @@ class MainScene(Scene):
         pyxel.pal(11, 12)
         buffer_as_arr[:] = 0
         self.background_video.draw_image()
-        # pyxel.blt(0, 0, self.background_video.current_image, 0, 0, 427, 240, 0)
         t = pytweening.easeOutCirc(min(self.background_video.actual_timer / 500.0, 1))
         buffer_as_arr[m < t] = 254
         pyxel.pal()

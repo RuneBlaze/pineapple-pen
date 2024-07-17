@@ -371,3 +371,18 @@ class EnergyRenderer:
                 7,
                 layout=layout(w=16, h=16, ha="center", va="center"),
             )
+
+
+camera_stack = []
+
+
+@contextlib.contextmanager
+def camera_shift(x: int, y: int):
+    global camera_stack
+    base_coord = camera_stack[-1] if camera_stack else (0, 0)
+    pyxel.camera(x + base_coord[0], y + base_coord[1])
+    camera_stack.append((x, y))
+    yield
+    if camera_stack:
+        camera_stack.pop()
+    pyxel.camera(base_coord[0], base_coord[1])

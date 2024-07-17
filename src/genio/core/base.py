@@ -26,7 +26,6 @@ from genio.base import asset_path
 from genio.utils.robustyaml import cleaning_parse
 from icecream import ic
 from jinja2 import BaseLoader, Environment, StrictUndefined, TemplateNotFound
-from langchain.output_parsers import OutputFixingParser
 from langchain_core.exceptions import OutputParserException
 from langchain_core.output_parsers import BaseOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -399,11 +398,7 @@ def generate_using_docstring(
     prompt += inst_for_struct(klass, ignore_set=set(predefined_args.keys()))
     template = render_template(prompt, {**args, **predefined_args})
     logger.info(f"Prompt: {prompt}")
-    chain = (
-        template
-        | llm
-        | JsonParser(cls=klass, predefined_args=predefined_args)
-    )
+    chain = template | llm | JsonParser(cls=klass, predefined_args=predefined_args)
     return chain.invoke({})
 
 
