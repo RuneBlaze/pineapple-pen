@@ -46,7 +46,38 @@ description = "A malevolent gelatinous creature, the Slime oozes malice as it sh
 pattern = ["attack player for 2 damage", "block for 1 shield points"]
 
 
+[icons]
+
+210 = "Poisoned"
+224 = "Slow"
+217 = "Vulnerable"
+245 = "Brandish"
+
 [anims]
+
+[[anims.gold_burst]]
+frequency = 2
+max_p = 200
+area = [18, 18]
+size = [1, 0, 1, 0]
+speed = 10
+life = [1, 0.5]
+sprites = [26, 27, 28, 27, 26, 27, 28, 31, 29, 30]
+duration = 2
+gravity = true
+burst = [true, 30]
+
+[[anims.gold_burst]]
+frequency = 2
+max_p = 200
+area = [18, 18]
+size = [1, 0, 1, 0]
+speed = 1
+life = [1, 0.5]
+colors = [10, 9]
+duration = 0
+gravity = true
+burst = [true, 50]
 
 [[anims.energy]]
 frequency = 5

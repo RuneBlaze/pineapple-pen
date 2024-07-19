@@ -465,7 +465,7 @@ class CardSprite:
                     next_rot = rng.uniform(2, 5)
                 self.tweens.append(
                     Mutator(10, pytweening.easeInOutQuad, self, "rotation", next_rot),
-                    range(20),
+                    range(28),
                     Mutator(10, pytweening.easeInOutQuad, self, "rotation", 0),
                 )
             self.hovered = True
@@ -474,7 +474,7 @@ class CardSprite:
             if self.hovered:
                 self.tweens.clear()
                 self.tweens.append(
-                    Mutator(10, pytweening.easeInOutQuad, self, "rotation", 0)
+                    Mutator(6, pytweening.easeInOutQuad, self, "rotation", 0)
                 )
             self.hovered = False
 
@@ -590,11 +590,11 @@ class Tooltip:
             )
             if self.description:
                 retro_text(
-                    amx - 50,
+                    amx - rect_width // 2 + 8,
                     amy + 10,
                     self.description,
                     7,
-                    layout=layout(w=100, ha="left", va="center", h=14),
+                    layout=layout(w=rect_width - 16, ha="left", va="center", h=14),
                 )
 
     def update(self):
@@ -1344,8 +1344,8 @@ class MainScene(Scene):
             pyxel.clip()
 
     def draw_crosshair(self, x, y):
-        pyxel.line(x - 5, y, x + 5, y, 7)
-        pyxel.line(x, y - 5, x, y + 5, 7)
+        cursor = load_image("cursor.png")
+        pyxel.blt(x, y, cursor, 0, 0, 16, 16, colkey=254)
 
     def end_player_turn(self):
         for card_sprite in self.card_sprites:

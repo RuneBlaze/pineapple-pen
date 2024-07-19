@@ -190,7 +190,10 @@ class Anim:
                     pyxel.circ(x, y, r, c)
                 case {"t": "spr", "n": n, "x": x, "y": y}:
                     u, v = uv_for_16(n)
-                    pyxel.blt(x, y, 1, u, v, 8, 8, 0)
+                    transparent_color = 0
+                    if pyxel.images[1].pget(u, v) == 7:
+                        transparent_color = 7
+                    pyxel.blt(x, y, 1, u, v, 8, 8, transparent_color)
                 case _:
                     raise ValueError(f"Unknown draw call: {v}")
         lua.globals().draw_calls = lua.table()
