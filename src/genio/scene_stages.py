@@ -8,11 +8,14 @@ from concurrent.futures import Future
 from concurrent.futures.thread import ThreadPoolExecutor
 from enum import Enum
 
+import numpy as np
 import pytweening
 import pyxel
 from pyxelxl import layout
 
 from genio.base import WINDOW_HEIGHT, WINDOW_WIDTH, load_image
+from genio.bezier import QuadBezier
+from genio.card_utils import CanAddAnim
 from genio.components import (
     arcade_text,
     retro_text,
@@ -20,12 +23,13 @@ from genio.components import (
 from genio.gamestate import StageDescription, game_state
 from genio.gui import dithering
 from genio.layout import pingpong
-from genio.ps import Anim
+from genio.ps import Anim, HasPos
 from genio.scene import Scene
 from genio.stagegen import (
     generate_stage_description as generate_stage_description_low_level,
 )
-from genio.tween import Mutator, Tweener
+from genio.tween import Instant, Mutator, Tweener
+from genio.vector import Vec2Int
 
 
 def generate_stage_description(stage_name: str) -> StageDescription:
@@ -170,11 +174,18 @@ class MapMarkerState(Enum):
     IDLE = 0
     SELECTED = 1
     INACTIVE = 2
+    APPEARING = 3
 
 
 class MapMarker:
     def __init__(
-        self, x: int, y: int, camera: Camera, stage_description: StageDescription
+        self,
+        x: int,
+        y: int,
+        camera: Camera,
+        stage_description: StageDescription,
+        scene: CanAddAnim,
+        appearing: bool = False,
     ) -> None:
         self.x = x
         self.y = y
@@ -187,10 +198,16 @@ class MapMarker:
         self.t = next(self.pingpong)
 
         self.state_timers = Counter()
-
         self.hovering = False
+        self.scene = scene
+        if appearing:
+            self.scene.add_anim("anims.map_marker_appear", x + 3, y)
+            self.state = MapMarkerState.APPEARING
 
     def draw(self) -> None:
+        if self.state == MapMarkerState.APPEARING:
+            return
+
         c1 = 15
         pyxel.dither(0.5 + ((self.timer // 10) % 3) / 3)
         pyxel.tri(self.x, self.y, self.x + 6, self.y, self.x + 3, self.y - 3, c1)
@@ -207,7 +224,7 @@ class MapMarker:
             l = 8
             pyxel.line(self.x + 4, self.y + l, self.x + 4 + 10, self.y + l, c1)
             draw_rounded_rectangle(self.x + 3 + 10, self.y + l - 4, 22, 8, 2, c1)
-            pyxel.text(self.x + 3 + 15, self.y + l - 2, "1-2", 0)
+            pyxel.text(self.x + 3 + 15, self.y + l - 2, self.stage_description.name, 0)
 
     def draw_border(self, c1: int, t: int) -> None:
         pyxel.line(self.x - 2 - t, self.y, self.x + 3, self.y - 5 - t, c1)
@@ -222,6 +239,12 @@ class MapMarker:
     def update(self) -> None:
         self.timer += 1
         self.state_timers[self.state] += 1
+
+        if (
+            self.state == MapMarkerState.APPEARING
+            and self.state_timers[self.state] > 10
+        ):
+            self.set_state(MapMarkerState.IDLE)
 
         if self.timer % 10 == 0:
             self.t = next(self.pingpong)
@@ -257,6 +280,74 @@ def draw_lush_background() -> None:
     pyxel.dither(1.0)
 
 
+class BezierAnimation:
+    def __init__(
+        self, p0: Vec2Int, p1: Vec2Int, sign: bool = True, col: int = 15
+    ) -> None:
+        midpoint = (p0 + p1) / 2
+        dir = (p1 - midpoint) / np.linalg.norm(p1 - midpoint)
+        dir = np.array([-dir[1], dir[0]])
+        mult = 1 if sign else -1
+        c = midpoint + np.linalg.norm(p1 - p0) * mult * 0.3 * dir
+        self.curve = QuadBezier(p0, c, p1)
+        self.tween = Tweener()
+        self.t0 = 0.0
+        self.t1 = 0.0
+        self.col = col
+        self.dead = False
+        self.play()
+
+    def play(self) -> None:
+        self.tween.append_mutate(
+            self,
+            "t1",
+            30,
+            1.0,
+            "ease_in_quad",
+        )
+        self.tween.append_mutate(
+            self,
+            "t0",
+            30,
+            1.0,
+            "ease_in_quad",
+        )
+        self.tween.append(
+            Instant(
+                lambda: setattr(self, "dead", True),
+            )
+        )
+
+    def draw(self) -> None:
+        self.curve.draw(t0=self.t0, t1=self.t1, col=self.col)
+
+    def update(self) -> None:
+        self.tween.update()
+
+
+class DrawBezier:
+    def __init__(self, bezier_anim: BezierAnimation) -> None:
+        self.bezier_anim = bezier_anim
+
+    def __iter__(self):
+        for _ in range(120):
+            self.bezier_anim.update()
+            yield
+
+
+class PumpEnenergyFor:
+    def __init__(
+        self, info_box: StageInfoBox, stage_description: StageDescription
+    ) -> None:
+        self.info_box = info_box
+        self.stage_description = stage_description
+
+    def __iter__(self):
+        for _ in range(60):
+            self.info_box.pump(self.stage_description)
+            yield
+
+
 class StageSelectScene(Scene):
     futures: deque[Future[StageDescription]]
 
@@ -269,15 +360,32 @@ class StageSelectScene(Scene):
             StageDescription.default(),
         ]
         self.not_any_hovered_deadline = 0
+        self.anims = []
+        self.tweens = Tweener()
 
         self.map_markers = [
-            MapMarker(140, 150, cam, stage_descriptions[0]),
+            MapMarker(140, 150, cam, stage_descriptions[0], self),
         ]
         self.executor = ThreadPoolExecutor(2)
         self.futures = deque()
         self.info_box = StageInfoBox()
+        self.beziers = []
+        self.finished_counter = 0
 
         self.start_generation()
+
+    def add_anim(
+        self,
+        name: str,
+        x: int,
+        y: int,
+        play_speed: float = 1.0,
+        attached_to: HasPos | None = None,
+    ) -> Anim:
+        self.anims.append(
+            result := Anim.from_predef(name, x, y, play_speed, attached_to)
+        )
+        return result
 
     def start_generation(self) -> None:
         self.futures.append(
@@ -295,13 +403,50 @@ class StageSelectScene(Scene):
     def check_mailbox(self) -> None:
         while self.futures and self.futures[0].done():
             stage_description = self.futures.popleft().result()
-            self.map_markers.append(
-                MapMarker(
-                    *placement_of_marker(stage_description),
-                    self.camera,
-                    stage_description,
-                )
+            self.tweens.append(
+                itertools.zip_longest(
+                    Instant(
+                        (lambda sd: lambda: self.add_map_marker(sd))(stage_description)
+                    ),
+                    Instant(
+                        (
+                            lambda sd: lambda: self.beziers.append(
+                                BezierAnimation(
+                                    np.array(
+                                        [self.map_markers[0].x, self.map_markers[0].y]
+                                    )
+                                    + np.array([3, 0]),
+                                    np.array(placement_of_marker(sd))
+                                    + np.array([3, 0]),
+                                )
+                            )
+                        )(stage_description)
+                    ),
+                    range(120),
+                    itertools.chain(
+                        range(30),
+                        PumpEnenergyFor(self.info_box, stage_description),
+                    ),
+                ),
+                Instant(self.increment_finished_counter),
             )
+
+    def increment_finished_counter(self) -> None:
+        self.finished_counter += 1
+        if self.finished_counter == 2:
+            self.camera.follow = self.map_markers[0]
+
+    def add_map_marker(self, stage_description: StageDescription) -> None:
+        self.map_markers.append(
+            MapMarker(
+                *placement_of_marker(stage_description),
+                self.camera,
+                stage_description,
+                self,
+                appearing=True,
+            )
+        )
+        self.camera.follow = self.map_markers[-1]
 
     def update(self) -> None:
         for marker in self.map_markers:
@@ -315,6 +460,8 @@ class StageSelectScene(Scene):
                 self.info_box.pump(marker.stage_description)
                 break
 
+        self.tweens.update()
+
         any_selected = any(
             marker.state == MapMarkerState.SELECTED for marker in self.map_markers
         )
@@ -325,6 +472,12 @@ class StageSelectScene(Scene):
                         if other_marker.state == MapMarkerState.SELECTED:
                             marker.set_state(MapMarkerState.IDLE)
                             continue
+        for anim in self.anims:
+            anim.update()
+        self.anims = [anim for anim in self.anims if not anim.dead]
+        for bezier in self.beziers:
+            bezier.update()
+        self.beziers = [bezier for bezier in self.beziers if not bezier.dead]
 
         any_hovered = any(marker.hovering for marker in self.map_markers)
         if not any_hovered:
@@ -353,6 +506,10 @@ class StageSelectScene(Scene):
 
             for marker in self.map_markers:
                 marker.draw()
+
+            Anim.draw()
+            for bezier in self.beziers:
+                bezier.draw()
         self.info_box.draw()
 
         Anim.draw()

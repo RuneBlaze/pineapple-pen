@@ -28,7 +28,9 @@ from genio.card_utils import CanAddAnim
 from genio.components import (
     DrawDeck,
     EnergyRenderer,
+    GoldRenderer,
     Popup,
+    arcade_text,
     camera_shift,
     cute_text,
     dithering,
@@ -126,6 +128,12 @@ class CardArtSet:
             case "The Emperor":
                 image = copy_image(load_image("cards", "the-emperor.png"))
                 self.add_retro_text_to_card("IV", image)
+                return image
+            case "Block":
+                image = copy_image(load_image("cards", "block.png"))
+                return image
+            case "Slash":
+                image = copy_image(load_image("cards", "slash.png"))
                 return image
         image = copy_image(load_image("card_flash.png"))
         self.add_flashcard_text_to_card(card_name, image)
@@ -595,7 +603,7 @@ class Tooltip:
                     amy + 10,
                     self.description,
                     7,
-                    layout=layout(w=rect_width - 16, ha="left", va="center", h=14),
+                    layout=layout(w=rect_width - 16, ha="left", va="top", h=14),
                 )
 
     def update(self):
@@ -1000,6 +1008,8 @@ class MainScene(Scene):
             for e in self.bundle.enemies
         ]
 
+        self.gold_renderer = GoldRenderer(game_state, self, 100, 0)
+
         self.player_sprite = WrappedImage(
             load_image("char", "char_celine.png"),
             0,
@@ -1117,6 +1127,7 @@ class MainScene(Scene):
             self.end_player_turn()
 
         self.energy_renderer.update()
+        self.gold_renderer.update()
 
         self.tmp_card_sprites = [
             card for card in self.tmp_card_sprites if not card.is_dead()
@@ -1284,6 +1295,8 @@ class MainScene(Scene):
         for card in self.tmp_card_sprites:
             card.draw()
 
+        self.draw_deck.draw_card_label(10, 190)
+
         for button in self.image_buttons:
             button.draw()
         self.tooltip.draw()
@@ -1293,7 +1306,14 @@ class MainScene(Scene):
         for popup in self.popups:
             popup.draw()
         self.framing.draw()
+        self.draw_hud()
         self.draw_crosshair(pyxel.mouse_x, pyxel.mouse_y)
+
+    def draw_hud(self):
+        arcade_text(2, 0, game_state.stage.name, 7)
+        retro_text(2, 8, f"Turn {self.bundle.turn_counter}", 7)
+        self.gold_renderer.draw()
+        # arcade_text(15, 0, f"$ {game_state.gold}", 7)
 
     def draw_background(self):
         m = self.background_video.appearance

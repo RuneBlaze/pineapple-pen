@@ -23,6 +23,7 @@ from typing_extensions import (
     assert_never,
 )
 
+from genio.artifacts import parse_stylize
 from genio.card import Card
 from genio.card_utils import CanAddAnim
 from genio.core.base import access, promptly
@@ -90,7 +91,7 @@ class ResolvedResults:
     ]
 
 
-@promptly
+@promptly()
 def _judge_results(
     cards: list[Card],
     user: PlayerBattler,
@@ -98,6 +99,7 @@ def _judge_results(
     battle_context: str,
     player_hand: list[Card],
     resolve_player_actions: bool = True,
+    additional_guidance: list[str] | None = None,
 ) -> ResolvedResults:
     """\
     {% include('judge.md') %}
@@ -446,6 +448,16 @@ class CardBundle:
 
 
 @dataclass
+class Artifact:
+    name: str
+    description: str
+
+
+class HasDescription(Protocol):
+    description: str
+
+
+@dataclass
 class EffectGroup:
     parent: BattleBundle
     inner: list[tuple[Battler | None, SinglePointEffect | GlobalEffect, int]] = field(
@@ -648,6 +660,7 @@ class BattleBundle:
     effects: SortedList[tuple[Battler | None, SinglePointEffect | GlobalEffect]]
     postprocessors: list[weakref.WeakMethod]
     proposed_cards: list[Card]
+    player_artifacts: list[Artifact]
 
     def __init__(
         self,
@@ -657,6 +670,7 @@ class BattleBundle:
         card_bundle: CardBundle,
     ) -> None:
         self.player = player
+        self.player_artifacts = []
         self.enemies = enemies
         self.turn_counter = 0
         self.effects = SortedList()
@@ -669,6 +683,17 @@ class BattleBundle:
         self.energy = self.default_energy
         self.proposed_cards = []
         self.battle_logs = []
+
+    def active_items_with_description(self) -> Iterator[HasDescription]:
+        for card in self.card_bundle.hand:
+            yield card
+        for card in self.card_bundle.resolving:
+            yield card
+        yield from self.player_artifacts
+
+    def prompt_injections(self) -> Iterator[str]:
+        for has_description in self.active_items_with_description():
+            yield from parse_stylize(has_description.description)
 
     def tentative_energy_cost(self) -> int:
         return calculate_total_cost(self.proposed_cards)
@@ -770,6 +795,7 @@ class BattleBundle:
             self.battle_prelude.description,
             player_hand=self.card_bundle.hand,
             resolve_player_actions=True,
+            additional_guidance=list(self.prompt_injections()),
         )
         self.process_effects(resolved_results.results)
         expired_effects = self.flush_expired_effects(self.rng)

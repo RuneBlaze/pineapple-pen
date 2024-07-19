@@ -143,3 +143,10 @@ These are the player's remaining cards in hand, and are provided for context. Th
 {%- for card in player_hand %}
 - {{ loop.index }}. {{ card.to_plaintext() }} (Shord ID: `{{card.short_id()}}`)
 {%- endfor %}
+
+{%- if additional_guidance %}
+### Additional Guidance
+{%- for guidance in additional_guidance %}
+- {{ guidance }}
+{%- endfor %}
+{%- endif %}

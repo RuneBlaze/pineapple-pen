@@ -26,14 +26,14 @@ logger = get_logger()
 
 class Scene(ABC):
     @abstractmethod
-    def update(self):
+    def update(self) -> None:
         ...
 
     @abstractmethod
-    def draw(self):
+    def draw(self) -> None:
         ...
 
-    def on_request_reload(self):
+    def on_request_reload(self) -> None:
         pass
 
     def request_next_scene(self) -> Scene | None | str:

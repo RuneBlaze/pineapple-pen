@@ -2,14 +2,18 @@ import os
 from collections import Counter
 from enum import Enum
 from functools import cache
-from pathlib import Path
 
 import numpy as np
 import pyxel
 from PIL import Image
 from pyxelxl.font import _image_as_ndarray
 
-WORKING_DIR = os.getcwd()
+if working_dir := os.environ.get("PYXEL_WORKING_DIR"):
+    WORKING_DIR = working_dir
+else:
+    working_dir = os.getcwd()
+    os.environ["PYXEL_WORKING_DIR"] = working_dir
+    WORKING_DIR = working_dir
 
 WINDOW_WIDTH, WINDOW_HEIGHT = 427, 240
 
