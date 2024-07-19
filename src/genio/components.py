@@ -17,6 +17,7 @@ from genio.base import asset_path
 from genio.battle import CardBundle
 from genio.card_utils import CanAddAnim
 from genio.layout import pingpong
+from genio.tween import Tweener
 
 retro_font = Font(asset_path("retro-pixel-petty-5h.ttf"))
 retro_text = retro_font.specialize(font_size=5)
@@ -386,3 +387,38 @@ def camera_shift(x: int, y: int):
     if camera_stack:
         camera_stack.pop()
     pyxel.camera(base_coord[0], base_coord[1])
+
+
+class HasGold(Protocol):
+    gold: int
+
+
+class GoldRenderer:
+    def __init__(self, target: HasGold, scene: CanAddAnim, x: int = 340, y: int = 170):
+        self.target = target
+        self.scene = scene
+        self.x = x
+        self.y = y
+        self.red_flash_energy = 0
+        self.tweener = Tweener()
+        self.memory_gold = target.gold
+        self.display_gold = target.gold
+
+    def update(self) -> None:
+        self.tweener.update()
+
+        if self.memory_gold != self.target.gold:
+            self.memory_gold = self.target.gold
+            self.tweener.append_mutate(
+                self, "display_gold", 20, self.memory_gold, "ease_in_quad"
+            )
+
+    def flash(self) -> None:
+        self.tweener.append_mutate(self, "red_flash_energy", 10, 1, "ease_in_out_quad")
+        self.tweener.append_mutate(self, "red_flash_energy", 10, 0, "ease_in_out_quad")
+
+    def draw(self):
+        text = f"${self.display_gold:04.2f}"
+        arcade_text(self.x, self.y, text, 7)
+        with dithering(self.red_flash_energy):
+            arcade_text(self.x + 1, self.y + 1, text, 8)

@@ -211,6 +211,7 @@ class CardState(Enum):
 def sin_01(t: float, dilation: float) -> float:
     return (math.sin(t * dilation) + 1) / 2
 
+
 class CardSprite:
     def __init__(self, index, card: Card, app: MainSceneLike, selected: bool = False):
         self.index = index
@@ -389,16 +390,16 @@ class CardSprite:
         if self.highlight_timer > 0:
             with dithering(0.5 * sin_01(self.highlight_timer, 0.1)):
                 blt_rot(
-                        self.x,
-                        self.y,
-                        load_image("card_flashing_overlay.png"),
-                        0,
-                        0,
-                        self.width,
-                        self.height,
-                        colkey=254,
-                        rot=self.rotation,
-                    )
+                    self.x,
+                    self.y,
+                    load_image("card_flashing_overlay.png"),
+                    0,
+                    0,
+                    self.width,
+                    self.height,
+                    colkey=254,
+                    rot=self.rotation,
+                )
 
     @property
     def deck_length(self) -> int:

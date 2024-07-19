@@ -9,7 +9,7 @@ import pyxel
 from PIL import Image
 from pyxelxl.font import _image_as_ndarray
 
-WORKING_DIR = str(Path(__file__).parent.parent.parent)
+WORKING_DIR = os.getcwd()
 
 WINDOW_WIDTH, WINDOW_HEIGHT = 427, 240
 

@@ -27,12 +27,14 @@ class StageDescription:
 
 class GameState:
     battle_bundle: BattleBundle
+    gold: float
 
     def __init__(self) -> None:
         self.stage = StageDescription.default()
         self.battle_bundle = setup_battle_bundle(
             "initial_deck", "players.starter", ["enemies.evil_mask"] * 2
         )
+        self.gold = 10
         self.battle_bundle.battle_logs = [
             "Turn 0: Celine, the Magical Swordswoman gained shield 1.0",
             "Turn 0: Celine, the Magical Swordswoman gained shield 1.0",
@@ -43,6 +45,13 @@ class GameState:
             "Turn 1: Evil Mask A received damage 2.0",
             "Battle Ended, Celine returned to World 1: the Forest of the Lost",
         ]
+
+    def gain_gold(self, amount: float) -> None:
+        self.gold += amount
+
+    def lose_gold(self, amount: float) -> None:
+        self.gold -= amount
+        self.gold = max(0, self.gold)
 
 
 game_state = GameState()

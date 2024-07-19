@@ -243,10 +243,6 @@ class MapMarker:
             self.set_state(MapMarkerState.SELECTED)
 
 
-def draw_wallpaper() -> None:
-    ...
-
-
 def draw_lush_background() -> None:
     pyxel.clip()
     with dithering(0.25):
@@ -352,7 +348,6 @@ class StageSelectScene(Scene):
 
     def draw(self) -> None:
         pyxel.cls(0)
-        draw_wallpaper()
         with self.camera.focus():
             draw_lush_background()
 

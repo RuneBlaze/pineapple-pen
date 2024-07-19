@@ -21,6 +21,7 @@ from genio.battle import setup_battle_bundle
 from genio.card import Card
 from genio.components import (
     DrawDeck,
+    GoldRenderer,
     arcade_text,
     blt_burning,
     copy_image,
@@ -289,6 +290,7 @@ class BoosterPack:
         self.state_timers = defaultdict(int)
         self.allowed_cards = 2
         self.dead = False
+        self.price = 8 if pack_type == BoosterPackType.SPY_THEMED else 10
 
     def screen_pos(self) -> tuple[float, float]:
         return self.x + self.image.width // 2, self.y + self.image.height // 2
@@ -342,7 +344,7 @@ class BoosterPack:
             retro_text(
                 self.x + x_offset + 2,
                 self.y + 80 + 1,
-                "$10.00",
+                "$" + f"{self.price:04.2f}",
                 7,
                 layout=layout(w=label_width - 4, h=10, ha="center"),
             )
@@ -691,6 +693,7 @@ class BoosterPackScene(Scene):
         ]
         self.results_fade = 0.0
         self.shop_fade_in = 0.0
+        self.gold_renderer = GoldRenderer(game_state, self, WINDOW_WIDTH // 2 + 2, 10)
 
     def animate_score_items(self, items: list[IndividualBonusItem]) -> None:
         y_offset = 80
@@ -741,6 +744,7 @@ class BoosterPackScene(Scene):
         if self.state.is_shop_like():
             for button in self.shop_buttons:
                 button.update()
+        self.gold_renderer.update()
 
         aggregate_events = []
         self.state_timers[self.state] += 1
@@ -778,6 +782,7 @@ class BoosterPackScene(Scene):
         self.score_box.update()
 
     def to_shop(self):
+        game_state.gain_gold(self.money_accumulated)
         self.state = BoosterPackSceneState.PRE_SHOP
         for score_item in self.score_items:
             score_item.tweener.append(
@@ -811,6 +816,7 @@ class BoosterPackScene(Scene):
                 event = pack.events.pop()
                 if event == "open_pack":
                     self.framing.putup()
+                    game_state.lose_gold(pack.price)
                     self.mailbox.append(self.executor.submit(pack.generate_cards))
                 elif event == "explode":
                     self.check_mail_signal.append(pack)
@@ -835,7 +841,11 @@ class BoosterPackScene(Scene):
             self.show_cards(self.mailbox.popleft().result())
             self.chosen_pack = pack
 
+    def draw_hud(self):
+        self.gold_renderer.draw()
+
     def draw(self):
+        pyxel.cls(0)
         draw_lush_background()
         pyxel.blt(
             50,
@@ -847,6 +857,8 @@ class BoosterPackScene(Scene):
             img.height,
             5,
         )
+        pyxel.clip()
+        self.draw_hud()
         self.draw_deck.draw(10, 190)
         with dithering(0.5 * (1 - self.results_fade)):
             draw_rounded_rectangle(250, 40, 140, 160, 5, col=1)
@@ -868,8 +880,7 @@ class BoosterPackScene(Scene):
             self.help_box.draw(min(self.help_box_energy, 1))
         Anim.draw()
         self.framing.draw()
-
-        self.draw_crosshair(pyxel.mouse_x, pyxel.mouse_y)
+        self.draw_mouse_cursor(pyxel.mouse_x, pyxel.mouse_y)
 
     def draw_shop(self):
         with dithering(self.shop_fade_in):
@@ -893,8 +904,6 @@ class BoosterPackScene(Scene):
                 250 + sw + (140 - sw * 2) // 2, 40 + 40 + 20, 73 - 40, 8, col=7
             )
 
-        # ButtonElement("Reroll", ColorScheme(0, 1), vec2(320 - 55 - 1, 173), "$3").draw_at()
-        # ButtonElement("Next", ColorScheme(0, 1), vec2(320 + 1, 173),"").draw_at()
         for button in self.shop_buttons:
             button.draw_at()
 
@@ -976,9 +985,9 @@ class BoosterPackScene(Scene):
                     )
                 )
 
-    def draw_crosshair(self, x, y):
-        pyxel.line(x - 5, y, x + 5, y, 7)
-        pyxel.line(x, y - 5, x, y + 5, 7)
+    def draw_mouse_cursor(self, x: int, y: int) -> None:
+        cursor = load_image("cursor.png")
+        pyxel.blt(x, y, cursor, 0, 0, 16, 16, colkey=254)
 
     def destroy_rest_cards(self) -> None:
         for spr in self.card_sprites:
