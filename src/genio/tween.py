@@ -180,6 +180,8 @@ class Tweener:
         self._append(tween)
 
     def flush(self):
+        """Clear all tweens, effectively fast-forwarding them to the end."""
+
         while self.inner:
             try:
                 next(self.inner[0])

@@ -57,3 +57,6 @@ class Subst:
         template = Template(self.replacement)
         cnt, tail = self.apply(s[ed:], extra_context, num_matches + 1)
         return cnt, (s[:st] + template.render(context) + tail)
+
+    def show(self) -> str:
+        return f"{self.pattern} -> {self.replacement}"

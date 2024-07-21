@@ -15,15 +15,16 @@ from pyxelxl import layout
 
 from genio.base import WINDOW_HEIGHT, WINDOW_WIDTH, load_image
 from genio.bezier import QuadBezier
-from genio.card_utils import CanAddAnim
 from genio.components import (
+    CanAddAnim,
+    HasPos,
     arcade_text,
     retro_text,
 )
 from genio.gamestate import StageDescription, game_state
 from genio.gui import dithering
 from genio.layout import pingpong
-from genio.ps import Anim, HasPos
+from genio.ps import Anim
 from genio.scene import Scene
 from genio.stagegen import (
     generate_stage_description as generate_stage_description_low_level,
@@ -514,11 +515,23 @@ class StageSelectScene(Scene):
 
         Anim.draw()
         pyxel.clip()
-        self.draw_crosshair(pyxel.mouse_x, pyxel.mouse_y)
+        self.draw_overlay()
+        self.draw_mouse_cursor(pyxel.mouse_x, pyxel.mouse_y)
 
-    def draw_crosshair(self, x, y):
-        pyxel.line(x - 5, y, x + 5, y, 7)
-        pyxel.line(x, y - 5, x, y + 5, 7)
+    def draw_mouse_cursor(self, x: int, y: int) -> None:
+        cursor = load_image("cursor.png")
+        pyxel.blt(x, y, cursor, 0, 0, 16, 16, colkey=254)
+
+    def draw_overlay(self) -> None:
+        pyxel.text(
+            WINDOW_WIDTH - 90 + 1 - 5,
+            WINDOW_HEIGHT - 40,
+            "W1: " + game_state.world.name,
+            1,
+        )
+        pyxel.text(
+            WINDOW_WIDTH - 90 - 5, WINDOW_HEIGHT - 40, "W1: " + game_state.world.name, 7
+        )
 
 
 def gen_scene() -> Scene:

@@ -10,6 +10,7 @@ import pyxel
 from lupa.lua54 import LuaRuntime
 
 from genio.base import asset_path
+from genio.components import HasPos
 from genio.predef import access_predef
 
 
@@ -74,11 +75,6 @@ def uv_for_16(ix: int) -> tuple[int, int]:
     col = ix % 8
     row = ix // 8
     return col * 8, row * 8
-
-
-class HasPos(Protocol):
-    def screen_pos(self) -> tuple[float, float]:
-        ...
 
 
 class Anim:

@@ -57,11 +57,13 @@ class ReloadableScene(Scene):
         to_reload_modules = [
             module
             for module in sys.modules.values()
-            if module.__name__.startswith("genio")
+            if module.__name__.startswith("genio") or module.__name__.startswith("surv")
         ]
         for module in to_reload_modules:
             # filter out everything not named genio
-            if not module.__name__.startswith("genio"):
+            if not module.__name__.startswith("genio") and not module.__name__.startswith(
+                "surv"
+            ):
                 continue
             importlib.reload(module)
         self.current_version = self.scene_factory()

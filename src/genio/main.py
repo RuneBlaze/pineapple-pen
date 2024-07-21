@@ -3,13 +3,13 @@ import importlib
 
 import pyxel
 
-import genio.gui
+# import genio.gui
 import genio.ps_edit
 from genio.scene import AppWithScenes, ReloadableScene, load_scene_from_module
 
 
-def main_scene_factory():
-    return load_scene_from_module(genio.gui)
+# def main_scene_factory():
+#     return load_scene_from_module(genio.gui)
 
 
 def edit_scene_factory():

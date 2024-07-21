@@ -5,8 +5,9 @@ import uuid
 import weakref
 from collections import Counter, deque
 from collections.abc import Iterator, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from functools import cache
+from functools import cache, cached_property
 from heapq import heappop, heappush
 from itertools import chain
 from typing import Annotated, Generic, Literal
@@ -25,7 +26,7 @@ from typing_extensions import (
 
 from genio.artifacts import parse_stylize
 from genio.card import Card
-from genio.card_utils import CanAddAnim
+from genio.components import CanAddAnim
 from genio.core.base import access, promptly
 from genio.effect import (
     CreateCardEffect,
@@ -107,6 +108,27 @@ def _judge_results(
     {{ formatting_instructions }}
 
     Let's think step by step.
+    """
+    ...
+
+
+executor = ThreadPoolExecutor(2)
+
+
+@dataclass
+class StatusDefinitionInterpretation:
+    interpretation: Annotated[str, "The description of the status effect."]
+
+
+@promptly()
+def _interpret_status_effect(
+    status_effect_name: str,
+    status_effect_subst: str,
+) -> StatusDefinitionInterpretation:
+    """\
+    {% include('interpret_status_effects.md') %}
+
+    {{ formatting_instructions }}
     """
     ...
 
@@ -543,6 +565,8 @@ class StatusEffect:
 
     _subst: Subst = field(init=False)
 
+    description: str = ""
+
     def __post_init__(self):
         self._subst = self.defn.subst.replace("me", self.owner.name_stem)
 
@@ -564,8 +588,29 @@ class StatusEffect:
     def name(self) -> str:
         return self.defn.name
 
+    @cached_property
+    def icon_id(self) -> int:
+        for k, v in predef["icons"].items():
+            if v.lower() == self.name.lower():
+                return int(k)
+        raise ValueError(f"No icon found for status '{self.name}'")
+
     def is_expired(self) -> bool:
         return self.counter <= 0
+
+    def _describe_myself(self) -> None:
+        subst = self.defn.subst.show()
+        name = self.defn.name
+        print("XXXX")
+        interpreted = _interpret_status_effect(name, subst)
+        print("YYYY")
+        self.description = interpreted.interpretation
+
+    def describe_myself(self) -> str:
+        # TODO: cache this and also for consistency keep only one way of getting description
+        if not self.description:
+            executor.submit(self._describe_myself)
+        return self.description
 
 
 T = TypeVar("T")
@@ -978,6 +1023,7 @@ class BattleBundle:
         status: tuple[StatusDefinition, int],
     ) -> None:
         realized = StatusEffect(status[0], status[1], target)
+        realized.describe_myself()
         target.status_effects.append(realized)
         self.postprocessors.append(weakref.WeakMethod(realized.apply))
 
@@ -1056,6 +1102,9 @@ def setup_battle_bundle(
 
 class MainSceneLike(CanAddAnim, Protocol):
     bundle: BattleBundle
+
+    def should_all_cards_disabled(self) -> bool:
+        ...
 
 
 enc = tiktoken.get_encoding("o200k_base")

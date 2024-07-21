@@ -96,11 +96,75 @@ def calculate_rgb2paletteix() -> dict:
     return rgb2paletteix
 
 
+def split_as_spritesheet(asset_args: tuple[str, ...]) -> tuple[list[str], str] | None:
+    if len(asset_args) >= 2 and asset_args[-2].endswith(".json"):
+        return asset_args[:-1], asset_args[-1]
+    return None
+
+
+@cache
+def image_open_cached(image_path: str) -> Image.Image:
+    return Image.open(image_path)
+
+
+def levenstein_distance(s1: str, s2: str) -> int:
+    if len(s1) < len(s2):
+        return levenstein_distance(s2, s1)
+
+    if len(s2) == 0:
+        return len(s1)
+
+    previous_row = range(len(s2) + 1)
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+
+    return previous_row[-1]
+
+
+def closest_string_match(s: str, strings: list[str]) -> str:
+    return min(strings, key=lambda x: levenstein_distance(s, x))
+
+
+def pil_image_from_spritesheet(asset_args: list[str], k: str) -> Image.Image:
+    json_path = asset_path(*asset_args)
+    image_path = json_path.replace(".json", ".png")
+    import json
+
+    with open(json_path) as f:
+        data = json.load(f)
+    lookup = {}
+    for frame_name, frame_metadata in data["frames"].items():
+        frame_name = frame_name.replace(" ", "_")
+        frame_name = frame_name.split(".")[0]
+        lookup[frame_name] = frame_metadata
+    try:
+        frame_metadata = lookup[k]
+    except KeyError:
+        raise ValueError(
+            f"Invalid frame name: {k}. Closest match: {closest_string_match(k, lookup.keys())}"
+        )
+    match frame_metadata["frame"]:
+        case {"x": x, "y": y, "w": w, "h": h}:
+            parent = image_open_cached(image_path).convert("RGBA")
+            return parent.crop((x, y, x + w, y + h))
+        case _:
+            raise ValueError("Invalid frame metadata")
+
+
 def load_as_buffer(*asset_args: str) -> np.ndarray:
-    image_path = asset_path(*asset_args)
     rgb2paletteix = calculate_rgb2paletteix()
-    # Convert to ndarray
-    image = Image.open(image_path).convert("RGBA")
+    if split := split_as_spritesheet(asset_args):
+        spritesheet_args, k = split
+        image = pil_image_from_spritesheet(spritesheet_args, k)
+    else:
+        image_path = asset_path(*asset_args)
+        image = Image.open(image_path).convert("RGBA")
     buffer = np.full((image.height, image.width), 254, dtype=np.uint8)
 
     for y in range(image.height):
@@ -148,33 +212,6 @@ def resize_image_breathing(image: pyxel.Image, num_cut: int) -> pyxel.Image:
 
 
 if __name__ == "__main__":
-    import numpy as np
-    from PIL import Image
-    # img = Image.open("assets/mask.png").convert("RGB")
-    # luminance = np.zeros((img.height, img.width), dtype=np.uint8)
-    # # each pixel
-    # for i in range(img.height):
-    #     for j in range(img.width):
-    #         r, g, b = img.getpixel((j, i))
-    #         r, g, b = r / 255.0, g / 255.0, b / 255.0
-    #         luminance[i, j] = min(int((0.299 * r + 0.587 * g + 0.114 * b) * 255), 255)
-    # np.save("assets/mask.npy", luminance)
-
-    # load mask.npy and visualize it
-
-    mask = np.load("assets/mask.npy")
-    img = Image.fromarray(mask)
-    img.show()
-
-# import glob
-
-# ok = sorted(glob.glob("assets/background/*.png"))
-# if __name__ == "__main__":
-#     pyxel.init(WINDOW_WIDTH, WINDOW_HEIGHT)
-#     buffers = []
-#     for file in ok:
-#         image = load_as_buffer("background", file.split("/")[-1])
-#         buffers.append((int(file.split("/")[-1].split(".")[0]), image))
-#     sorted_buffers = sorted(buffers, key=lambda x: x[0])
-#     stack = np.stack([x[1] for x in sorted_buffers])
-#     np.save("background.npy", stack)
+    pyxel.init(WINDOW_WIDTH, WINDOW_HEIGHT, title="GLOLI")
+    img = load_image("surv-sprites.json", "gloli")
+    print(img)

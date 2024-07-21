@@ -7,6 +7,7 @@ import math
 from collections import deque
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Literal
 
@@ -24,16 +25,19 @@ from genio.battle import (
     ResolvedEffects,
 )
 from genio.card import Card
-from genio.card_utils import CanAddAnim
 from genio.components import (
+    CanAddAnim,
     DrawDeck,
     EnergyRenderer,
     GoldRenderer,
+    HasPos,
+    MouseHasPos,
     Popup,
     arcade_text,
     camera_shift,
     cute_text,
     dithering,
+    draw_mixed_rounded_rect,
     pal_single_color,
     retro_font,
     retro_text,
@@ -49,6 +53,7 @@ from genio.constants import (
     TWEEN_SPEED,
 )
 from genio.effect import SinglePointEffect, SinglePointEffectType, StatusDefinition
+from genio.follower_tooltip import FollowerTooltip
 from genio.gamestate import game_state
 from genio.layout import (
     WINDOW_HEIGHT,
@@ -57,9 +62,8 @@ from genio.layout import (
     layout_center_for_n,
     pingpong,
 )
-from genio.ps import Anim, HasPos
+from genio.ps import Anim
 from genio.scene import Scene
-from genio.scene_stages import draw_rounded_rectangle
 from genio.semantic_search import SerializedCardArt, search_closest_document
 from genio.tween import Instant, MutableTweening, Mutator, Shake, Tweener
 from genio.utils.weaklist import WeakList
@@ -230,6 +234,7 @@ class CardSprite:
         self.card = card
         self.width = CARD_WIDTH
         self.height = CARD_HEIGHT
+        self.dragging_time = 0
         self.hovered = False
         self.highlight_timer = 0
         self.selected = selected
@@ -289,7 +294,7 @@ class CardSprite:
 
         target_x = layout_center_for_n(num_total_cards, 400)[my_index] - self.width // 2
         target_y = WINDOW_HEIGHT // 2 - self.height // 2
-
+        self.tweens.flush()
         self.tweens.append(
             itertools.chain(
                 range(10 + 4 * my_index),
@@ -375,10 +380,11 @@ class CardSprite:
                 colkey=254,
                 rot=self.rotation,
             )
-            # self.draw_highlighted_edges()
             pyxel.pal()
-            if not self.selected and any(
-                card for card in self.app.card_sprites if card.selected
+            if (
+                not self.selected
+                and any(card for card in self.app.card_sprites if card.selected)
+                or self.app.should_all_cards_disabled()
             ):
                 with pal_single_color(5):
                     with dithering(0.5):
@@ -436,17 +442,26 @@ class CardSprite:
             for i, card in enumerate(self.app.card_sprites):
                 card.change_index(i)
             return
+        if self.dragging:
+            self.dragging_time += 1
+        else:
+            self.dragging_time = 0
         if pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT):
             if self.is_mouse_over():
                 self.dragging = True
                 self.drag_offset_x = pyxel.mouse_x - self.x
                 self.drag_offset_y = pyxel.mouse_y - self.y
-                self.selected = not self.selected
 
         if pyxel.btnr(pyxel.MOUSE_BUTTON_LEFT):
             if self.dragging:
                 self.dragging = False
-                self.snap_to_grid()
+                ix_changed = self.snap_to_grid()
+                if (
+                    not ix_changed
+                    and self.dragging_time < 10
+                    and not self.app.should_all_cards_disabled()
+                ):
+                    self.selected = not self.selected
 
         if self.dragging:
             self.x = pyxel.mouse_x - self.drag_offset_x
@@ -487,15 +502,20 @@ class CardSprite:
                 )
             self.hovered = False
 
-    def snap_to_grid(self):
+    def snap_to_grid(self) -> bool:
+        any_index_changed = False
         new_index = (int(self.x) - GRID_X_START + GRID_SPACING_X // 2) // GRID_SPACING_X
         new_index = max(0, min(TOTAL_CARDS - 1, new_index))
+
+        if new_index != self.index:
+            any_index_changed = True
 
         self.app.card_sprites.remove(self)
         self.app.card_sprites.insert(new_index, self)
 
         for i, card in enumerate(self.app.card_sprites):
             card.change_index(i)
+        return any_index_changed
 
     def change_index(self, new_index: int):
         self.index = new_index
@@ -554,15 +574,6 @@ def horizontal_gradient(x, y, w, h, c0, c1):
         pyxel.rect(int(chunks[i]), y, int(chunks[i + 1]) - int(chunks[i]), h, c1)
         pyxel.dither(1.0 - dithering[i + 1])
     pyxel.dither(1.0)
-
-
-def draw_mixed_rounded_rect(
-    dither_amount: float, x: int, y: int, w: int = 80, h: int = 14
-) -> None:
-    with dithering(dither_amount * 1.0):
-        draw_rounded_rectangle(x - w // 2, y, w, h, 3, 1)
-    with dithering(dither_amount * 0.5):
-        draw_rounded_rectangle(x - w // 2, y, w, h, 3, 0)
 
 
 class Tooltip:
@@ -973,6 +984,30 @@ class ResolvingSide(Enum):
     ENEMY = 1
 
 
+def draw_icon(x: int, y: int, icon_id: int) -> None:
+    icons = load_image("icons.png")
+    icon_w, icon_h = 16, 16
+    num_horz = icons.width // icon_w
+
+    icon_x = icon_id % num_horz
+    icon_y = icon_id // num_horz
+
+    pyxel.blt(x, y, icons, icon_x * icon_w, icon_y * icon_h, icon_w, icon_h, colkey=254)
+
+
+@dataclass(frozen=True)
+class FollowerTooltipArea:
+    x: int
+    y: int
+    w: int
+    h: int
+    title: str
+    description: str
+
+    def is_in_bounds(self, x: int, y: int) -> bool:
+        return self.x <= x <= self.x + self.w and self.y <= y <= self.y + self.h
+
+
 class MainScene(Scene):
     card_bundle: CardBundle
     anims: list[Anim]
@@ -980,6 +1015,8 @@ class MainScene(Scene):
 
     card_sprites: list[CardSprite]
     bundle: BattleBundle
+
+    follower_tooltip_areas: list[FollowerTooltipArea]
 
     def __init__(self):
         self.bundle = game_state.battle_bundle
@@ -1007,6 +1044,7 @@ class MainScene(Scene):
             )
             for e in self.bundle.enemies
         ]
+        self.follower_tooltip = FollowerTooltip(MouseHasPos())
 
         self.gold_renderer = GoldRenderer(game_state, self, 100, 0)
 
@@ -1020,6 +1058,8 @@ class MainScene(Scene):
             has_breathing=False,
             user_data=self.bundle.player.uuid,
         )
+
+        self.follower_tooltip_areas = []
 
         self.player_sprite.x = 0
         self.player_sprite.y = 110
@@ -1095,7 +1135,9 @@ class MainScene(Scene):
             card_sprite.card for card_sprite in self.card_sprites
         ]
 
-    def can_resolve_new_cards(self):
+    def can_resolve_new_cards(self) -> bool:
+        if self.bundle.energy - self.bundle.tentative_energy_cost() < 0:
+            return False
         return (
             all(
                 card_sprite.can_transition_to_resolving()
@@ -1138,8 +1180,15 @@ class MainScene(Scene):
         ]
 
         self.tweener.update()
-
         self.tooltip.update()
+        self.follower_tooltip.update()
+        for tooltip_area in self.follower_tooltip_areas:
+            if tooltip_area.is_in_bounds(pyxel.mouse_x, pyxel.mouse_y):
+                self.follower_tooltip.pump2(
+                    tooltip_area.title, tooltip_area.description
+                )
+                break
+        self.follower_tooltip_areas.clear()
         for anim in self.anims:
             anim.update()
         for popup in self.popups:
@@ -1263,6 +1312,9 @@ class MainScene(Scene):
         if pyxel.btnp(pyxel.KEY_Q):
             return "genio.scene_booster"
 
+    def should_all_cards_disabled(self) -> bool:
+        return self.bundle.energy <= 0
+
     def _draw_hearts_and_shields(self, x: int, y: int, hp: int, shield: int) -> None:
         icons = load_image("ui", "icons.png")
         cursor = x
@@ -1287,6 +1339,16 @@ class MainScene(Scene):
     def draw(self):
         self.draw_background()
         self.draw_deck.draw(10, 190)
+        self.follower_tooltip_areas.append(
+            FollowerTooltipArea(
+                10,
+                190,
+                80,
+                64,
+                "Deck",
+                "Draw a card from the deck." * 5,
+            )
+        )
 
         self.draw_battlers()
 
@@ -1300,6 +1362,7 @@ class MainScene(Scene):
         for button in self.image_buttons:
             button.draw()
         self.tooltip.draw()
+        self.follower_tooltip.draw()
 
         Anim.draw()
         self.energy_renderer.draw()
@@ -1332,6 +1395,15 @@ class MainScene(Scene):
         with dithering(0.5):
             pyxel.blt(0, 0, self.background_video.masks[0], 0, 0, 427, 240, colkey=254)
 
+    def draw_stats_icon(
+        self, x: int, y: int, icon: int, turns_counter: int | None = None
+    ) -> None:
+        draw_icon(x, y, icon)
+        if turns_counter is not None:
+            retro_text(
+                x + 10, y + 6, f"{turns_counter}", 7, layout=layout(w=20, ha="left")
+            )
+
     def draw_battlers(self):
         short_holder = load_image("ui", "short-holder.png")
         long_holder = load_image("ui", "long-holder.png")
@@ -1351,18 +1423,34 @@ class MainScene(Scene):
             pyxel.clip(10 + x - 30 - 5, 141, 68, 7)
             text_width = retro_font.rasterize(e.current_intent, 5, 255, 0, 0).width + 14
             retro_text(
-                10 + x - 30 - 5 - (self.timer) % text_width,
+                -25 + x - (self.timer) % text_width,
                 141,
                 e.current_intent,
                 col=7,
             )
             retro_text(
-                10 + x - 30 - 5 - (self.timer) % text_width + text_width,
+                -25 + x - (self.timer) % text_width + text_width,
                 141,
                 e.current_intent,
                 col=7,
             )
             pyxel.clip()
+            for i, s in enumerate(e.status_effects):
+                turns_left = s.counter
+                icon = s.icon_id
+                self.draw_stats_icon(
+                    icon_x := 15 + x + i * 14, icon_y := 107, icon, turns_left
+                )
+                self.follower_tooltip_areas.append(
+                    FollowerTooltipArea(
+                        icon_x,
+                        icon_y,
+                        16,
+                        16,
+                        s.name,
+                        s.description,
+                    )
+                )
 
     def draw_crosshair(self, x, y):
         cursor = load_image("cursor.png")

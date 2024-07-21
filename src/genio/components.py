@@ -3,9 +3,10 @@ from __future__ import annotations
 import contextlib
 import math
 import random
+from dataclasses import dataclass
 from functools import cache
 from operator import gt, lt
-from typing import Literal, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol
 
 import numpy as np
 import pyxel
@@ -14,9 +15,10 @@ from pyxelxl.font import _image_as_ndarray
 from scipy.ndimage import gaussian_filter
 
 from genio.base import asset_path
-from genio.battle import CardBundle
-from genio.card_utils import CanAddAnim
 from genio.layout import pingpong
+
+if TYPE_CHECKING:
+    from genio.ps import Anim
 from genio.tween import Tweener
 
 retro_font = Font(asset_path("retro-pixel-petty-5h.ttf"))
@@ -147,7 +149,7 @@ def blt_burning(
 
 
 class DrawDeck:
-    def __init__(self, card_bundle: CardBundle):
+    def __init__(self, card_bundle):
         self.deck_background = pyxel.Image.from_image(asset_path("card-back.png"))
         self.card_bundle = card_bundle
 
@@ -321,6 +323,18 @@ def dithering(f: float):
     pyxel.dither(dithering_stack[-1] if dithering_stack else 1.0)
 
 
+class CanAddAnim(Protocol):
+    def add_anim(
+        self,
+        name: str,
+        x: int,
+        y: int,
+        play_speed: float = 1.0,
+        attached_to: HasPos | None = None,
+    ) -> Anim:
+        ...
+
+
 class EnergyRenderer:
     def __init__(
         self, target: HasEnergy, scene: CanAddAnim, x: int = 340, y: int = 170
@@ -422,3 +436,42 @@ class GoldRenderer:
         arcade_text(self.x, self.y, text, 7)
         with dithering(self.red_flash_energy):
             arcade_text(self.x + 1, self.y + 1, text, 8)
+
+
+def draw_rounded_rectangle(x: int, y: int, w: int, h: int, r: int, col: int) -> None:
+    pyxel.rect(x + r, y, w - 2 * r + 1, h + 1, col)
+    pyxel.rect(x, y + r, r, h - 2 * r, col)
+    pyxel.rect(x + w - r + 1, y + r, r, h - 2 * r, col)
+    pyxel.circ(x + r, y + r, r, col)
+    pyxel.circ(x + w - r, y + r, r, col)
+    pyxel.circ(x + r, y + h - r, r, col)
+    pyxel.circ(x + w - r, y + h - r, r, col)
+
+
+def draw_mixed_rounded_rect(
+    dither_amount: float, x: int, y: int, w: int = 80, h: int = 14
+) -> None:
+    with dithering(dither_amount * 1.0):
+        draw_rounded_rectangle(x - w // 2, y, w, h, 3, 1)
+    with dithering(dither_amount * 0.5):
+        draw_rounded_rectangle(x - w // 2, y, w, h, 3, 0)
+
+
+def draw_mixed_rounded_rect_left_aligned(
+    dither_amount: float, x: int, y: int, w: int = 80, h: int = 14
+) -> None:
+    with dithering(dither_amount * 1.0):
+        draw_rounded_rectangle(x, y, w, h, 3, 1)
+    with dithering(dither_amount * 0.5):
+        draw_rounded_rectangle(x, y, w, h, 3, 0)
+
+
+class HasPos(Protocol):
+    def screen_pos(self) -> tuple[float, float]:
+        ...
+
+
+@dataclass(frozen=True)
+class MouseHasPos:
+    def screen_pos(self) -> tuple[float, float]:
+        return pyxel.mouse_x, pyxel.mouse_y

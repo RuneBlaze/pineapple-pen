@@ -5,6 +5,11 @@ from dataclasses import dataclass
 from genio.battle import BattleBundle, setup_battle_bundle
 
 
+@dataclass
+class World:
+    name: str = "Mystic Wilds"
+
+
 @dataclass(frozen=True, eq=True)
 class StageDescription:
     name: str
@@ -43,8 +48,9 @@ class GameState:
             "Turn 1: Evil Mask A received damage 2.0",
             "Turn 1: Evil Mask B received other effect...",
             "Turn 1: Evil Mask A received damage 2.0",
-            "Battle Ended, Celine returned to World 1: the Forest of the Lost",
+            "Battle Ended, Celine returned to World 1: Mystic Wilds",
         ]
+        self.world = World()
 
     def gain_gold(self, amount: float) -> None:
         self.gold += amount

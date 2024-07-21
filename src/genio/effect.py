@@ -32,6 +32,8 @@ class StatusDefinition:
     subst: Subst
     counter_type: Literal["turns", "times"]
 
+    description: str = ""
+
 
 class SinglePointEffectType(Enum):
     DAMAGE = 1

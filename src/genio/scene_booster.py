@@ -22,6 +22,7 @@ from genio.card import Card
 from genio.components import (
     DrawDeck,
     GoldRenderer,
+    HasPos,
     arcade_text,
     blt_burning,
     copy_image,
@@ -39,7 +40,7 @@ from genio.gui import (
     dithering,
 )
 from genio.layout import layout_center_for_n
-from genio.ps import Anim, HasPos
+from genio.ps import Anim
 from genio.scene import Scene
 from genio.scene_stages import draw_lush_background
 from genio.semantic_search import search_closest_document

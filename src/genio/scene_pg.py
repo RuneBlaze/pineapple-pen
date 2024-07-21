@@ -7,10 +7,10 @@ import numpy as np
 import pyxel
 
 from genio.bezier import QuadBezier
-from genio.card_utils import CanAddAnim
+from genio.components import CanAddAnim, HasPos
 from genio.gamestate import StageDescription
 from genio.layout import pingpong
-from genio.ps import Anim, HasPos
+from genio.ps import Anim
 from genio.scene import Scene
 from genio.scene_booster import draw_rounded_rectangle
 from genio.scene_stages import Camera
