@@ -384,7 +384,7 @@ class CardSprite:
             if (
                 not self.selected
                 and any(card for card in self.app.card_sprites if card.selected)
-                or self.app.should_all_cards_disabled()
+                or (self.app.should_all_cards_disabled() and not self.selected and self.state != CardState.RESOLVING)
             ):
                 with pal_single_color(5):
                     with dithering(0.5):
@@ -1045,7 +1045,7 @@ class MainScene(Scene):
             for e in self.bundle.enemies
         ]
         self.follower_tooltip = FollowerTooltip(MouseHasPos())
-
+        self.zero_energy_timer = 0
         self.gold_renderer = GoldRenderer(game_state, self, 100, 0)
 
         self.player_sprite = WrappedImage(
@@ -1170,6 +1170,11 @@ class MainScene(Scene):
 
         self.energy_renderer.update()
         self.gold_renderer.update()
+
+        if self.bundle.energy <= 0 and not self.bundle.card_bundle.resolving:
+            self.zero_energy_timer += 1
+        else:
+            self.zero_energy_timer = 0
 
         self.tmp_card_sprites = [
             card for card in self.tmp_card_sprites if not card.is_dead()
@@ -1313,7 +1318,9 @@ class MainScene(Scene):
             return "genio.scene_booster"
 
     def should_all_cards_disabled(self) -> bool:
-        return self.bundle.energy <= 0
+        if self.bundle.card_bundle.resolving:
+            return False
+        return self.zero_energy_timer > 30
 
     def _draw_hearts_and_shields(self, x: int, y: int, hp: int, shield: int) -> None:
         icons = load_image("ui", "icons.png")
