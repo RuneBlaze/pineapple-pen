@@ -334,6 +334,23 @@ class CanAddAnim(Protocol):
     ) -> Anim:
         ...
 
+class Peekable:
+    def __init__(self, iterable):
+        self.iterator = iter(iterable)
+        self._next = next(self.iterator, None)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self._next is None:
+            raise StopIteration
+        result = self._next
+        self._next = next(self.iterator, None)
+        return result
+
+    def peek(self):
+        return self._next
 
 class EnergyRenderer:
     def __init__(
@@ -344,48 +361,80 @@ class EnergyRenderer:
         self.x = x
         self.y = y
         self.anim = self.scene.add_anim("anims.energy", x, y)
-        self.pingpong = pingpong(11, 3)
+        self.pingpong = Peekable(pingpong(11, 2, double_end_points=True))
         self.timer = 0
+        self.mismatch_timer = 0
 
     def update(self) -> None:
-        ...
+        alternative = self.target.energy - self.target.tentative_energy_cost()
+        current = self.target.energy
+        if alternative != current:
+            self.mismatch_timer += 1
+            next(self.pingpong)
+        else:
+            self.mismatch_timer = 0
+            self.pingpong = Peekable(pingpong(11, 2, double_end_points=True))
 
     def draw(self) -> None:
-        pyxel.circ(self.x, self.y, 8, 9)
+        w = 20
+        h = 8
+        draw_rounded_rectangle(self.x - w//2 + 1, self.y - h//2, w, h, 2, pyxel.COLOR_PURPLE)
         self.timer += 1
-        opacity = next(self.pingpong) / 10
-        with dithering(opacity):
-            text = f"{self.target.energy}/{self.target.default_energy}"
-            retro_text(
-                self.x - 8 + 1,
-                self.y - 8,
-                text,
-                5,
-                layout=layout(w=16, h=16, ha="center", va="center"),
-            )
-            retro_text(
+        fixed_portion = f"/{self.target.default_energy}"
+        retro_text(
+            self.x - 8,
+            self.y - 8,
+            f" {fixed_portion}",
+            7,
+            layout=layout(w=w, h=16, ha="center", va="center"),
+        )
+
+        alternative = self.target.energy - self.target.tentative_energy_cost()
+        current = self.target.energy
+        if alternative == current:
+                retro_text(
                 self.x - 8,
                 self.y - 8,
-                text,
+                f"{current}{fixed_portion}",
                 7,
-                layout=layout(w=16, h=16, ha="center", va="center"),
+                layout=layout(w=w, h=16, ha="center", va="center"),
             )
-        with dithering(1 - opacity):
-            text = f"{self.target.energy - self.target.tentative_energy_cost()}/{self.target.default_energy}"
-            retro_text(
-                self.x - 8 + 1,
-                self.y - 8,
-                text,
-                5,
-                layout=layout(w=16, h=16, ha="center", va="center"),
-            )
-            retro_text(
-                self.x - 8,
-                self.y - 8,
-                text,
-                7,
-                layout=layout(w=16, h=16, ha="center", va="center"),
-            )
+        else:
+            dither_amount = self.pingpong.peek() / 10
+            with dithering(dither_amount):
+                retro_text(
+                    self.x - 8,
+                    self.y - 8,
+                    f"{alternative}{fixed_portion}",
+                    7,
+                    layout=layout(w=w, h=16, ha="center", va="center"),
+                )
+            with dithering(1-dither_amount):
+                retro_text(
+                    self.x - 8,
+                    self.y - 8,
+                    f"{current}{fixed_portion}",
+                    7,
+                    layout=layout(w=w, h=16, ha="center", va="center"),
+                )
+        # with dithering(opacity):
+        #     text = f"{self.target.energy}/{self.target.default_energy}"
+        #     retro_text(
+        #         self.x - 8,
+        #         self.y - 8,
+        #         text,
+        #         7,
+        #         layout=layout(w=16, h=16, ha="center", va="center"),
+        #     )
+        # with dithering(1 - opacity):
+        #     text = f"{self.target.energy - self.target.tentative_energy_cost()}/{self.target.default_energy}"
+        #     retro_text(
+        #         self.x - 8,
+        #         self.y - 8,
+        #         text,
+        #         7,
+        #         layout=layout(w=16, h=16, ha="center", va="center"),
+        #     )
 
 
 camera_stack = []

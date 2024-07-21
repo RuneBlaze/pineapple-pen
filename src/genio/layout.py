@@ -22,11 +22,15 @@ def layout_center_for_n(n: int, width: int) -> list[int]:
     return [start_x + i * spacing for i in range(1, n + 1)]
 
 
-def _pingpong(n: int):
+def _pingpong(n: int, double_end_points: bool = False):
     while True:
         yield 0
+        if double_end_points:
+            yield from [0] * 3
         for i in range(1, n - 1):
             yield i
+        if double_end_points:
+            yield from [n - 1] * 5
         for i in range(n - 1, 0, -1):
             yield i
 
@@ -37,8 +41,8 @@ def dilated(it: Sequence[int], dilation: int):
             yield i
 
 
-def pingpong(n: int, dilation: int = 1):
-    return dilated(_pingpong(n), dilation)
+def pingpong(n: int, dilation: int = 1, double_end_points: bool = False):
+    return dilated(_pingpong(n, double_end_points=double_end_points), dilation)
 
 
 def lerp(

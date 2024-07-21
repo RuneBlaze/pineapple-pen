@@ -90,13 +90,14 @@ gravity = true
 burst = [true, 50]
 
 [[anims.energy]]
-frequency = 5
+frequency = 4
 max_p = 200
-area = [18, 18]
+area = [18, 4]
 size = [1, 0, 1, 0]
 speed = 1
 life = [1, 0.5]
-colors = [9, 10, 15]
+angle = [90, 45]
+colors = [2]
 duration = 0
 
 [[anims.create_card]]
