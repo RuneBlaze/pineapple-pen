@@ -1,4 +1,5 @@
 import itertools
+import math
 from collections import deque
 from dataclasses import dataclass, field
 from functools import cache
@@ -11,13 +12,33 @@ from pyxelxl import blt_rot
 from genio.base import WINDOW_HEIGHT, WINDOW_WIDTH, load_image
 from genio.components import dithering
 from genio.gears.paperlike import paper_cut_effect
-from genio.scene import Scene
+
+# from genio.scene import Scene
 from genio.tween import Instant, Mutator, Tweener
 
 
 @cache
 def icon_image() -> pyxel.Image:
     return paper_cut_effect(load_image("gemini_icon.png"), bg_color=254, fill_color=7)
+
+
+class WavingText:
+    def __init__(self, text: str) -> None:
+        self.opacity = 0.0
+        self.timer = 0
+        self.text = text
+
+    def y_offset_for_ix(self, i: int) -> float:
+        # based on sine-wave and timer
+        return math.sin(self.timer * 0.1 + i * 1.2) * 1
+
+    def draw(self, x: int, y: int) -> None:
+        for i, char in enumerate(self.text):
+            with dithering(self.opacity):
+                pyxel.text(x + i * 4, y + self.y_offset_for_ix(i), char, 7)
+
+    def update(self) -> None:
+        self.timer += 1
 
 
 @dataclass
@@ -68,19 +89,27 @@ class IndividualAnimation:
         self.tweener.append(Instant(self.mark_dead))
 
 
+DEFAULT_ASYNC_TEXT = "Gemini Flashing"
+
+
 class AsyncVisualizer:
-    def __init__(self) -> None:
+    def __init__(self, text: str = DEFAULT_ASYNC_TEXT) -> None:
         self.tweener = Tweener()
         self.animations = deque()
         self.target_number = AtomicInt(0)
         self.phasing_out_animations = []
+        self.text = text
+        self.waver = WavingText(self.text)
+        icon_image()
 
     def ping(self) -> None:
         next_count = self.target_number.load() + 1
         x, y = self.calculate_position(len(self.animations), next_count)
         self.animations.appendleft(anim := IndividualAnimation(x, y))
         anim.on_start()
-        self.target_number.inc()
+        old_number = self.target_number.inc()
+        if old_number == 0:
+            self.tweener.append_mutate(self.waver, "opacity", 10, 1.0, "ease_in_quad")
         self.refresh_animation_positions()
 
     def draw(self) -> None:
@@ -88,6 +117,7 @@ class AsyncVisualizer:
             anim.draw()
         for anim in self.phasing_out_animations:
             anim.draw()
+        self.waver.draw(WINDOW_WIDTH - len(self.text) * 4 - 10, WINDOW_HEIGHT - 15)
 
     def refresh_animation_positions(self):
         tweens = []
@@ -104,7 +134,9 @@ class AsyncVisualizer:
         first_anim = self.animations.popleft()
         first_anim.on_end()
         self.phasing_out_animations.append(first_anim)
-        self.target_number.dec()
+        old_number = self.target_number.dec()
+        if old_number == 1:
+            self.tweener.append_mutate(self.waver, "opacity", 10, 0.0, "ease_out_quad")
         self.refresh_animation_positions()
 
     def update(self) -> None:
@@ -115,6 +147,7 @@ class AsyncVisualizer:
         self.phasing_out_animations = [
             anim for anim in self.phasing_out_animations if not anim.dead
         ]
+        self.waver.update()
         self.tweener.update()
 
     def calculate_position(self, i: int, total_number: int) -> tuple[int, int]:
@@ -123,25 +156,3 @@ class AsyncVisualizer:
         y = WINDOW_HEIGHT - 24
         return x, y
 
-
-class AsyncVisualizerScene(Scene):
-    def __init__(self) -> None:
-        self.visualizer = AsyncVisualizer()
-
-    def update(self) -> None:
-        self.visualizer.update()
-        if pyxel.btnp(pyxel.KEY_SPACE):
-            self.visualizer.ping()
-        if pyxel.btnp(pyxel.KEY_Q):
-            self.visualizer.pong()
-
-    def draw(self) -> None:
-        pyxel.cls(0)
-        self.visualizer.draw()
-        pyxel.text(
-            0, 0, f"Number of animations: {self.visualizer.target_number.load()}", 7
-        )
-
-
-def gen_scene() -> Scene:
-    return AsyncVisualizerScene()

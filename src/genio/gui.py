@@ -139,6 +139,15 @@ class CardArtSet:
             case "Slash":
                 image = copy_image(load_image("cards", "slash.png"))
                 return image
+            case "left":
+                image = copy_image(load_image("cards", "left.png"))
+                return image
+            case "right":
+                image = copy_image(load_image("cards", "right.png"))
+                return image
+            case "Smash":
+                image = copy_image(load_image("cards", "smash.png"))
+                return image
         image = copy_image(load_image("card_flash.png"))
         self.add_flashcard_text_to_card(card_name, image)
         return image

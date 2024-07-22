@@ -23,6 +23,7 @@ import tomlkit
 import tomlkit as tomllib
 import yaml
 from genio.base import asset_path
+from genio.eventbus import LLMInboundEv, LLMOutboundEv, event_bus
 from genio.utils.robustyaml import cleaning_parse
 from icecream import ic
 from jinja2 import BaseLoader, Environment, StrictUndefined, TemplateNotFound
@@ -531,7 +532,10 @@ def promptly(f=None, demangle: bool = True):
         )
         logger.info(f"Prompt: {prompt}")
         chain = llm | JsonParser(cls=return_type)
-        return chain.invoke([("human", prompt)])
+        event_bus.emit(LLMOutboundEv())
+        res = chain.invoke([("human", prompt)])
+        event_bus.emit(LLMInboundEv())
+        return res
 
     return wrapper
 

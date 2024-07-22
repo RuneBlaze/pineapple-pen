@@ -19,6 +19,8 @@ from genio.components import (
     mask_screen_out,
     perlin_noise_with_horizontal_gradient,
 )
+from genio.eventbus import Event, LLMInboundEv, LLMOutboundEv, event_bus
+from genio.gears.async_visualizer import AsyncVisualizer
 from genio.predef import refresh_predef
 
 logger = get_logger()
@@ -93,6 +95,7 @@ class AppWithScenes:
         self.add_scene(scene)
         self.state = AppState.RUNNING
         self.state_timers = Counter()
+        self.async_visualizer = AsyncVisualizer()
         self.noise = perlin_noise_with_horizontal_gradient(
             WINDOW_WIDTH, WINDOW_HEIGHT, 0.01
         )
@@ -101,9 +104,20 @@ class AppWithScenes:
         self.all_black = pyxel.Image(WINDOW_WIDTH, WINDOW_HEIGHT)
         _image_as_ndarray(self.all_black)[:] = 0
         self.screenshot = None
+        event_bus.add_listener(self.on_event, "app")
 
         pyxel.load(asset_path("sprites.pyxres"))
         pyxel.run(self.update, self.draw)
+
+    def on_event(self, event: Event) -> None:
+        logger.info("AppWithScenes.on_event", ev=event)
+        print(event, event == LLMOutboundEv(), event == LLMInboundEv())
+        match event:
+            case LLMOutboundEv():
+                logger.info("AppWithScenes.on_event; case 0", ev=event)
+                self.async_visualizer.ping()
+            case LLMInboundEv():
+                self.async_visualizer.pong()
 
     def add_scene(self, scene: Scene) -> None:
         self.scenes.append(scene)
@@ -120,6 +134,7 @@ class AppWithScenes:
 
     def update(self) -> None:
         self.scenes[0].update()
+        self.async_visualizer.update()
         if (
             not self.futures
             and (next_scene := self.scenes[0].request_next_scene()) is not None
@@ -185,3 +200,4 @@ class AppWithScenes:
                 pyxel.dither(1.0)
             else:
                 mask_screen(self.noise, timer / 60, 0)
+        self.async_visualizer.draw()
