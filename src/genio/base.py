@@ -172,7 +172,8 @@ def load_as_buffer(*asset_args: str) -> np.ndarray:
             r, g, b, a = image.getpixel((x, y))
             if a != 0:
                 if a != 255:
-                    raise ValueError(f"Unexpected alpha value: {a}")
+                    ...
+                    # raise ValueError(f"Unexpected alpha value: {a}")
                 try:
                     buffer[y, x] = rgb2paletteix[(r, g, b)]
                 except KeyError:

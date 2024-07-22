@@ -334,6 +334,7 @@ class CanAddAnim(Protocol):
     ) -> Anim:
         ...
 
+
 class Peekable:
     def __init__(self, iterable):
         self.iterator = iter(iterable)
@@ -351,6 +352,7 @@ class Peekable:
 
     def peek(self):
         return self._next
+
 
 class EnergyRenderer:
     def __init__(
@@ -378,7 +380,9 @@ class EnergyRenderer:
     def draw(self) -> None:
         w = 20
         h = 8
-        draw_rounded_rectangle(self.x - w//2 + 1, self.y - h//2, w, h, 2, pyxel.COLOR_PURPLE)
+        draw_rounded_rectangle(
+            self.x - w // 2 + 1, self.y - h // 2, w, h, 2, pyxel.COLOR_PURPLE
+        )
         self.timer += 1
         fixed_portion = f"/{self.target.default_energy}"
         retro_text(
@@ -392,7 +396,7 @@ class EnergyRenderer:
         alternative = self.target.energy - self.target.tentative_energy_cost()
         current = self.target.energy
         if alternative == current:
-                retro_text(
+            retro_text(
                 self.x - 8,
                 self.y - 8,
                 f"{current}{fixed_portion}",
@@ -409,7 +413,7 @@ class EnergyRenderer:
                     7,
                     layout=layout(w=w, h=16, ha="center", va="center"),
                 )
-            with dithering(1-dither_amount):
+            with dithering(1 - dither_amount):
                 retro_text(
                     self.x - 8,
                     self.y - 8,

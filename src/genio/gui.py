@@ -384,7 +384,11 @@ class CardSprite:
             if (
                 not self.selected
                 and any(card for card in self.app.card_sprites if card.selected)
-                or (self.app.should_all_cards_disabled() and not self.selected and self.state != CardState.RESOLVING)
+                or (
+                    self.app.should_all_cards_disabled()
+                    and not self.selected
+                    and self.state != CardState.RESOLVING
+                )
             ):
                 with pal_single_color(5):
                     with dithering(0.5):

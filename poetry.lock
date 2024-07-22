@@ -274,6 +274,19 @@ files = [
 ]
 
 [[package]]
+name = "atomicx"
+version = "0.0.12"
+description = "easy-to-use lock-free atomic integers and booleans for multithreading"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "atomicx-0.0.12-cp37-abi3-macosx_10_9_x86_64.macosx_11_0_arm64.macosx_10_9_universal2.whl", hash = "sha256:429ab90d958a71eb63d706b5da9c4b04122a130cb146d1b418e5e2d13d33e83b"},
+    {file = "atomicx-0.0.12-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8b6c01d28f2c88a48bcf6cd58d37d59d81c14080e93956c40145e30225b234c9"},
+    {file = "atomicx-0.0.12-cp37-abi3-win_amd64.whl", hash = "sha256:0f4c350117eb78fcc9901c11015a2e0984b4f7628c8ab714321b4740322637c3"},
+    {file = "atomicx-0.0.12.tar.gz", hash = "sha256:6f41b8a0b09844682d998e99585ce18e321fd316bf60061cba06b2f4e1ac26c5"},
+]
+
+[[package]]
 name = "attrs"
 version = "23.2.0"
 description = "Classes Without Boilerplate"
@@ -5537,4 +5550,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<4.0"
-content-hash = "e5650d84247b70173204de09894807b5afeba8af7b43ad9dc23c4593ffcca860"
+content-hash = "d0d7c2f3be7d972c7c6baecb7dfb5aa3e6f730cf94dc99c673796efddad3693c"
