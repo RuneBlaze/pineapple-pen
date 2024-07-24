@@ -1211,6 +1211,7 @@ class MainScene(Scene):
             anim.update()
         for popup in self.popups:
             popup.update()
+        self.popups = [popup for popup in self.popups if not popup.is_dead()]
         self.anims = [anim for anim in self.anims if not anim.dead]
         for sprite in self.sprites():
             sprite.update()
@@ -1284,10 +1285,10 @@ class MainScene(Scene):
                 sprite.flash()
                 match effect.classify_type():
                     case SinglePointEffectType.DAMAGE:
-                        sprite.add_popup(str(effect.damage), 7)
+                        sprite.add_popup(str(int(effect.damage)), 7)
                         sprite.add_animation("anims.burst")
                     case SinglePointEffectType.HEAL:
-                        sprite.add_popup(str(effect.heal), 11)
+                        sprite.add_popup(str(int(effect.heal)), 11)
                         sprite.add_animation("anims.heal")
                     case SinglePointEffectType.SHIELD_GAIN:
                         sprite.add_animation("anims.shield_gain")

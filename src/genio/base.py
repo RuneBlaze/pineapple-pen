@@ -165,6 +165,11 @@ def load_as_buffer(*asset_args: str) -> np.ndarray:
     else:
         image_path = asset_path(*asset_args)
         image = Image.open(image_path).convert("RGBA")
+    buffer = apply_palette_conversion(rgb2paletteix, image)
+    return buffer
+
+
+def apply_palette_conversion(rgb2paletteix, image: Image.Image) -> np.ndarray:
     buffer = np.full((image.height, image.width), 254, dtype=np.uint8)
 
     for y in range(image.height):
@@ -173,7 +178,6 @@ def load_as_buffer(*asset_args: str) -> np.ndarray:
             if a != 0:
                 if a != 255:
                     ...
-                    # raise ValueError(f"Unexpected alpha value: {a}")
                 try:
                     buffer[y, x] = rgb2paletteix[(r, g, b)]
                 except KeyError:
@@ -183,8 +187,9 @@ def load_as_buffer(*asset_args: str) -> np.ndarray:
                         key=lambda c: sum((c[i] - rgb[i]) ** 2 for i in range(3)),
                     )
                     raise ValueError(
-                        f"Unexpected color: {r}, {g}, {b}; closest: {closest_color} at {rgb2paletteix[closest_color]} when loading {image_path}"
+                        f"Unexpected color: {r}, {g}, {b}; closest: {closest_color} at {rgb2paletteix[closest_color]}"
                     )
+
     return buffer
 
 

@@ -36,6 +36,8 @@ lupa = "^2.2"
 pytweening = "^1.2.0"
 tiktoken = "^0.7.0"
 atomicx = "^0.0.12"
+gensim = "^4.3.3"
+embeddings = "^0.0.8"
 
 
 [tool.poetry.group.dev.dependencies]

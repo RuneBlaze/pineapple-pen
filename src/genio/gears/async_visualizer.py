@@ -155,4 +155,3 @@ class AsyncVisualizer:
         x = WINDOW_WIDTH - each_width * (i + 1)
         y = WINDOW_HEIGHT - 24
         return x, y
-

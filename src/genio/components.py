@@ -28,7 +28,7 @@ display_text = Font(asset_path("DMSerifDisplay-Regular.ttf")).specialize(
 )
 cute_text = Font(asset_path("retro-pixel-cute-prop.ttf")).specialize(font_size=11)
 arcade_text = Font(asset_path("retro-pixel-arcade.ttf")).specialize(font_size=8)
-
+capital_hill_text = Font(asset_path("Capital_Hill.ttf")).specialize(font_size=8)
 
 def shadowed_text(
     x, y, text, color, layout_opts: LayoutOpts | None = None, dither_mult: float = 1.0
@@ -40,6 +40,18 @@ def shadowed_text(
     pyxel.dither(1.0)
 
 
+def stroke_capital_hill_text(
+    x, y, text, color, layout_opts: LayoutOpts | None = None, dither_mult: float = 1.0
+):
+    pyxel.dither(1.0 * dither_mult)
+    capital_hill_text(x + 1, y + 1, text, 0, layout=layout_opts)
+    capital_hill_text(x - 1, y - 1, text, 0, layout=layout_opts)
+    capital_hill_text(x + 1, y - 1, text, 0, layout=layout_opts)
+    capital_hill_text(x - 1, y + 1, text, 0, layout=layout_opts)
+    pyxel.dither(1.0 * dither_mult)
+    capital_hill_text(x, y, text, color, layout=layout_opts)
+    pyxel.dither(1.0)
+
 class Popup:
     def __init__(self, text: str, x: int, y: int, color: int):
         self.text = text
@@ -48,7 +60,11 @@ class Popup:
         self.color = color
         self.counter = 60
         self.dx = random.randint(-10, 10)
-        self.dy = random.randint(-65, -55)
+        self.dy = random.randint(-65, -55) * 1.5
+        self.tweener = Tweener()
+        self.gravity_accel = 0
+        self.gravity_offset = 0
+        self.timer = 0
 
     def draw(self):
         if self.counter <= 0:
@@ -58,18 +74,36 @@ class Popup:
         if self.counter >= 45:
             if self.counter % 10 <= 5:
                 pyxel.pal(self.color, 10)
-        shadowed_text(
-            self.x + self.dx * t - 15,
-            self.y + self.dy * t,
+        stroke_capital_hill_text(
+            self.x + self.dx * t - 40,
+            self.y + self.dy * t + self.gravity_offset,
             self.text,
             self.color,
-            layout_opts=layout(w=30, h=20, ha="center", va="center"),
+            layout_opts=layout(w=80, h=20, ha="center", va="center"),
             dither_mult=(1 - t) if self.counter <= 30 else 1.0,
         )
+        # shadowed_text(
+        #     self.x + self.dx * t - 15,
+        #     self.y + self.dy * t + self.gravity_offset,
+        #     self.text,
+        #     self.color,
+        #     layout_opts=layout(w=30, h=20, ha="center", va="center"),
+        #     dither_mult=(1 - t) if self.counter <= 30 else 1.0,
+        # )
         pyxel.pal()
 
     def update(self):
-        self.counter -= 1
+        self.timer += 1
+        if self.timer % 3 <= 1:
+            self.counter -= 1
+            self.gravity_accel += 0.05
+            self.gravity_offset += self.gravity_accel
+            self.tweener.update()
+        
+        
+
+    def is_dead(self):
+        return self.counter <= 0
 
 
 def gauge(x, y, w, h, c0, c1, value, max_value, label=None):

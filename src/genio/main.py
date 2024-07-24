@@ -7,9 +7,6 @@ import pyxel
 import genio.ps_edit
 from genio.scene import AppWithScenes, ReloadableScene, load_scene_from_module
 
-# def main_scene_factory():
-#     return load_scene_from_module(genio.gui)
-
 
 def edit_scene_factory():
     return load_scene_from_module(genio.ps_edit)
@@ -23,7 +20,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     fact = edit_scene_factory if args.edit else None
 
-    pyxel.init(427, 240, title="Genio")
+    pyxel.init(427, 240, title="Pen Apple")
     if not fact:
         AppWithScenes(
             ReloadableScene(
