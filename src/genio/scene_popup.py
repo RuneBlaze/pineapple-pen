@@ -1,13 +1,14 @@
 import pyxel
-from genio.scene import Scene
+
 from genio.components import Popup
+from genio.scene import Scene
+
 
 class ScenePopup(Scene):
-
     def __init__(self) -> None:
         self.timer = 0
         self.popups = []
-    
+
     def update(self) -> None:
         self.timer += 1
 
@@ -18,11 +19,12 @@ class ScenePopup(Scene):
             popup.update()
 
         self.popups = [popup for popup in self.popups if not popup.is_dead()]
-    
+
     def draw(self) -> None:
         pyxel.cls(0)
         for popup in self.popups:
             popup.draw()
+
 
 def gen_scene() -> Scene:
     return ScenePopup()

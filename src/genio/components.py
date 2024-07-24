@@ -30,6 +30,7 @@ cute_text = Font(asset_path("retro-pixel-cute-prop.ttf")).specialize(font_size=1
 arcade_text = Font(asset_path("retro-pixel-arcade.ttf")).specialize(font_size=8)
 capital_hill_text = Font(asset_path("Capital_Hill.ttf")).specialize(font_size=8)
 
+
 def shadowed_text(
     x, y, text, color, layout_opts: LayoutOpts | None = None, dither_mult: float = 1.0
 ):
@@ -52,6 +53,7 @@ def stroke_capital_hill_text(
     capital_hill_text(x, y, text, color, layout=layout_opts)
     pyxel.dither(1.0)
 
+
 class Popup:
     def __init__(self, text: str, x: int, y: int, color: int):
         self.text = text
@@ -59,7 +61,7 @@ class Popup:
         self.y = y
         self.color = color
         self.counter = 60
-        self.dx = random.randint(-10, 10)
+        self.dx = random.randint(-10, 10) * 1.5
         self.dy = random.randint(-65, -55) * 1.5
         self.tweener = Tweener()
         self.gravity_accel = 0
@@ -99,8 +101,6 @@ class Popup:
             self.gravity_accel += 0.05
             self.gravity_offset += self.gravity_accel
             self.tweener.update()
-        
-        
 
     def is_dead(self):
         return self.counter <= 0
