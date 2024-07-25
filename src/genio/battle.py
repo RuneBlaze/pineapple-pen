@@ -1106,6 +1106,9 @@ class MainSceneLike(CanAddAnim, Protocol):
     def should_all_cards_disabled(self) -> bool:
         ...
 
+    def should_wait_until_animation(self) -> bool:
+        ...
+
 
 enc = tiktoken.get_encoding("o200k_base")
 

@@ -51,7 +51,6 @@ from genio.constants import (
     GRID_X_START,
     GRID_Y_START,
     TOTAL_CARDS,
-    TWEEN_SPEED,
 )
 from genio.effect import SinglePointEffect, SinglePointEffectType, StatusDefinition
 from genio.follower_tooltip import FollowerTooltip
@@ -236,7 +235,9 @@ def sin_01(t: float, dilation: float) -> float:
 
 
 class CardSprite:
-    def __init__(self, index: int, card: Card, app: MainSceneLike, selected: bool = False):
+    def __init__(
+        self, index: int, card: Card, app: MainSceneLike, selected: bool = False
+    ):
         self.index = index
         self.app = app
         self.change_index(index)
@@ -260,6 +261,7 @@ class CardSprite:
         self.state = CardState.INITIALIZE
         self.update_delay = 8 * index + 5
         self.tweens = Tweener()
+        self.xy_tweens = Tweener()
         self.rotation = 0
         self.fade_timer = 0
         self.tweens.append(
@@ -353,8 +355,7 @@ class CardSprite:
             if self.dragging:
                 self.draw_shadow()
             self._draw()
-            
-    
+
     def draw_shadow(self):
         with dithering(0.5):
             with pal_single_color(1):
@@ -415,14 +416,15 @@ class CardSprite:
                 rot=self.rotation,
             )
             pyxel.pal()
+            # if self.app.should_all_cards_disabled():
+            #     print(not self.selected, self.state != CardState.RESOLVING)
             if (
                 not self.selected
                 and any(card for card in self.app.card_sprites if card.selected)
-                or (
-                    self.app.should_all_cards_disabled()
-                    and not self.selected
-                    and self.state != CardState.RESOLVING
-                )
+            ) or (
+                self.app.should_all_cards_disabled()
+                and not self.selected
+                and self.state != CardState.RESOLVING
             ):
                 with pal_single_color(5):
                     with dithering(0.5):
@@ -472,6 +474,7 @@ class CardSprite:
             self.update_active()
 
         self.tweens.update()
+        self.xy_tweens.update()
         if self.hover_timer >= 0:
             self.hover_timer += 1
 
@@ -506,15 +509,29 @@ class CardSprite:
             self.y = pyxel.mouse_y - self.drag_offset_y
 
         # Tweening for smooth transition
-        if not self.dragging:
+        if not self.dragging and not self.app.should_wait_until_animation():
             target_x, target_y = self.adjusted_target_coords()
-            dx = (target_x - self.x) * TWEEN_SPEED
-            dy = (target_y - self.y) * TWEEN_SPEED
-            dx = clip_magnitude(dx, 13)
-            dy = clip_magnitude(dy, 13)
+            if (self.x != target_x or self.y != target_y) and not self.xy_tweens:
+                distance = math.sqrt(
+                    (self.x - target_x) ** 2 + (self.y - target_y) ** 2
+                )
+                t = int(distance / 6)
+                t = max(t, 6)
+                self.xy_tweens.append(
+                    MutableTweening(
+                        t,
+                        pytweening.easeInOutQuad,
+                        self,
+                        (target_x, target_y),
+                    )
+                )
+            # dx = (target_x - self.x) * TWEEN_SPEED
+            # dy = (target_y - self.y) * TWEEN_SPEED
+            # dx = clip_magnitude(dx, 13)
+            # dy = clip_magnitude(dy, 13)
 
-            self.x += dx
-            self.y += dy
+            # self.x += dx
+            # self.y += dy
 
         if self.is_mouse_over():
             if self.hovered:
@@ -1220,6 +1237,7 @@ class MainScene(Scene):
         self.enemy_sprites = [
             EnemyBattlerSprite(100, 100, e, self) for e in self.bundle.enemies
         ]
+        self.wait_anim_countdown = 0
         self.pieces = []
         self.follower_tooltip = FollowerTooltip(MouseHasPos())
         self.zero_energy_timer = 0
@@ -1326,7 +1344,17 @@ class MainScene(Scene):
     def on_new_event(self, ev: str, *others: Any) -> None:
         self.sync_sprites(ev, *others)
 
+    def should_wait_until_animation(self) -> bool:
+        if self.wait_anim_countdown > 0:
+            return True
+        return False
+
     def update(self):
+        if self.wait_anim_countdown > 0:
+            if not self.tmp_card_sprites:
+                self.wait_anim_countdown = 0
+            else:
+                self.wait_anim_countdown -= 1
         if pyxel.btnp(pyxel.KEY_SPACE) and self.can_resolve_new_cards():
             self.play_selected()
 
@@ -1416,7 +1444,8 @@ class MainScene(Scene):
     def schedule_in(self, delay: int, fn: Callable[[], None]) -> None:
         self.tweener.append(range(delay), Instant(fn))
 
-    def play_selected(self):
+    def play_selected(self) -> None:
+        self.wait_anim_countdown = 30
         selected_card_sprites = [card for card in self.card_sprites if card.selected]
         if not selected_card_sprites:
             return
@@ -1514,7 +1543,7 @@ class MainScene(Scene):
 
     def should_all_cards_disabled(self) -> bool:
         if self.bundle.card_bundle.resolving:
-            return False
+            return True
         return self.zero_energy_timer > 30
 
     def _draw_hearts_and_shields(self, x: int, y: int, hp: int, shield: int) -> None:
