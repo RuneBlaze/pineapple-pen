@@ -55,6 +55,16 @@ pattern = ["attack player for 2 damage", "block for 1 shield points"]
 
 [anims]
 
+[[anims.stroke]]
+frequency = 4
+max_p = 0
+area = [5, 5]
+size = [2, 0, 2, 0]
+speed = [1, 0, 1, 0]
+life = [1, 2]
+colors = [0, 0, 1, 1, 1, 14]
+duration = 0.4
+
 [[anims.map_marker_appear]]
 frequency = 2
 max_p = 200

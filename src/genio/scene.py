@@ -73,6 +73,9 @@ class ReloadableScene(Scene):
     def request_next_scene(self) -> Scene | None | str:
         return self.current_version.request_next_scene()
 
+    def add_anim(self, *args, **kwargs) -> None:
+        self.current_version.add_anim(*args, **kwargs)
+
 
 def load_scene_from_module(module) -> Scene:
     imp.reload(module)
@@ -95,7 +98,7 @@ class AppWithScenes:
         self.add_scene(scene)
         self.state = AppState.RUNNING
         self.state_timers = Counter()
-        self.async_visualizer = AsyncVisualizer()
+        self.async_visualizer = AsyncVisualizer(self)
         self.noise = perlin_noise_with_horizontal_gradient(
             WINDOW_WIDTH, WINDOW_HEIGHT, 0.01
         )
@@ -108,6 +111,9 @@ class AppWithScenes:
 
         pyxel.load(asset_path("sprites.pyxres"))
         pyxel.run(self.update, self.draw)
+
+    def add_anim(self, *args, **kwargs) -> None:
+        self.scenes[0].add_anim(*args, **kwargs)
 
     def on_event(self, event: Event) -> None:
         logger.info("AppWithScenes.on_event", ev=event)

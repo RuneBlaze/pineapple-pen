@@ -9,7 +9,7 @@ from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Literal
+from typing import Any, Literal, Protocol
 
 import numpy as np
 import pytweening
@@ -56,6 +56,7 @@ from genio.effect import SinglePointEffect, SinglePointEffectType, StatusDefinit
 from genio.follower_tooltip import FollowerTooltip
 from genio.gamestate import game_state
 from genio.gears.median_filter import ImagePiece, sprite_to_pieces
+from genio.gears.stroke import StrokeAnim
 from genio.layout import (
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
@@ -416,8 +417,6 @@ class CardSprite:
                 rot=self.rotation,
             )
             pyxel.pal()
-            # if self.app.should_all_cards_disabled():
-            #     print(not self.selected, self.state != CardState.RESOLVING)
             if (
                 not self.selected
                 and any(card for card in self.app.card_sprites if card.selected)
@@ -508,8 +507,11 @@ class CardSprite:
             self.x = pyxel.mouse_x - self.drag_offset_x
             self.y = pyxel.mouse_y - self.drag_offset_y
 
+        inverse_index = self.deck_length - self.index - 1
         # Tweening for smooth transition
-        if not self.dragging and not self.app.should_wait_until_animation():
+        if not self.dragging and (
+            10 + inverse_index * 4 >= self.app.should_wait_until_animation()
+        ):
             target_x, target_y = self.adjusted_target_coords()
             if (self.x != target_x or self.y != target_y) and not self.xy_tweens:
                 distance = math.sqrt(
@@ -517,6 +519,8 @@ class CardSprite:
                 )
                 t = int(distance / 6)
                 t = max(t, 6)
+                if self.app.should_wait_until_animation():
+                    t = max(t, 15)
                 self.xy_tweens.append(
                     MutableTweening(
                         t,
@@ -525,13 +529,6 @@ class CardSprite:
                         (target_x, target_y),
                     )
                 )
-            # dx = (target_x - self.x) * TWEEN_SPEED
-            # dy = (target_y - self.y) * TWEEN_SPEED
-            # dx = clip_magnitude(dx, 13)
-            # dy = clip_magnitude(dy, 13)
-
-            # self.x += dx
-            # self.y += dy
 
         if self.is_mouse_over():
             if self.hovered:
@@ -1210,6 +1207,14 @@ class FollowerTooltipArea:
         return self.x <= x <= self.x + self.w and self.y <= y <= self.y + self.h
 
 
+class Updatable(Protocol):
+    def update(self) -> None:
+        ...
+
+    def is_dead(self) -> bool:
+        ...
+
+
 class MainScene(Scene):
     card_bundle: CardBundle
     anims: list[Anim]
@@ -1220,6 +1225,8 @@ class MainScene(Scene):
 
     follower_tooltip_areas: list[FollowerTooltipArea]
     pieces: list[ImagePiece]
+
+    updatables: list[Updatable]
 
     def __init__(self):
         self.bundle = game_state.battle_bundle
@@ -1242,7 +1249,7 @@ class MainScene(Scene):
         self.follower_tooltip = FollowerTooltip(MouseHasPos())
         self.zero_energy_timer = 0
         self.gold_renderer = GoldRenderer(game_state, self, 100, 0)
-
+        self.updatables = []
         self.player_sprite = WrappedImage(
             load_image("char", "char_celine.png"),
             0,
@@ -1346,8 +1353,8 @@ class MainScene(Scene):
 
     def should_wait_until_animation(self) -> bool:
         if self.wait_anim_countdown > 0:
-            return True
-        return False
+            return self.wait_anim_countdown
+        return 0
 
     def update(self):
         if self.wait_anim_countdown > 0:
@@ -1371,9 +1378,10 @@ class MainScene(Scene):
             piece.update()
 
         self.pieces = [piece for piece in self.pieces if not piece.is_dead()]
-
         if pyxel.btnp(pyxel.KEY_T):
-            self.bundle.enemies[0].receive_damage(10)
+            self.updatables.append(
+                StrokeAnim(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2, 100, self)
+            )
 
         if self.image_buttons[0].update():
             self.play_selected()
@@ -1411,6 +1419,11 @@ class MainScene(Scene):
             anim.update()
         for popup in self.popups:
             popup.update()
+        for updatable in self.updatables:
+            updatable.update()
+        self.updatables = [
+            updatable for updatable in self.updatables if not updatable.is_dead()
+        ]
         self.popups = [popup for popup in self.popups if not popup.is_dead()]
         self.anims = [anim for anim in self.anims if not anim.dead]
         for sprite in self.sprites():

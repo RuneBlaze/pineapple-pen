@@ -10,10 +10,9 @@ from atomicx import AtomicInt
 from pyxelxl import blt_rot
 
 from genio.base import WINDOW_HEIGHT, WINDOW_WIDTH, load_image
-from genio.components import dithering
+from genio.components import CanAddAnim, dithering
 from genio.gears.paperlike import paper_cut_effect
-
-# from genio.scene import Scene
+from genio.gears.stroke import StrokeAnim
 from genio.tween import Instant, Mutator, Tweener
 
 
@@ -29,7 +28,6 @@ class WavingText:
         self.text = text
 
     def y_offset_for_ix(self, i: int) -> float:
-        # based on sine-wave and timer
         return math.sin(self.timer * 0.1 + i * 1.2) * 1
 
     def draw(self, x: int, y: int) -> None:
@@ -93,13 +91,15 @@ DEFAULT_ASYNC_TEXT = "Gemini Flashing"
 
 
 class AsyncVisualizer:
-    def __init__(self, text: str = DEFAULT_ASYNC_TEXT) -> None:
+    def __init__(self, scene: CanAddAnim, text: str = DEFAULT_ASYNC_TEXT) -> None:
         self.tweener = Tweener()
         self.animations = deque()
         self.target_number = AtomicInt(0)
         self.phasing_out_animations = []
         self.text = text
         self.waver = WavingText(self.text)
+        self.strokes = []
+        self.scene = scene
         icon_image()
 
     def ping(self) -> None:
@@ -110,6 +110,19 @@ class AsyncVisualizer:
         old_number = self.target_number.inc()
         if old_number == 0:
             self.tweener.append_mutate(self.waver, "opacity", 10, 1.0, "ease_in_quad")
+            stroke_x, stroke_y = (
+                WINDOW_WIDTH - len(self.text) * 4 - 10,
+                WINDOW_HEIGHT - 15,
+            )
+            stroke_width = len(self.text) * 4
+            self.strokes.append(
+                StrokeAnim(
+                    stroke_x,
+                    stroke_y,
+                    stroke_width,
+                    self.scene,
+                )
+            )
         self.refresh_animation_positions()
 
     def draw(self) -> None:
@@ -149,6 +162,8 @@ class AsyncVisualizer:
         ]
         self.waver.update()
         self.tweener.update()
+        for stroke in self.strokes:
+            stroke.update()
 
     def calculate_position(self, i: int, total_number: int) -> tuple[int, int]:
         each_width = 16
