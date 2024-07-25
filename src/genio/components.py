@@ -84,14 +84,6 @@ class Popup:
             layout_opts=layout(w=80, h=20, ha="center", va="center"),
             dither_mult=(1 - t) if self.counter <= 30 else 1.0,
         )
-        # shadowed_text(
-        #     self.x + self.dx * t - 15,
-        #     self.y + self.dy * t + self.gravity_offset,
-        #     self.text,
-        #     self.color,
-        #     layout_opts=layout(w=30, h=20, ha="center", va="center"),
-        #     dither_mult=(1 - t) if self.counter <= 30 else 1.0,
-        # )
         pyxel.pal()
 
     def update(self):

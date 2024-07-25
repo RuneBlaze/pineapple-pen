@@ -1070,7 +1070,7 @@ class BattleBundle:
     def clear_dead(self) -> None:
         if self.player.is_dead():
             # TODO: actually provide game over.
-            raise ValueError("Player is dead. Game Over.")
+            raise ValueError("Player is dead. The bar explodes, game over.")
         for enemy in self.enemies:
             if enemy.is_dead():
                 self.battle_logs.append(

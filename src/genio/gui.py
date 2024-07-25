@@ -21,6 +21,7 @@ from genio.base import Video, asset_path, load_image, resize_image_breathing
 from genio.battle import (
     BattleBundle,
     CardBundle,
+    EnemyBattler,
     MainSceneLike,
     ResolvedEffects,
 )
@@ -55,6 +56,7 @@ from genio.constants import (
 from genio.effect import SinglePointEffect, SinglePointEffectType, StatusDefinition
 from genio.follower_tooltip import FollowerTooltip
 from genio.gamestate import game_state
+from genio.gears.median_filter import ImagePiece, sprite_to_pieces
 from genio.layout import (
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
@@ -234,7 +236,7 @@ def sin_01(t: float, dilation: float) -> float:
 
 
 class CardSprite:
-    def __init__(self, index, card: Card, app: MainSceneLike, selected: bool = False):
+    def __init__(self, index: int, card: Card, app: MainSceneLike, selected: bool = False):
         self.index = index
         self.app = app
         self.change_index(index)
@@ -329,6 +331,11 @@ class CardSprite:
             )
         )
 
+    def z_order(self) -> int:
+        if self.dragging:
+            return 1000
+        return self.index
+
     def on_reach_hovering_location(self):
         self.hover_timer = 0
 
@@ -343,7 +350,25 @@ class CardSprite:
         if self.hover_timer > 0:
             shift = math.sin(self.hover_timer / 10) * 5
         with camera_shift(0, shift):
+            if self.dragging:
+                self.draw_shadow()
             self._draw()
+            
+    
+    def draw_shadow(self):
+        with dithering(0.5):
+            with pal_single_color(1):
+                blt_rot(
+                    self.x + 2,
+                    self.y + 2,
+                    self.image,
+                    0,
+                    0,
+                    self.width,
+                    self.height,
+                    colkey=254,
+                    rot=self.rotation,
+                )
 
     def is_dead(self) -> bool:
         return self.state == CardState.RESOLVED and not self.tweens
@@ -760,6 +785,153 @@ class WrappedImage:
         )
 
 
+class EnemyBattlerSprite:
+    def __init__(self, x: int, y: int, battler: EnemyBattler, scene: MainScene):
+        self.x = x
+        self.y = y
+        self.battler = battler
+        self.scene = scene
+        self.image = WrappedImage(
+            load_image("char", "enemy_killer_flower.png"),
+            0,
+            0,
+            64,
+            64,
+            self,
+            has_breathing=True,
+            user_data=battler.uuid,
+        )
+        self.image.x = x - 32
+        self.image.y = y - 32
+        self.hp = battler.hp
+        self.max_hp = battler.max_hp
+        self.flash_state = FlashState()
+        self.tweens = Tweener()
+        self.opacity = 1.0
+        self.rotation = 0
+        self.played_dead = False
+
+    def play_death_animation(self) -> None:
+        if self.played_dead:
+            return
+        self.played_dead = True
+        self.scene.pieces.extend(
+            sprite_to_pieces(self.x - 32, self.y, self.image.image)
+        )
+
+        self.tweens.append_mutate(self, "opacity", 30, 0.0, "ease_in_out_quad")
+
+    def is_dead(self) -> bool:
+        return self.opacity <= 0
+
+    def update(self) -> None:
+        self.image.x = self.x - 32
+        self.image.y = self.y
+        self.image.update()
+        self.tweens.update()
+
+    def draw(self) -> None:
+        e = self.battler
+        short_holder = load_image("ui", "short-holder.png")
+        if self.opacity >= 1.0:
+            self.image.draw(self.x - 32, self.y)
+        with dithering(self.opacity):
+            pyxel.blt(10 + self.x - 36, 126, short_holder, 0, 0, 80, 64, colkey=254)
+            shadowed_text(
+                10 + self.x - 30,
+                121,
+                e.name,
+                7,
+                layout(w=80, ha="left"),
+                dither_mult=self.opacity,
+            )
+            self.scene._draw_hearts_and_shields(
+                10 + self.x - 31, 131, e.hp, e.shield_points
+            )
+            pyxel.clip(10 + self.x - 30 - 5, 141, 68, 7)
+            text_width = retro_font.rasterize(e.current_intent, 5, 255, 0, 0).width + 14
+            pyxel.dither(self.opacity)
+            for i in range(2):
+                retro_text(
+                    -25 + self.x - (self.scene.timer) % text_width + i * text_width,
+                    141,
+                    self.battler.current_intent,
+                    col=7,
+                )
+            pyxel.clip()
+            for i, s in enumerate(self.battler.status_effects):
+                turns_left = s.counter
+                icon = s.icon_id
+                self.scene.draw_stats_icon(
+                    icon_x := 15 + self.x + i * 14, icon_y := 107, icon, turns_left
+                )
+                self.scene.follower_tooltip_areas.append(
+                    FollowerTooltipArea(
+                        icon_x,
+                        icon_y,
+                        16,
+                        16,
+                        s.name,
+                        s.description,
+                    )
+                )
+
+    @property
+    def user_data(self) -> str:
+        return self.battler.uuid
+
+    def flash(self) -> None:
+        self.image.flash()
+
+    def is_flashing(self) -> bool:
+        return self.image.is_flashing()
+
+    def add_popup(self, text: str, color: int) -> None:
+        self.scene.add_popup(text, self.x, self.y + 32, color)
+
+    def add_animation(self, lens: str) -> None:
+        self.scene.add_anim(lens, self.x, self.y + 32, 1.0)
+
+
+"""
+self.enemy_sprites[i].draw()
+        pyxel.blt(10 + x - 36, 126, short_holder, 0, 0, 80, 64, colkey=254)
+        shadowed_text(10 + x - 30, 121, e.name, 7, layout(w=80, ha="left"))
+        self._draw_hearts_and_shields(10 + x - 31, 131, e.hp, e.shield_points)
+        pyxel.clip(10 + x - 30 - 5, 141, 68, 7)
+        text_width = retro_font.rasterize(e.current_intent, 5, 255, 0, 0).width + 14
+        retro_text(
+                -25 + x - (self.timer) % text_width,
+                141,
+                e.current_intent,
+                col=7,
+            )
+        retro_text(
+                -25 + x - (self.timer) % text_width + text_width,
+                141,
+                e.current_intent,
+                col=7,
+            )
+        pyxel.clip()
+        for i, s in enumerate(e.status_effects):
+            turns_left = s.counter
+            icon = s.icon_id
+            self.draw_stats_icon(
+                    icon_x := 15 + x + i * 14, icon_y := 107, icon, turns_left
+                )
+            self.follower_tooltip_areas.append(
+                    FollowerTooltipArea(
+                        icon_x,
+                        icon_y,
+                        16,
+                        16,
+                        s.name,
+                        s.description,
+                    )
+                )
+"""
+
+
 @functools.cache
 def card_back() -> pyxel.Image:
     return pyxel.Image.from_image(asset_path("card-back.png"))
@@ -1030,6 +1202,7 @@ class MainScene(Scene):
     bundle: BattleBundle
 
     follower_tooltip_areas: list[FollowerTooltipArea]
+    pieces: list[ImagePiece]
 
     def __init__(self):
         self.bundle = game_state.battle_bundle
@@ -1045,18 +1218,9 @@ class MainScene(Scene):
         self.tweener = Tweener()
         self.energy_renderer = EnergyRenderer(self.bundle, self)
         self.enemy_sprites = [
-            WrappedImage(
-                load_image("char", "enemy_killer_flower.png"),
-                0,
-                0,
-                64,
-                64,
-                self,
-                has_breathing=True,
-                user_data=e.uuid,
-            )
-            for e in self.bundle.enemies
+            EnemyBattlerSprite(100, 100, e, self) for e in self.bundle.enemies
         ]
+        self.pieces = []
         self.follower_tooltip = FollowerTooltip(MouseHasPos())
         self.zero_energy_timer = 0
         self.gold_renderer = GoldRenderer(game_state, self, 100, 0)
@@ -1080,7 +1244,7 @@ class MainScene(Scene):
         for s, x in zip(
             self.enemy_sprites, layout_center_for_n(len(self.bundle.enemies), 6 * 50)
         ):
-            s.x = x - 32
+            s.x = x
             s.y = 60
 
         self.futures = deque()
@@ -1175,6 +1339,14 @@ class MainScene(Scene):
         for card in self.tmp_card_sprites:
             card.update()
 
+        for piece in self.pieces:
+            piece.update()
+
+        self.pieces = [piece for piece in self.pieces if not piece.is_dead()]
+
+        if pyxel.btnp(pyxel.KEY_T):
+            self.bundle.enemies[0].receive_damage(10)
+
         if self.image_buttons[0].update():
             self.play_selected()
 
@@ -1215,11 +1387,20 @@ class MainScene(Scene):
         self.anims = [anim for anim in self.anims if not anim.dead]
         for sprite in self.sprites():
             sprite.update()
+        self.enemy_sprites = [s for s in self.enemy_sprites if not s.is_dead()]
+        self.sync_enemy_sprites()
         self.framing.update()
         self.check_mailbox()
         self.update_buttons_state()
         self.background_video.update()
         self.timer += 1
+
+    def sync_enemy_sprites(self):
+        if self.tmp_card_sprites:
+            return
+        for s in self.enemy_sprites:
+            if s.battler.is_dead():
+                s.play_death_animation()
 
     def update_buttons_state(self):
         if self.bundle.energy <= 0:
@@ -1372,11 +1553,14 @@ class MainScene(Scene):
         )
 
         self.draw_battlers()
-
-        for card in self.card_sprites:
-            card.draw()
+        card_draw_order = np.argsort([card.z_order() for card in self.card_sprites])
+        for card_ix in card_draw_order:
+            self.card_sprites[card_ix].draw()
         for card in self.tmp_card_sprites:
             card.draw()
+
+        for piece in self.pieces:
+            piece.draw()
 
         self.draw_deck.draw_card_label(10, 190)
 
@@ -1428,50 +1612,59 @@ class MainScene(Scene):
     def draw_battlers(self):
         short_holder = load_image("ui", "short-holder.png")
         long_holder = load_image("ui", "long-holder.png")
+        self.draw_player_info(long_holder)
+        for i, sprite in enumerate(self.enemy_sprites):
+            sprite.draw()
+        # for i, (x, e) in enumerate(
+        #     zip(layout_center_for_n(2, 6 * 50), self.bundle.enemies)
+        # ):
+        #     self.render_enemy_sprite(short_holder, i, x, e)
 
+    def render_enemy_sprite(
+        self, short_holder: pyxel.Image, i: int, x: int, e: EnemyBattler
+    ) -> None:
+        self.enemy_sprites[i].draw()
+        pyxel.blt(10 + x - 36, 126, short_holder, 0, 0, 80, 64, colkey=254)
+        shadowed_text(10 + x - 30, 121, e.name, 7, layout(w=80, ha="left"))
+        self._draw_hearts_and_shields(10 + x - 31, 131, e.hp, e.shield_points)
+        pyxel.clip(10 + x - 30 - 5, 141, 68, 7)
+        text_width = retro_font.rasterize(e.current_intent, 5, 255, 0, 0).width + 14
+        retro_text(
+            -25 + x - (self.timer) % text_width,
+            141,
+            e.current_intent,
+            col=7,
+        )
+        retro_text(
+            -25 + x - (self.timer) % text_width + text_width,
+            141,
+            e.current_intent,
+            col=7,
+        )
+        pyxel.clip()
+        for i, s in enumerate(e.status_effects):
+            turns_left = s.counter
+            icon = s.icon_id
+            self.draw_stats_icon(
+                icon_x := 15 + x + i * 14, icon_y := 107, icon, turns_left
+            )
+            self.follower_tooltip_areas.append(
+                FollowerTooltipArea(
+                    icon_x,
+                    icon_y,
+                    16,
+                    16,
+                    s.name,
+                    s.description,
+                )
+            )
+
+    def draw_player_info(self, long_holder: pyxel.Image):
+        player = self.bundle.player
         pyxel.blt(-10, 147 + 10, long_holder, 0, 0, 130, 30, colkey=254)
         self.player_sprite.draw()
-        player = self.bundle.player
         shadowed_text(51, 147 + 5, player.name_stem, 7, layout(w=80, ha="left"))
         self._draw_hearts_and_shields(50, 162, player.hp, player.shield_points)
-        for i, (x, e) in enumerate(
-            zip(layout_center_for_n(2, 6 * 50), self.bundle.enemies)
-        ):
-            self.enemy_sprites[i].draw()
-            pyxel.blt(10 + x - 36, 126, short_holder, 0, 0, 80, 64, colkey=254)
-            shadowed_text(10 + x - 30, 121, e.name, 7, layout(w=80, ha="left"))
-            self._draw_hearts_and_shields(10 + x - 31, 131, e.hp, e.shield_points)
-            pyxel.clip(10 + x - 30 - 5, 141, 68, 7)
-            text_width = retro_font.rasterize(e.current_intent, 5, 255, 0, 0).width + 14
-            retro_text(
-                -25 + x - (self.timer) % text_width,
-                141,
-                e.current_intent,
-                col=7,
-            )
-            retro_text(
-                -25 + x - (self.timer) % text_width + text_width,
-                141,
-                e.current_intent,
-                col=7,
-            )
-            pyxel.clip()
-            for i, s in enumerate(e.status_effects):
-                turns_left = s.counter
-                icon = s.icon_id
-                self.draw_stats_icon(
-                    icon_x := 15 + x + i * 14, icon_y := 107, icon, turns_left
-                )
-                self.follower_tooltip_areas.append(
-                    FollowerTooltipArea(
-                        icon_x,
-                        icon_y,
-                        16,
-                        16,
-                        s.name,
-                        s.description,
-                    )
-                )
 
     def draw_crosshair(self, x, y):
         cursor = load_image("cursor.png")
