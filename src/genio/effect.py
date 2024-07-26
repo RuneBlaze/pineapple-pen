@@ -129,6 +129,16 @@ class TransformCardEffect(GlobalEffect):
     to_card: Card | None = None
 
 
+@dataclass(eq=True, frozen=True)
+class DestroyCardEffect(GlobalEffect):
+    cards: list[Card] = field(default_factory=list)
+
+
+@dataclass(eq=True, frozen=True)
+class DestroyRuleEffect(GlobalEffect):
+    rule_id: int = 0
+
+
 TargetedEffect: TypeAlias = tuple[str, SinglePointEffect]
 Effect: TypeAlias = GlobalEffect | TargetedEffect
 
@@ -204,6 +214,15 @@ def parse_global_effect(modifier: str, context: CardContext) -> GlobalEffect:
             mult = search("*{:d}", mult_expr).fixed[0]
         card = Card.parse(card_desc)
         return CreateCardEffect(card=card, where=where, copies=mult, **common_modifiers)
+    elif "destroy-rule" in effect[:20]:
+        # "[destroy-rule R??] - Destroy a rule. E.g., `[destroy-rule R01]` (destroy rule `R01`).",
+        rxx = extract_tokens("[destroy-rule R{:d}", modifier)[0]
+        return DestroyRuleEffect(rule_id=int(rxx))
+    elif "destroy" in effect[:20]:
+        to_destroy = tokens[0].split(" ")[1:]
+        return DestroyCardEffect(
+            cards=[context.seek_card(expr) for expr in to_destroy], **common_modifiers
+        )
     else:
         raise ValueError(f"Invalid format: {effect}")
 

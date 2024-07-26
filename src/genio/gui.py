@@ -56,7 +56,8 @@ from genio.effect import SinglePointEffect, SinglePointEffectType, StatusDefinit
 from genio.follower_tooltip import FollowerTooltip
 from genio.gamestate import game_state
 from genio.gears.median_filter import ImagePiece, sprite_to_pieces
-from genio.gears.stroke import StrokeAnim
+from genio.gears.signpost import SignPost
+from genio.gears.spritesheet import Spritesheet
 from genio.layout import (
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
@@ -800,13 +801,13 @@ class WrappedImage:
 
 
 class EnemyBattlerSprite:
-    def __init__(self, x: int, y: int, battler: EnemyBattler, scene: MainScene):
+    def __init__(self, x: int, y: int, battler: EnemyBattler, scene: MainScene) -> None:
         self.x = x
         self.y = y
         self.battler = battler
         self.scene = scene
         self.image = WrappedImage(
-            load_image("char", "enemy_killer_flower.png"),
+            scene.enemy_spritesheet.search_image(battler.chara),
             0,
             0,
             64,
@@ -1215,6 +1216,11 @@ class Updatable(Protocol):
         ...
 
 
+class Drawable(Updatable):
+    def draw(self) -> None:
+        ...
+
+
 class MainScene(Scene):
     card_bundle: CardBundle
     anims: list[Anim]
@@ -1226,10 +1232,11 @@ class MainScene(Scene):
     follower_tooltip_areas: list[FollowerTooltipArea]
     pieces: list[ImagePiece]
 
-    updatables: list[Updatable]
+    updatables: list[Updatable | Drawable]
 
     def __init__(self):
         self.bundle = game_state.battle_bundle
+        self.enemy_spritesheet = Spritesheet(asset_path('enemies.json'), build_search_index=True)
         self.card_sprites = []
         self.tmp_card_sprites = []
         self.background_video = Video("background.npy")
@@ -1250,6 +1257,7 @@ class MainScene(Scene):
         self.zero_energy_timer = 0
         self.gold_renderer = GoldRenderer(game_state, self, 100, 0)
         self.updatables = []
+        self.tweens_signpost = Tweener()
         self.player_sprite = WrappedImage(
             load_image("char", "char_celine.png"),
             0,
@@ -1265,6 +1273,8 @@ class MainScene(Scene):
 
         self.player_sprite.x = 0
         self.player_sprite.y = 110
+
+        
 
         for s, x in zip(
             self.enemy_sprites, layout_center_for_n(len(self.bundle.enemies), 6 * 50)
@@ -1293,9 +1303,9 @@ class MainScene(Scene):
 
         self.end_button = self.image_buttons[1]
         self.play_button = self.image_buttons[0]
-
         self.resolving_side = ResolvingSide.PLAYER
         self.bundle.card_bundle.events.register_listener(self.on_new_event)
+        self.putup_player_signpost()
 
     def sprites(self):
         yield self.player_sprite
@@ -1378,10 +1388,6 @@ class MainScene(Scene):
             piece.update()
 
         self.pieces = [piece for piece in self.pieces if not piece.is_dead()]
-        if pyxel.btnp(pyxel.KEY_T):
-            self.updatables.append(
-                StrokeAnim(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2, 100, self)
-            )
 
         if self.image_buttons[0].update():
             self.play_selected()
@@ -1433,8 +1439,12 @@ class MainScene(Scene):
         self.framing.update()
         self.check_mailbox()
         self.update_buttons_state()
+        self.tweens_signpost.update()
         self.background_video.update()
         self.timer += 1
+
+    def add_signpost(self, text: str) -> None:
+        self.updatables.append(SignPost(WINDOW_WIDTH // 2, 50, text, self))
 
     def sync_enemy_sprites(self):
         if self.tmp_card_sprites:
@@ -1612,6 +1622,9 @@ class MainScene(Scene):
         self.follower_tooltip.draw()
 
         Anim.draw()
+        for updatable in self.updatables:
+            if hasattr(updatable, "draw"):
+                updatable.draw()
         self.energy_renderer.draw()
         for popup in self.popups:
             popup.draw()
@@ -1713,6 +1726,9 @@ class MainScene(Scene):
         pyxel.blt(x, y, cursor, 0, 0, 16, 16, colkey=254)
 
     def end_player_turn(self):
+        self.tweens_signpost.append(
+            range(6), Instant(lambda: self.add_signpost("Enemy Turn"))
+        )
         for card_sprite in self.card_sprites:
             card_sprite.selected = False
         self.resolving_side = ResolvingSide.ENEMY
@@ -1726,8 +1742,14 @@ class MainScene(Scene):
         self.futures.append(self.executor.submit(*args, **kwargs))
 
     def start_new_turn(self):
+        self.putup_player_signpost()
         self.bundle.start_new_turn()
         self.resolving_side = ResolvingSide.PLAYER
+
+    def putup_player_signpost(self):
+        self.tweens_signpost.append(
+            range(6), Instant(lambda: self.add_signpost("Player Turn"))
+        )
 
 
 def gen_scene() -> Scene:

@@ -402,6 +402,16 @@ class EnergyRenderer:
         else:
             self.mismatch_timer = 0
             self.pingpong = Peekable(pingpong(11, 2, double_end_points=True))
+        match self.target.energy:
+            case x if x >= 2:
+                self.anim.play_speed = 1.0
+                self.anim.emitting = True
+            case 1:
+                self.anim.play_speed = 0.5
+                self.anim.emitting = True
+            case 0:
+                self.anim.play_speed = 0.5
+                self.anim.emitting = False
 
     def draw(self) -> None:
         w = 20

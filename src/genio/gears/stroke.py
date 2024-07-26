@@ -10,7 +10,7 @@ class StrokeAnim:
         self.tweener.append_mutate(
             self,
             lens="x",
-            duration=30,
+            duration=40,
             target_value=self.x + width,
             tween_type="ease_in_out_quad",
         )

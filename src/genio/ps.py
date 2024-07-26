@@ -80,6 +80,7 @@ def uv_for_16(ix: int) -> tuple[int, int]:
 class Anim:
     emitters: list[EmitterConfig]
     queued: deque[EmitterConfig]
+    emitting: bool
 
     def __init__(
         self,
@@ -88,7 +89,7 @@ class Anim:
         emitters: list[EmitterConfig],
         play_speed: float = 1.0,
         attached_to: HasXY | None = None,
-    ):
+    ) -> None:
         self.emitters = emitters
         self.inner = []
         self.x = x
@@ -104,6 +105,8 @@ class Anim:
         for ec in emitters:
             self.queued.append(ec)
         self.queued = deque(sorted(self.queued, key=lambda x: x.appear_delay))
+        self.emitting = True
+        self.previously_emitting = True
         self.flush_queued()
 
     def flush_queued(self):
@@ -152,7 +155,7 @@ class Anim:
             ps_set_rnd_colour(e, True)
         self.inner.append(e)
 
-    def update(self):
+    def update(self) -> None:
         if self.attached_to:
             self.x, self.y = self.attached_to.screen_pos()
         for e in self.inner:
@@ -171,6 +174,11 @@ class Anim:
             for e in self.inner:
                 if e.is_emitting(e):
                     e.stop_emit(e)
+        elif not self.dead:
+            if self.emitting != self.previously_emitting:
+                for e in self.inner:
+                    e.emitting = self.emitting
+            self.previously_emitting = self.emitting
 
     def stop(self):
         for e in self.inner:

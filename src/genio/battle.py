@@ -38,9 +38,11 @@ from genio.effect import (
     SinglePointEffectType,
     StatusDefinition,
     TransformCardEffect,
+    DestroyCardEffect,
+    DestroyRuleEffect,
     parse_effect,
 )
-from genio.predef import predef
+from genio.predef import access_predef, predef
 from genio.subst import Subst
 
 logger = get_logger()
@@ -101,6 +103,7 @@ def _judge_results(
     player_hand: list[Card],
     resolve_player_actions: bool = True,
     additional_guidance: list[str] | None = None,
+    rules: list[str] | None = None,
 ) -> ResolvedResults:
     """\
     {% include('judge.md') %}
@@ -153,6 +156,7 @@ class PlayerProfile(Profile):
 class EnemyProfile(Profile):
     description: str = ""
     pattern: list[str] = field(default_factory=list)
+    chara: str = "enemy_killer_flower.png"
 
     @staticmethod
     def from_predef(key: str) -> EnemyProfile:
@@ -305,6 +309,10 @@ class EnemyBattler(Battler):
     def description(self) -> str:
         return self.profile.description
 
+    @property
+    def chara(self) -> str:
+        return self.profile.chara
+
     def __hash__(self) -> int:
         return hash(self.uuid)
 
@@ -391,6 +399,14 @@ class CardBundle:
         self.graveyard.extend(cards)
         self.hand = [card for card in self.hand if card.id not in remove_card_uuids]
         self.events.append("hand_to_graveyard")
+
+    def destroy_cards(self, cards: list[Card]) -> None:
+        remove_card_uuids = {card.id for card in cards}
+        self.hand = [card for card in self.hand if card.id not in remove_card_uuids]
+        self.deck = [card for card in self.deck if card.id not in remove_card_uuids]
+        self.graveyard = [card for card in self.graveyard if card.id not in remove_card_uuids]
+        self.resolving = [card for card in self.resolving if card.id not in remove_card_uuids]
+        self.events.append("destroy_cards", cards)
 
     def hand_to_resolving(self, cards: list[Card]) -> None:
         remove_card_uuids = {card.id for card in cards}
@@ -706,6 +722,7 @@ class BattleBundle:
     postprocessors: list[weakref.WeakMethod]
     proposed_cards: list[Card]
     player_artifacts: list[Artifact]
+    rules: list[str | None]
 
     def __init__(
         self,
@@ -728,6 +745,7 @@ class BattleBundle:
         self.energy = self.default_energy
         self.proposed_cards = []
         self.battle_logs = []
+        self.rules = [None] + access_predef("rules.default")
 
     def active_items_with_description(self) -> Iterator[HasDescription]:
         for card in self.card_bundle.hand:
@@ -841,6 +859,7 @@ class BattleBundle:
             player_hand=self.card_bundle.hand,
             resolve_player_actions=True,
             additional_guidance=list(self.prompt_injections()),
+            rules=self.formatted_rules(),
         )
         self.process_effects(resolved_results.results)
         expired_effects = self.flush_expired_effects(self.rng)
@@ -855,6 +874,7 @@ class BattleBundle:
             self.battle_prelude.description,
             player_hand=self.card_bundle.hand,
             resolve_player_actions=False,
+            rules=self.formatted_rules(),
         )
         self.process_effects(resolved_results.results)
         expired_effects = self.flush_expired_effects(self.rng)
@@ -990,6 +1010,15 @@ class BattleBundle:
                         self.card_bundle.add_to_graveyard(cards)
             case TransformCardEffect(_) as transform:
                 self.card_bundle.transform_card(transform.from_card, transform.to_card)
+            case DestroyCardEffect(_) as destroy:
+                to_destroy = destroy.cards
+                self.card_bundle.destroy_cards(to_destroy)
+            case DestroyRuleEffect(_) as destroy_rule:
+                rule_id = destroy_rule.rule_id
+                if rule_id < 1 or rule_id >= len(self.rules):
+                    logger.error("Invalid rule ID", rule_id=rule_id)
+                    return
+                self.rules[rule_id] = None
 
     def _apply_targeted_effect(
         self,
@@ -1080,6 +1109,16 @@ class BattleBundle:
 
     def is_player_victory(self) -> bool:
         return not self.enemies
+    
+    def formatted_rules(self) -> list[str]:
+        def f(ix: int, rule: str | None) -> list[str]:
+            if not rule:
+                return []
+            ix_fmt = str(ix).zfill(2)
+            return [f"{rule} (R{ix_fmt})"]
+        def g(t: tuple[int, str | None]) -> list[str]:
+            return f(*t)
+        return list(flat_map(g, enumerate(self.rules)))
 
 
 def setup_battle_bundle(

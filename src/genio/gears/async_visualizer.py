@@ -3,6 +3,7 @@ import math
 from collections import deque
 from dataclasses import dataclass, field
 from functools import cache
+from threading import Lock
 
 import pytweening
 import pyxel
@@ -100,12 +101,14 @@ class AsyncVisualizer:
         self.waver = WavingText(self.text)
         self.strokes = []
         self.scene = scene
+        self.lock = Lock()
         icon_image()
 
     def ping(self) -> None:
         next_count = self.target_number.load() + 1
         x, y = self.calculate_position(len(self.animations), next_count)
-        self.animations.appendleft(anim := IndividualAnimation(x, y))
+        with self.lock:
+            self.animations.appendleft(anim := IndividualAnimation(x, y))
         anim.on_start()
         old_number = self.target_number.inc()
         if old_number == 0:
@@ -126,8 +129,9 @@ class AsyncVisualizer:
         self.refresh_animation_positions()
 
     def draw(self) -> None:
-        for anim in self.animations:
-            anim.draw()
+        with self.lock:
+            for anim in self.animations:
+                anim.draw()
         for anim in self.phasing_out_animations:
             anim.draw()
         self.waver.draw(WINDOW_WIDTH - len(self.text) * 4 - 10, WINDOW_HEIGHT - 15)
@@ -144,7 +148,8 @@ class AsyncVisualizer:
     def pong(self) -> None:
         if self.target_number.load() == 0:
             return
-        first_anim = self.animations.popleft()
+        with self.lock:
+            first_anim = self.animations.popleft()
         first_anim.on_end()
         self.phasing_out_animations.append(first_anim)
         old_number = self.target_number.dec()
@@ -153,8 +158,9 @@ class AsyncVisualizer:
         self.refresh_animation_positions()
 
     def update(self) -> None:
-        for anim in self.animations:
-            anim.update()
+        with self.lock:
+            for anim in self.animations:
+                anim.update()
         for anim in self.phasing_out_animations:
             anim.update()
         self.phasing_out_animations = [

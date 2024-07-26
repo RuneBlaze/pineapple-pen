@@ -42,8 +42,9 @@ pattern = ["attack player for 2 damage", "block for 1 shield points"]
 [enemies.evil_mask]
 name = "Evil Mask"
 hit_points = 4
-description = "A malevolent gelatinous creature, the Slime oozes malice as it shifts between offensive and defensive stances."
+description = "A cursed mask that feeds on the fear of its victims, the Evil Mask haunts the dreams of the unwary."
 pattern = ["attack player for 2 damage", "block for 1 shield points"]
+chara = "mechanical golem"
 
 
 [icons]
@@ -58,12 +59,12 @@ pattern = ["attack player for 2 damage", "block for 1 shield points"]
 [[anims.stroke]]
 frequency = 4
 max_p = 0
-area = [5, 5]
-size = [2, 0, 2, 0]
+area = [5, 7]
+size = [3, 0, 2, 0]
 speed = [1, 0, 1, 0]
-life = [1, 2]
+life = [1.1, 2]
 colors = [0, 0, 1, 1, 1, 14]
-duration = 0.4
+duration = 0.67
 
 [[anims.map_marker_appear]]
 frequency = 2
@@ -100,8 +101,8 @@ gravity = true
 burst = [true, 50]
 
 [[anims.energy]]
-frequency = 4
-max_p = 200
+frequency = 3
+max_p = 100
 area = [18, 4]
 size = [1, 0, 1, 0]
 speed = 1
@@ -369,3 +370,16 @@ life = [1.5, 1]
 colors = [11,11, 11, 11, 14, 14, 14]
 duration = 1
 burst = [true, 30]
+
+[rules]
+
+default = [
+    "`[draw X]` - The player draws X cards. Do not use this to create copies or create cards.",
+    "`[discard X]` - The player discards X cards.",
+    "`[discard CARD_SPECIFIER..]` - Discard a specific card, or multiple cards. E.g.,`[discard kb5a lruf]` (discard the two cards with short ID `kb5a` and `lruf`).",
+    "`[duplicate CARD_SPECIFIER in WHERE]` - Duplicate a specific card. E.g., `[duplicate kb5a in deck]` (duplicate the card with short ID `kb5a` and put it in the deck). `WHERE` can be `deck_top`, `deck`, `hand`, or `graveyard`. For multiple copies, do `[duplicate CARD_SPECIFIER * k in WHERE]` where `k` is the number of copies.",
+    "`[create <card name: card description> in WHERE]` - A specified card is created. See above for `WHERE`, and for multiple copies, do `[create <card name: card description> * k in WHERE]`. A description can be omitted (perfectly valid). For example, when a card calls for the creation of a card A. Remember to use this effect. E.g., `[create <Raise Shield: gain two shield points> in hand]`. Remember the angle brackets.",
+    "`[transform CARD_SPECIFIER to <card name: card description>]` - Transform a specific card into another card. E.g., `[transform kb5a to <Raise Shield: gain two shield points>]`. Remember the angle brackets. This is the valid effect when 'transform' is called for.",
+    "`[destroy CARD_SPECIFIER..]` - Destroy a specific card, more multiple cards. E.g., `[destroy kb5a]` (destroy the card with short ID `kb5a`). Note that this line by itself only allows the destruction of *cards*, not rules.",
+    "[destroy-rule R??] - Destroy a rule. E.g., `[destroy-rule R01]` (destroy rule `R01`).",
+]

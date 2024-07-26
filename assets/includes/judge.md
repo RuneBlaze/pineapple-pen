@@ -47,7 +47,7 @@ You are resolving the enemies' actions, and their intents determine their action
 
 **FILL IN**: Describe the outcome of the {{ title | lower }} in **discrete** time steps. **Number** your outcomes, as in step 1 what happens, step 2 what happens, etc. Resolve each action and its effects.
 
-### DM Reference for {{ title }}:
+### DM Rulebook for {{ title }}:
 
 Your goals for filling in are:
 1. **{{ interpret_goal }}**: Describe the actions in a coherent way.
@@ -55,23 +55,23 @@ Your goals for filling in are:
     - Examples:
       - `Ralph attacks the Slime for 5 damage. [Slime: damaged 5]`
       - `Ralph blocks and gains 5 shield points. [Ralph: shield +5]`
-3. **Blocking and Shield Points**:
+
+The following are the rules you should use to resolve the actions. Some but not all rules have rule numbers. The `(RXX)` at the end of each rule denotes the rule number, so `R01` is Rule 1.
+
+1. **Blocking and Shield Points**:
     - When blocking, the entity should gain shield points to absorb damage.
     - Example: `Slime blocks and gains 5 shield points. [Slime: shield +5]`
-4. **Entity Effects**:
+2. **Entity Effects**:
     - `[entity: damaged X]` - The entity receives X damage.
     - `[entity: healed X]` - The entity receives X healing.
     - `[entity: shield -X]` - The entity loses X shield points.
     - `[entity: shield X]` - The entity gains X shield points.
     - `[entity: +status [duration times|turns] [pattern] (optional condition) -> [replacement];]` - Status effect. See the notation above. You must define the effect of the status effect yourself.
-5. **Global Effects**:
+3. **Global Effects**:
   Use these without appending a specific entity:
-    - `[draw X]` - The player draws X cards. Do not use this to create copies or create cards.
-    - `[discard X]` - The player discards X cards.
-    - `[discard CARD_SPECIFIER..]` - Discard a specific card, or multiple cards. E.g.,`[discard kb5a lruf]` (discard the two cards with short ID `kb5a` and `lruf`).
-    - `[duplicate CARD_SPECIFIER in WHERE]` - Duplicate a specific card. E.g., `[duplicate kb5a in deck]` (duplicate the card with short ID `kb5a` and put it in the deck). `WHERE` can be `deck_top`, `deck`, `hand`, or `graveyard`. For multiple copies, do `[duplicate CARD_SPECIFIER * k in WHERE]` where `k` is the number of copies.
-    - `[create <card name: card description> in WHERE]` - A specified card is created. See above for `WHERE`, and for multiple copies, do `[create <card name: card description> * k in WHERE]`. A description can be omitted (perfectly valid). For example, when a card calls for the creation of a card A. Remember to use this effect. E.g., `[create <Raise Shield: gain two shield points> in hand]`. Remember the angle brackets.
-    - `[transform CARD_SPECIFIER to <card name: card description>]` - Transform a specific card into another card. E.g., `[transform kb5a to <Raise Shield: gain two shield points>]`. Remember the angle brackets. This is the only way when "transform" is called for.
+{%- for rule in rules %}
+    - {{ rule }}
+{%- endfor %}
 1. **Effect Modifiers**:
    - **Critical Chance (crit X)**: Chance of double damage/healing.
        - `[entity: damaged 10 | crit 0.5]`
@@ -112,7 +112,7 @@ In other words, the player played all the cards together: {{ cards | map(attribu
 These are the player's remaining cards in hand, and are provided for context. The player has yet to play these cards.
 
 {%- for card in player_hand %}
-- {{ loop.index }}. {{ card.to_plaintext() }} (Shord ID: `{{card.short_id()}}`)
+- {{ loop.index }}. {{ card.to_plaintext() }} (Short ID: `{{card.short_id()}}`)
 {%- endfor %}
 
 {%- if additional_guidance %}
