@@ -93,7 +93,8 @@ DEFAULT_ASYNC_TEXT = "Gemini Flashing"
 
 class AsyncVisualizer:
     def __init__(self, scene: CanAddAnim, text: str = DEFAULT_ASYNC_TEXT) -> None:
-        self.tweener = Tweener()
+        self.tweener = Tweener(variable_play_speed=True)
+        self.tweener2 = Tweener(variable_play_speed=False)
         self.animations = deque()
         self.target_number = AtomicInt(0)
         self.phasing_out_animations = []
@@ -112,7 +113,7 @@ class AsyncVisualizer:
         anim.on_start()
         old_number = self.target_number.inc()
         if old_number == 0:
-            self.tweener.append_mutate(self.waver, "opacity", 10, 1.0, "ease_in_quad")
+            self.tweener2.append_mutate(self.waver, "opacity", 10, 1.0, "ease_in_quad")
             stroke_x, stroke_y = (
                 WINDOW_WIDTH - len(self.text) * 4 - 10,
                 WINDOW_HEIGHT - 15,
@@ -154,7 +155,7 @@ class AsyncVisualizer:
         self.phasing_out_animations.append(first_anim)
         old_number = self.target_number.dec()
         if old_number == 1:
-            self.tweener.append_mutate(self.waver, "opacity", 10, 0.0, "ease_out_quad")
+            self.tweener2.append_mutate(self.waver, "opacity", 10, 0.0, "ease_out_quad")
         self.refresh_animation_positions()
 
     def update(self) -> None:
@@ -168,6 +169,7 @@ class AsyncVisualizer:
         ]
         self.waver.update()
         self.tweener.update()
+        self.tweener2.update()
         for stroke in self.strokes:
             stroke.update()
 

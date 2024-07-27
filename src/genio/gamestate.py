@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-from genio.battle import BattleBundle, setup_battle_bundle
+from genio.battle import BattleBundle, EnemyProfile, setup_battle_bundle
 
 
 @dataclass
@@ -16,6 +16,7 @@ class StageDescription:
     subtitle: str
     lore: str
     danger_level: int
+    enemies: list[EnemyProfile] = field(default_factory=list)
 
     @staticmethod
     def default() -> StageDescription:

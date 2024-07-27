@@ -1236,7 +1236,9 @@ class MainScene(Scene):
 
     def __init__(self):
         self.bundle = game_state.battle_bundle
-        self.enemy_spritesheet = Spritesheet(asset_path('enemies.json'), build_search_index=True)
+        self.enemy_spritesheet = Spritesheet(
+            asset_path("enemies.json"), build_search_index=True
+        )
         self.card_sprites = []
         self.tmp_card_sprites = []
         self.background_video = Video("background.npy")
@@ -1273,8 +1275,6 @@ class MainScene(Scene):
 
         self.player_sprite.x = 0
         self.player_sprite.y = 110
-
-        
 
         for s, x in zip(
             self.enemy_sprites, layout_center_for_n(len(self.bundle.enemies), 6 * 50)

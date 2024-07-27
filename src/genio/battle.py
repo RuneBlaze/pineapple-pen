@@ -30,6 +30,8 @@ from genio.components import CanAddAnim
 from genio.core.base import access, promptly
 from genio.effect import (
     CreateCardEffect,
+    DestroyCardEffect,
+    DestroyRuleEffect,
     DiscardCardsEffect,
     DrawCardsEffect,
     DuplicateCardEffect,
@@ -38,8 +40,6 @@ from genio.effect import (
     SinglePointEffectType,
     StatusDefinition,
     TransformCardEffect,
-    DestroyCardEffect,
-    DestroyRuleEffect,
     parse_effect,
 )
 from genio.predef import access_predef, predef
@@ -154,13 +154,50 @@ class PlayerProfile(Profile):
 
 @dataclass(eq=True)
 class EnemyProfile(Profile):
-    description: str = ""
-    pattern: list[str] = field(default_factory=list)
-    chara: str = "enemy_killer_flower.png"
+    description: Annotated[str, ""] = ""
+    pattern: Annotated[list[str], ""] = field(default_factory=list)
+    chara: Annotated[str, ""] = "enemy_killer_flower.png"
 
     @staticmethod
     def from_predef(key: str) -> EnemyProfile:
         return EnemyProfile(**access(predef, key))
+
+
+@dataclass
+class GeneratableEnemyProfile:
+    name: Annotated[str, "The name of the enemy."]
+    hit_points: Annotated[int, "The hit points of the enemy."]
+    description: Annotated[str, "The description of the enemy."]
+    pattern: Annotated[
+        list[str],
+        "The pattern of the enemy, as like a list of actions the enemy will take. Take inspiration from slay-the-spire. Be precise and concise, e.g., actions should come with the precise numerics.",
+    ]
+
+    def to_enemy_profile(self) -> EnemyProfile:
+        return EnemyProfile(
+            name=self.name,
+            hit_points=self.hit_points,
+            description=self.description,
+            pattern=self.pattern,
+            chara=self.name.lower(),
+        )
+
+
+@promptly()
+def _generate_enemy_profile(
+    idea: str,
+) -> GeneratableEnemyProfile:
+    """\
+    Act as an excellent game designer and create an enemy profile that is inspired by the given inspiration.
+
+    For context, normal enemies normally have between 3 to 7 hit points, and their patterns are a list of strings that represent their actions. The description is a short description of the enemy from a lore perspective.
+
+    Your should adhere to this idea for your generation:
+
+    {{ idea }}
+
+    {{ formatting_instructions }}
+    """
 
 
 @dataclass(frozen=True, eq=True)
@@ -404,8 +441,12 @@ class CardBundle:
         remove_card_uuids = {card.id for card in cards}
         self.hand = [card for card in self.hand if card.id not in remove_card_uuids]
         self.deck = [card for card in self.deck if card.id not in remove_card_uuids]
-        self.graveyard = [card for card in self.graveyard if card.id not in remove_card_uuids]
-        self.resolving = [card for card in self.resolving if card.id not in remove_card_uuids]
+        self.graveyard = [
+            card for card in self.graveyard if card.id not in remove_card_uuids
+        ]
+        self.resolving = [
+            card for card in self.resolving if card.id not in remove_card_uuids
+        ]
         self.events.append("destroy_cards", cards)
 
     def hand_to_resolving(self, cards: list[Card]) -> None:
@@ -1109,15 +1150,17 @@ class BattleBundle:
 
     def is_player_victory(self) -> bool:
         return not self.enemies
-    
+
     def formatted_rules(self) -> list[str]:
         def f(ix: int, rule: str | None) -> list[str]:
             if not rule:
                 return []
             ix_fmt = str(ix).zfill(2)
             return [f"{rule} (R{ix_fmt})"]
+
         def g(t: tuple[int, str | None]) -> list[str]:
             return f(*t)
+
         return list(flat_map(g, enumerate(self.rules)))
 
 

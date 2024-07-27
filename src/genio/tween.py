@@ -5,9 +5,11 @@ from collections import deque
 from collections.abc import Callable, Iterator, Mapping
 from typing import Any, Literal, TypeAlias
 
+import numpy as np
 import pytweening
 from typing_extensions import Protocol
 
+from genio.bezier import QuadBezier
 from genio.layout import (
     lerp,
     sin_bounce,
@@ -51,6 +53,27 @@ class MutableTweening:
     def __iter__(self):
         for t in self.inner:
             self.this.x, self.this.y = lerp(self.current, self.target, t)
+            yield
+
+
+class BezierTweening:
+    bezier: QuadBezier
+
+    def __init__(
+        self,
+        duration: int,
+        inner: Callable[[float], float],
+        bezier: tuple[tuple[int, int], tuple[int, int], tuple[int, int]],
+        this: HasXY,
+    ):
+        self.inner = Tweening(duration, inner)
+        self.this = this
+        self.bezier = QuadBezier.from_tuples(bezier)
+        self.current = (this.x, this.y)
+
+    def __iter__(self):
+        for t in self.inner:
+            self.this.x, self.this.y = self.bezier.evaluate(t)
             yield
 
 
@@ -151,8 +174,11 @@ class Shake:
 class Tweener:
     """A scheduler for tweening animations."""
 
-    def __init__(self):
+    variable_play_speed: bool
+
+    def __init__(self, variable_play_speed: bool = False):
         self.inner = deque()
+        self.variable_play_speed = variable_play_speed
 
     def _append(self, tween: Iterator):
         self.inner.append(itertools.chain(tween))
@@ -175,6 +201,51 @@ class Tweener:
             )
         )
 
+    def append_mutate_xy(
+        self,
+        subject: HasXY,
+        duration: int,
+        target: tuple[int, int],
+        tween_type: PredefinedTween,
+    ):
+        self._append(
+            MutableTweening(duration, PREDEFINED_TWEENS[tween_type], subject, target)
+        )
+
+    def append_bezier(
+        self,
+        subject: HasXY,
+        duration: int,
+        bezier: tuple[tuple[int, int], tuple[int, int], tuple[int, int]],
+        tween_type: PredefinedTween,
+    ):
+        self._append(
+            BezierTweening(duration, PREDEFINED_TWEENS[tween_type], bezier, subject)
+        )
+
+    def append_simple_bezier(
+        self,
+        subject: HasXY,
+        target: tuple[int, int],
+        duration: int,
+        tween_type: PredefinedTween,
+        sign: bool = True,
+    ):
+        p0 = np.array([subject.x, subject.y])
+        p1 = np.array(target)
+        midpoint = (p0 + p1) / 2
+        n = np.linalg.norm(p1 - midpoint)
+        if np.isclose(n, 0):
+            dir = np.array([0, 0])
+        else:
+            dir = (p1 - midpoint) / n
+            dir = np.array([-dir[1], dir[0]])
+        mult = 1 if sign else -1
+        c = midpoint + np.linalg.norm(p1 - p0) * mult * 0.3 * dir
+        self.append_bezier(
+            subject, duration, (tuple(p0), tuple(c), tuple(p1)), tween_type
+        )
+
     def append_and_flush_previous(self, tween: Iterator):
         self.flush()
         self._append(tween)
@@ -193,8 +264,12 @@ class Tweener:
     def update(self):
         if not self.inner:
             return
+        play_speed = (2 ** (len(self.inner) - 2)) if self.variable_play_speed else 1
+        play_speed = min(play_speed, 4)
+        play_speed = max(play_speed, 1)
         try:
-            next(self.inner[0])
+            for _ in range(play_speed):
+                next(self.inner[0])
         except StopIteration:
             self.inner.popleft()
         except RuntimeError:

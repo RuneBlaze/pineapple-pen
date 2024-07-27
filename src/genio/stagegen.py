@@ -105,9 +105,17 @@ class GenerateStageResult:
     danger_level: Annotated[
         int, ("A number between 1 and 5, indicating the danger level of the stage. ")
     ]
+    enemy_troop: Annotated[
+        list[str],
+        (
+            "A list of enemies that the player will face in this stage. "
+            "Jot down rough thoughts, the 'function' of this enemy within your grand design, and the name of the enemy. "
+            "In the form of a list of strings, each string consisting of both the enemy's name and its function."
+        ),
+    ]
 
 
-@promptly
+@promptly()
 def generate_stage_description(
     stage_name: str, adventure_logs: list[str]
 ) -> GenerateStageResult:

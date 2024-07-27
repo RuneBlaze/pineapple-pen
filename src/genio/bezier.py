@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import TypeAlias
 
@@ -29,3 +31,9 @@ class QuadBezier:
         for i in range(len(points) - 1):
             p0, p1 = points[i], points[i + 1]
             pyxel.line(*p0, *p1, col)
+
+    @staticmethod
+    def from_tuples(
+        src: tuple[tuple[int, int], tuple[int, int], tuple[int, int]],
+    ) -> QuadBezier:
+        return QuadBezier(np.array(src[0]), np.array(src[1]), np.array(src[2]))

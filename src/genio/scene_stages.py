@@ -14,6 +14,7 @@ import pyxel
 from pyxelxl import layout
 
 from genio.base import WINDOW_HEIGHT, WINDOW_WIDTH, load_image
+from genio.battle import _generate_enemy_profile
 from genio.bezier import QuadBezier
 from genio.components import (
     CanAddAnim,
@@ -22,6 +23,8 @@ from genio.components import (
     retro_text,
 )
 from genio.gamestate import StageDescription, game_state
+from genio.gears.map_pin import MapPin
+from genio.gears.signpost import SignPost
 from genio.gui import dithering
 from genio.layout import pingpong
 from genio.ps import Anim
@@ -32,16 +35,24 @@ from genio.stagegen import (
 from genio.tween import Instant, Mutator, Tweener
 from genio.vector import Vec2Int
 
+executor = ThreadPoolExecutor(4)
+
 
 def generate_stage_description(stage_name: str) -> StageDescription:
     results = generate_stage_description_low_level(
         stage_name, game_state.battle_bundle.battle_logs
     )
+    futs = []
+    for enemy_idea in results.enemy_troop:
+        futs.append(executor.submit(_generate_enemy_profile, enemy_idea))
+    gathered_futs = [fut.result() for fut in futs]
+    enemy_profiles = [fut.to_enemy_profile() for fut in gathered_futs]
     return StageDescription(
         name=stage_name,
         subtitle=results.subtitle,
         lore=results.lore,
         danger_level=results.danger_level,
+        enemies=enemy_profiles,
     )
 
 
@@ -286,8 +297,12 @@ class BezierAnimation:
         self, p0: Vec2Int, p1: Vec2Int, sign: bool = True, col: int = 15
     ) -> None:
         midpoint = (p0 + p1) / 2
-        dir = (p1 - midpoint) / np.linalg.norm(p1 - midpoint)
-        dir = np.array([-dir[1], dir[0]])
+        n = np.linalg.norm(p1 - midpoint)
+        if np.isclose(n, 0):
+            dir = np.array([0, 0])
+        else:
+            dir = (p1 - midpoint) / n
+            dir = np.array([-dir[1], dir[0]])
         mult = 1 if sign else -1
         c = midpoint + np.linalg.norm(p1 - p0) * mult * 0.3 * dir
         self.curve = QuadBezier(p0, c, p1)
@@ -351,6 +366,7 @@ class PumpEnenergyFor:
 
 class StageSelectScene(Scene):
     futures: deque[Future[StageDescription]]
+    sign_posts: list[SignPost]
 
     def __init__(self) -> None:
         super().__init__()
@@ -365,15 +381,24 @@ class StageSelectScene(Scene):
         self.tweens = Tweener()
 
         self.map_markers = [
-            MapMarker(140, 150, cam, stage_descriptions[0], self),
+            first_marker := MapMarker(140, 150, cam, stage_descriptions[0], self),
         ]
+        self.map_pin = MapPin(first_marker.x + 10, first_marker.y + 10)
+        self.map_pin.appear()
         self.executor = ThreadPoolExecutor(2)
         self.futures = deque()
         self.info_box = StageInfoBox()
         self.beziers = []
         self.finished_counter = 0
-
+        self.sign_posts = []
+        self.currently_selected = None
         self.start_generation()
+
+        self.sign_posts.append(
+            SignPost(
+                40, WINDOW_HEIGHT - 50, "W1: " + game_state.world.name, self, "willow"
+            )
+        )
 
     def add_anim(
         self,
@@ -454,6 +479,7 @@ class StageSelectScene(Scene):
             marker.update()
         self.camera.update()
         self.info_box.update()
+        self.map_pin.update()
         self.check_mailbox()
 
         for i, marker in enumerate(self.map_markers):
@@ -473,6 +499,14 @@ class StageSelectScene(Scene):
                         if other_marker.state == MapMarkerState.SELECTED:
                             marker.set_state(MapMarkerState.IDLE)
                             continue
+        for i, marker in enumerate(self.map_markers):
+            if marker.state == MapMarkerState.SELECTED and self.currently_selected != i:
+                self.tweens.append(
+                    range(15),
+                    Instant(lambda: self.map_pin.move_to(marker.x + 10, marker.y + 10)),
+                )
+                self.currently_selected = i
+                break
         for anim in self.anims:
             anim.update()
         self.anims = [anim for anim in self.anims if not anim.dead]
@@ -494,6 +528,11 @@ class StageSelectScene(Scene):
             sum(marker.state == MapMarkerState.SELECTED for marker in self.map_markers)
             >= 2
         )
+        for sign_post in self.sign_posts:
+            sign_post.update()
+        self.sign_posts = [
+            sign_post for sign_post in self.sign_posts if not sign_post.is_dead()
+        ]
         if two_selected:
             for marker in self.map_markers:
                 if marker.state == MapMarkerState.SELECTED and not marker.hovering:
@@ -511,11 +550,15 @@ class StageSelectScene(Scene):
             Anim.draw()
             for bezier in self.beziers:
                 bezier.draw()
+            self.map_pin.draw()
         self.info_box.draw()
 
         Anim.draw()
         pyxel.clip()
-        self.draw_overlay()
+
+        for sign_post in self.sign_posts:
+            sign_post.draw()
+        # self.draw_overlay()
         self.draw_mouse_cursor(pyxel.mouse_x, pyxel.mouse_y)
 
     def draw_mouse_cursor(self, x: int, y: int) -> None:
@@ -523,14 +566,13 @@ class StageSelectScene(Scene):
         pyxel.blt(x, y, cursor, 0, 0, 16, 16, colkey=254)
 
     def draw_overlay(self) -> None:
-        pyxel.text(
-            WINDOW_WIDTH - 90 + 1 - 5,
-            WINDOW_HEIGHT - 40,
+        from genio.components import willow_branch
+
+        willow_branch(
+            40,
+            WINDOW_HEIGHT - 50,
             "W1: " + game_state.world.name,
-            1,
-        )
-        pyxel.text(
-            WINDOW_WIDTH - 90 - 5, WINDOW_HEIGHT - 40, "W1: " + game_state.world.name, 7
+            7,
         )
 
 
