@@ -423,7 +423,7 @@ class EnergyRenderer:
         )
         self.timer += 1
         fixed_portion = f"/{self.target.default_energy}"
-        retro_text(
+        capital_hill_text(
             self.x - 8,
             self.y - 8,
             f" {fixed_portion}",
@@ -434,7 +434,7 @@ class EnergyRenderer:
         alternative = self.target.energy - self.target.tentative_energy_cost()
         current = self.target.energy
         if alternative == current:
-            retro_text(
+            capital_hill_text(
                 self.x - 8,
                 self.y - 8,
                 f"{current}{fixed_portion}",
@@ -444,7 +444,7 @@ class EnergyRenderer:
         else:
             dither_amount = self.pingpong.peek() / 10
             with dithering(dither_amount):
-                retro_text(
+                capital_hill_text(
                     self.x - 8,
                     self.y - 8,
                     f"{alternative}{fixed_portion}",
@@ -452,7 +452,7 @@ class EnergyRenderer:
                     layout=layout(w=w, h=16, ha="center", va="center"),
                 )
             with dithering(1 - dither_amount):
-                retro_text(
+                capital_hill_text(
                     self.x - 8,
                     self.y - 8,
                     f"{current}{fixed_portion}",

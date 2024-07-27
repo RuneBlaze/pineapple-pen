@@ -1241,7 +1241,7 @@ class MainScene(Scene):
         )
         self.card_sprites = []
         self.tmp_card_sprites = []
-        self.background_video = Video("background.npy")
+        self.background_video = Video("background/*.png")
         self.sync_sprites(None)
         self.tooltip = Tooltip("", "")
         self.draw_deck = DrawDeck(self.bundle.card_bundle)
@@ -1646,14 +1646,14 @@ class MainScene(Scene):
         pyxel.pal(11, 12)
         buffer_as_arr[:] = 0
         self.background_video.draw_image()
-        t = pytweening.easeOutCirc(min(self.background_video.actual_timer / 500.0, 1))
-        buffer_as_arr[m < t] = 254
-        pyxel.pal()
-        with dithering(0.5):
-            for mask in self.background_video.masks:
-                pyxel.blt(0, 0, mask, 0, 0, 427, 240, colkey=254)
-        with dithering(0.5):
-            pyxel.blt(0, 0, self.background_video.masks[0], 0, 0, 427, 240, colkey=254)
+        # t = pytweening.easeOutCirc(min(self.background_video.actual_timer / 500.0, 1))
+        # buffer_as_arr[m < t] = 254
+        # pyxel.pal()
+        # with dithering(0.5):
+        #     for mask in self.background_video.masks:
+        #         pyxel.blt(0, 0, mask, 0, 0, 427, 240, colkey=254)
+        # with dithering(0.5):
+        #     pyxel.blt(0, 0, self.background_video.masks[0], 0, 0, 427, 240, colkey=254)
 
     def draw_stats_icon(
         self, x: int, y: int, icon: int, turns_counter: int | None = None

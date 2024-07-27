@@ -38,6 +38,9 @@ tiktoken = "^0.7.0"
 atomicx = "^0.0.12"
 gensim = "^4.3.3"
 embeddings = "^0.0.8"
+cramjam = "^2.8.3"
+einops = "^0.8.0"
+webp = "^0.4.0"
 
 
 [tool.poetry.group.dev.dependencies]

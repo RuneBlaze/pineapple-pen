@@ -21,6 +21,7 @@ from genio.components import (
 )
 from genio.eventbus import Event, LLMInboundEv, LLMOutboundEv, event_bus
 from genio.gears.async_visualizer import AsyncVisualizer
+from genio.gears.recorder import Recorder
 from genio.predef import refresh_predef
 
 logger = get_logger()
@@ -109,6 +110,9 @@ class AppWithScenes:
         self.screenshot = None
         event_bus.add_listener(self.on_event, "app")
 
+        self.recorder = Recorder(self)
+        self.events = []
+
         pyxel.load(asset_path("sprites.pyxres"))
         pyxel.run(self.update, self.draw)
 
@@ -184,6 +188,9 @@ class AppWithScenes:
                 if self.state_timers[self.state] >= 90:
                     self.set_state(AppState.RUNNING)
                     self.screenshot = None
+        if pyxel.btnp(pyxel.KEY_S):
+            self.recorder.toggle_recording()
+        self.events.clear()
 
     def draw(self):
         self.scenes[0].draw()
@@ -207,3 +214,5 @@ class AppWithScenes:
             else:
                 mask_screen(self.noise, timer / 60, 0)
         self.async_visualizer.draw()
+        self.recorder.update()
+        self.recorder.draw()

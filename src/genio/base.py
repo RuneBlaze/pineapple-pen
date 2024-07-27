@@ -2,6 +2,8 @@ import os
 from collections import Counter
 from enum import Enum
 from functools import cache
+from glob import glob
+from hashlib import sha256
 
 import numpy as np
 import pyxel
@@ -19,6 +21,8 @@ WINDOW_WIDTH, WINDOW_HEIGHT = 427, 240
 
 
 def asset_path(*args: str):
+    if os.path.isabs(args[0]):
+        return args[0]
     return os.path.join(WORKING_DIR, "assets", *args)
 
 
@@ -27,12 +31,27 @@ class VideoState(Enum):
     REWINDING = 2
 
 
+def cached_video_path(*args: str):
+    p = asset_path(*args)
+    return asset_path(sha256(p.encode()).hexdigest()[0:8] + ".npz")
+
+
 class Video:
     def __init__(self, *args: str) -> None:
-        self.raw = np.load(asset_path(*args))
-        self.num_frames = self.raw.shape[0]
+        image_paths = sorted(glob(asset_path(*args)))
+        cached_path = cached_video_path(*args)
+        if os.path.exists(cached_path):
+            self.images = np.load(cached_path)["images"]
+            self.images = [buffer_to_image(i) for i in self.images]
+            self.num_frames = len(self.images)
+        else:
+            self.num_frames = len(image_paths)
+            self.images = [load_image(p) for p in image_paths]
+            np.savez_compressed(
+                cached_path, images=[_image_as_ndarray(i) for i in self.images]
+            )
         self.timer = 0
-        self.images = [buffer_to_image(frame) for frame in self.raw]
+
         self.actual_timer = 0
         self.masks = [
             buffer_to_image(self.generate_mask(thres))
@@ -45,7 +64,8 @@ class Video:
     def update(self) -> None:
         if self.state == VideoState.PLAYING:
             self.actual_timer += 1
-            self.timer += self.actual_timer % 3
+            if self.actual_timer % 2 == 0:
+                self.timer += 1
             if self.timer == self.num_frames:
                 self.timer = 0
                 self.state = VideoState.REWINDING
