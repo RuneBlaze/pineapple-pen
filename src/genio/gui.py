@@ -34,6 +34,7 @@ from genio.components import (
     HasPos,
     MouseHasPos,
     Popup,
+    willow_branch,
     arcade_text,
     camera_shift,
     cute_text,
@@ -355,7 +356,7 @@ class CardSprite:
         if self.hover_timer > 0:
             shift = math.sin(self.hover_timer / 10) * 5
         with camera_shift(0, shift):
-            if self.dragging:
+            if self.dragging or self.state == CardState.RESOLVING:
                 self.draw_shadow()
             self._draw()
 
@@ -800,15 +801,15 @@ class WrappedImage:
             lens, self.x + self.width // 2, self.y + self.height // 2, 1.0
         )
 
-
 class EnemyBattlerSprite:
     def __init__(self, x: int, y: int, battler: EnemyBattler, scene: MainScene) -> None:
         self.x = x
         self.y = y
         self.battler = battler
         self.scene = scene
+        raw_image = scene.enemy_spritesheet.search_image(battler.chara)
         self.image = WrappedImage(
-            scene.enemy_spritesheet.search_image(battler.chara),
+            raw_image,
             0,
             0,
             64,
@@ -1596,16 +1597,17 @@ class MainScene(Scene):
             cursor += 8
 
     def draw(self):
+        # pyxel.clip(0, 20, WINDOW_WIDTH, WINDOW_HEIGHT - 20)
         self.draw_background()
         self.draw_deck.draw(10, 190)
         self.follower_tooltip_areas.append(
             FollowerTooltipArea(
                 10,
                 190,
-                80,
                 64,
+                80,
                 "Deck",
-                "Draw a card from the deck." * 5,
+                "The cards you can draw from. The number indicate the amount of cards left.",
             )
         )
 
@@ -1633,14 +1635,28 @@ class MainScene(Scene):
         self.energy_renderer.draw()
         for popup in self.popups:
             popup.draw()
-        self.framing.draw()
         self.draw_hud()
+        self.framing.draw()
+        
         self.draw_crosshair(pyxel.mouse_x, pyxel.mouse_y)
 
     def draw_hud(self):
-        arcade_text(2, 0, game_state.stage.name, 7)
-        retro_text(2, 8, f"Turn {self.bundle.turn_counter}", 7)
-        self.gold_renderer.draw()
+        stop = WINDOW_WIDTH//5
+        pyxel.rect(0, 0, stop, 20, 0)
+        pyxel.tri(stop,0, stop + 12, 0, stop,20, 0)
+        pyxel.rect(WINDOW_WIDTH - 18 - 20 - 4 - 2, 0, WINDOW_WIDTH, 20, 0)
+        pyxel.tri(WINDOW_WIDTH - 18 - 20 - 4 - 2 - 12,0, WINDOW_WIDTH - 18 - 20 - 4 - 2, 0, WINDOW_WIDTH - 18 - 20 - 4 - 2,20, 0)
+        with dithering(0.5):
+            pyxel.rect(0, 0, stop, 20, 1)
+            pyxel.tri(WINDOW_WIDTH - 18 - 20 - 4 - 2 - 12,0, WINDOW_WIDTH - 18 - 20 - 4 - 2, 0, WINDOW_WIDTH - 18 - 20 - 4 - 2,20, 1)
+            # pyxel.rect(0, 0, WINDOW_WIDTH, 3, 1)
+            pyxel.rect(WINDOW_WIDTH - 18 - 20 - 4 - 2, 0, WINDOW_WIDTH, 20, 1)
+            pyxel.tri(stop,0, stop + 12, 0, stop,20, 1)
+        with camera_shift(0, -2):
+            willow_branch(4+4, 0, game_state.stage.name, 7, layout=layout(h=16, va="center"))
+            retro_text(26+4, 1, f"Turn {self.bundle.turn_counter + 1}", 7, layout=layout(h=16, va="center"))
+            draw_icon(WINDOW_WIDTH - 18 - 2 - 4, 0, 41)
+            draw_icon(WINDOW_WIDTH - 18 - 18 - 2 - 4, 0, 20)
         # arcade_text(15, 0, f"$ {game_state.gold}", 7)
 
     def draw_background(self):

@@ -37,9 +37,9 @@ def shadowed_text(
     x, y, text, color, layout_opts: LayoutOpts | None = None, dither_mult: float = 1.0
 ):
     pyxel.dither(0.5 * dither_mult)
-    retro_text(x + 1, y + 1, text, 0, layout=layout_opts)
+    capital_hill_text(x + 1, y + 1, text, 0, layout=layout_opts)
     pyxel.dither(1.0 * dither_mult)
-    retro_text(x, y, text, color, layout=layout_opts)
+    capital_hill_text(x, y, text, color, layout=layout_opts)
     pyxel.dither(1.0)
 
 
@@ -524,9 +524,9 @@ class GoldRenderer:
 
     def draw(self):
         text = f"${self.display_gold:04.2f}"
-        arcade_text(self.x, self.y, text, 7)
+        willow_branch(self.x, self.y, text, 7, layout=layout(w=80, h=16, va="center"))
         with dithering(self.red_flash_energy):
-            arcade_text(self.x + 1, self.y + 1, text, 8)
+            willow_branch(self.x + 1, self.y + 1, text, 8, layout=layout(w=80, h=16, va="center"))
 
 
 def draw_rounded_rectangle(x: int, y: int, w: int, h: int, r: int, col: int) -> None:

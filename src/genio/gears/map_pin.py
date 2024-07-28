@@ -2,7 +2,7 @@ import numpy as np
 import pyxel
 
 from genio.base import load_image
-from genio.components import dithering
+from genio.components import CanAddAnim, dithering
 from genio.scene import Scene
 from genio.tween import Tweener
 
@@ -10,12 +10,16 @@ rng = np.random.default_rng()
 
 
 class MapPin:
-    def __init__(self, x: int, y: int) -> None:
+    def __init__(self, x: int, y: int, parent: CanAddAnim) -> None:
         self.image = load_image("pin.png")
         self.x = x
         self.y = y
         self.tweener = Tweener()
         self.opacity = 0.0
+        self.parent = parent
+
+    def screen_pos(self) -> tuple[int, int]:
+        return self.x, self.y
 
     def update(self) -> None:
         self.tweener.update()
@@ -32,6 +36,7 @@ class MapPin:
 
     def move_to(self, x: int, y: int, t: int = 40) -> None:
         self.tweener.append_simple_bezier(self, (x, y), t, "ease_in_out_quad")
+        self.parent.add_anim("anims.walking", self.x, self.y, attached_to=self)
 
 
 class SceneMapPin(Scene):

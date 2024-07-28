@@ -295,7 +295,7 @@ def draw_lush_background() -> None:
 
 class BezierAnimation:
     def __init__(
-        self, p0: Vec2Int, p1: Vec2Int, sign: bool = True, col: int = 15
+        self, p0: Vec2Int, p1: Vec2Int, sign: bool = True, col: int = 15, parent: CanAddAnim = None
     ) -> None:
         midpoint = (p0 + p1) / 2
         n = np.linalg.norm(p1 - midpoint)
@@ -307,14 +307,19 @@ class BezierAnimation:
         mult = 1 if sign else -1
         c = midpoint + np.linalg.norm(p1 - p0) * mult * 0.3 * dir
         self.curve = QuadBezier(p0, c, p1)
+        self.parent = parent
         self.tween = Tweener()
         self.t0 = 0.0
         self.t1 = 0.0
         self.col = col
         self.dead = False
         self.play()
+    
+    def screen_pos(self) -> tuple[int, int]:
+        return tuple(self.curve.evaluate(self.t1))
 
     def play(self) -> None:
+        self.parent.add_anim("anims.slow_walking", 0, 0, attached_to=self)
         self.tween.append_mutate(
             self,
             "t1",
@@ -384,7 +389,7 @@ class StageSelectScene(Scene):
         self.map_markers = [
             first_marker := MapMarker(140, 150, cam, stage_descriptions[0], self),
         ]
-        self.map_pin = MapPin(first_marker.x + 10, first_marker.y + 10)
+        self.map_pin = MapPin(first_marker.x + 10, first_marker.y + 10, self)
         self.map_pin.appear()
         self.executor = ThreadPoolExecutor(2)
         self.futures = deque()
@@ -452,6 +457,7 @@ class StageSelectScene(Scene):
                                     + np.array([3, 0]),
                                     np.array(placement_of_marker(sd))
                                     + np.array([3, 0]),
+                                    parent = self,
                                 )
                             )
                         )(stage_description)

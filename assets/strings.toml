@@ -112,6 +112,46 @@ life = [1, 0.5]
 colors = [15]
 duration = 0.5
 
+[[anims.walking]]
+frequency = 1
+max_p = 200
+area = [18, 18]
+size = [1, 0, 1, 0]
+speed = 10
+life = [1, 0.5]
+colors = [15]
+duration = 1.1
+
+[[anims.walking]]
+frequency = 0.5
+max_p = 200
+area = [1, 1]
+size = [1, 0, 1, 0]
+speed = 10
+life = [1, 0.5]
+colors = [1]
+duration = 1.1
+
+[[anims.slow_walking]]
+frequency = 0.5
+max_p = 200
+area = [1, 1]
+size = [1, 0, 1, 0]
+speed = 10
+life = [1, 0.5]
+colors = [15]
+duration = 1.1
+
+[[anims.slow_walking]]
+frequency = 0.5
+max_p = 200
+area = [1, 1]
+size = [1, 0, 1, 0]
+speed = 10
+life = [1, 0.5]
+colors = [1]
+duration = 1.1
+
 [[anims.gold_burst]]
 frequency = 2
 max_p = 200

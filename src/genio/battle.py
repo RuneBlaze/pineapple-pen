@@ -876,6 +876,7 @@ class BattleBundle:
         return self.flush_expired_effects(self.rng)
 
     def _on_turn_start(self) -> None:
+        self.turn_counter += 1
         for enemy in self.enemies:
             enemy.current_intent = enemy.profile.pattern[
                 self.turn_counter % len(enemy.profile.pattern)
@@ -886,7 +887,6 @@ class BattleBundle:
         self.flush_expired_effects(self.rng)
 
     def on_turn_end(self) -> None:
-        self.turn_counter += 1
         for battler in self.battlers():
             self.emit_battler_event(battler, "end of turn")
 
