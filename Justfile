@@ -14,4 +14,7 @@ play:
 ps:
     poetry run python -m genio.main --edit
 
+convert-videos:
+    poetry run python -m genio.gears.h264_encoder
+
 # Use `pv` to rate-limit.

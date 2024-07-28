@@ -56,6 +56,42 @@ chara = "mechanical golem"
 
 [anims]
 
+[[anims.space_particle]]
+frequency = 2
+max_p = 200
+area = [18, 18]
+size = [1, 0, 0, 1]
+speed = [50,60,100,100]
+life = 8
+angle = [180, 20]
+colors = [14, 14, 14, 7]
+duration = 2
+burst = [true, 1]
+
+[[anims.fallen_leaf]]
+frequency = 2
+max_p = 200
+area = [18, 18]
+size = [1, 0, 1, 0]
+speed = [4, 2, 2, 2]
+life = [2, 0.5]
+colors = [4]
+duration = 0.5
+burst = [true, 1]
+
+[[anims.fallen_leaf2]]
+frequency = 2
+max_p = 200
+area = [18, 18]
+size = [1, 0, 0, 0]
+speed = [50,60,100,100]
+life = [8, 0.5]
+colors = [15]
+angle = [180, 20]
+duration = 2
+burst = [true, 1]
+# gravity = true
+
 [[anims.stroke]]
 frequency = 4
 max_p = 0

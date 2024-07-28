@@ -4,7 +4,6 @@ from collections.abc import Iterator
 from functools import cache
 from glob import glob
 from pathlib import Path
-import webp
 
 import cramjam
 import numpy as np
@@ -49,11 +48,13 @@ def frame_to_rgb_tensor(frame: np.ndarray) -> np.ndarray:
 def resize2x(img: torch.Tensor) -> torch.Tensor:
     return T.Resize((240 * 4, 427 * 4))(img)
 
+
 def detect_need_conversion_inputs() -> Iterator[str]:
     for d in glob("recordings/*-*"):
         p = Path(d) / "export.webp"
         if not p.exists():
             yield os.path.abspath(d)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

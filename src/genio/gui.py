@@ -58,6 +58,7 @@ from genio.gamestate import game_state
 from genio.gears.median_filter import ImagePiece, sprite_to_pieces
 from genio.gears.signpost import SignPost
 from genio.gears.spritesheet import Spritesheet
+from genio.gears.weather import WeatherEffect, WeatherType
 from genio.layout import (
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
@@ -1253,6 +1254,9 @@ class MainScene(Scene):
         self.enemy_sprites = [
             EnemyBattlerSprite(100, 100, e, self) for e in self.bundle.enemies
         ]
+        self.weather = WeatherEffect(
+            self, WeatherType.BORDER_RIGHT_WIND, 1.3, ["anims.space_particle"]
+        )
         self.wait_anim_countdown = 0
         self.pieces = []
         self.follower_tooltip = FollowerTooltip(MouseHasPos())
@@ -1388,6 +1392,7 @@ class MainScene(Scene):
             piece.update()
 
         self.pieces = [piece for piece in self.pieces if not piece.is_dead()]
+        self.weather.update()
 
         if self.image_buttons[0].update():
             self.play_selected()

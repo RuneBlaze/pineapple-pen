@@ -25,6 +25,7 @@ from genio.components import (
 from genio.gamestate import StageDescription, game_state
 from genio.gears.map_pin import MapPin
 from genio.gears.signpost import SignPost
+from genio.gears.weather import WeatherEffect, WeatherType
 from genio.gui import dithering
 from genio.layout import pingpong
 from genio.ps import Anim
@@ -393,6 +394,13 @@ class StageSelectScene(Scene):
         self.sign_posts = []
         self.currently_selected = None
         self.start_generation()
+        self.weather = WeatherEffect(
+            self, WeatherType.RAINY, 2, ["anims.fallen_leaf"]
+        )
+
+        self.weather2 = WeatherEffect(
+            self, WeatherType.BORDER_RIGHT_WIND, 0.8, ["anims.fallen_leaf2"]
+        )
 
         self.sign_posts.append(
             SignPost(
@@ -481,6 +489,8 @@ class StageSelectScene(Scene):
         self.info_box.update()
         self.map_pin.update()
         self.check_mailbox()
+        self.weather.update()
+        self.weather2.update()
 
         for i, marker in enumerate(self.map_markers):
             if marker.hovering or marker.state == MapMarkerState.SELECTED:
