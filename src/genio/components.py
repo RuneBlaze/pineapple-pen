@@ -14,7 +14,7 @@ from pyxelxl import Font, LayoutOpts, layout
 from pyxelxl.font import _image_as_ndarray
 from scipy.ndimage import gaussian_filter
 
-from genio.base import asset_path
+from genio.base import WINDOW_WIDTH, asset_path, load_image
 from genio.layout import pingpong
 
 if TYPE_CHECKING:
@@ -498,6 +498,17 @@ class HasGold(Protocol):
     gold: int
 
 
+def draw_icon(x: int, y: int, icon_id: int) -> None:
+    icons = load_image("icons.png")
+    icon_w, icon_h = 16, 16
+    num_horz = icons.width // icon_w
+
+    icon_x = icon_id % num_horz
+    icon_y = icon_id // num_horz
+
+    pyxel.blt(x, y, icons, icon_x * icon_w, icon_y * icon_h, icon_w, icon_h, colkey=254)
+
+
 class GoldRenderer:
     def __init__(self, target: HasGold, scene: CanAddAnim, x: int = 340, y: int = 170):
         self.target = target
@@ -523,10 +534,13 @@ class GoldRenderer:
         self.tweener.append_mutate(self, "red_flash_energy", 10, 0, "ease_in_out_quad")
 
     def draw(self):
+        draw_icon(WINDOW_WIDTH // 2, self.y, 258)
         text = f"${self.display_gold:04.2f}"
-        willow_branch(self.x, self.y, text, 7, layout=layout(w=80, h=16, va="center"))
+        willow_branch(self.x + 18, self.y, text, 7, layout=layout(w=80, h=16, va="center"))
         with dithering(self.red_flash_energy):
-            willow_branch(self.x + 1, self.y + 1, text, 8, layout=layout(w=80, h=16, va="center"))
+            willow_branch(
+                self.x + 1 + 18, self.y + 1, text, 8, layout=layout(w=80, h=16, va="center")
+            )
 
 
 def draw_rounded_rectangle(x: int, y: int, w: int, h: int, r: int, col: int) -> None:

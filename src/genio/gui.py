@@ -34,8 +34,6 @@ from genio.components import (
     HasPos,
     MouseHasPos,
     Popup,
-    willow_branch,
-    arcade_text,
     camera_shift,
     cute_text,
     dithering,
@@ -44,6 +42,7 @@ from genio.components import (
     retro_font,
     retro_text,
     shadowed_text,
+    willow_branch,
 )
 from genio.constants import (
     CARD_HEIGHT,
@@ -800,6 +799,7 @@ class WrappedImage:
         self.scene.add_anim(
             lens, self.x + self.width // 2, self.y + self.height // 2, 1.0
         )
+
 
 class EnemyBattlerSprite:
     def __init__(self, x: int, y: int, battler: EnemyBattler, scene: MainScene) -> None:
@@ -1637,24 +1637,47 @@ class MainScene(Scene):
             popup.draw()
         self.draw_hud()
         self.framing.draw()
-        
         self.draw_crosshair(pyxel.mouse_x, pyxel.mouse_y)
 
     def draw_hud(self):
-        stop = WINDOW_WIDTH//5
+        stop = WINDOW_WIDTH // 5
         pyxel.rect(0, 0, stop, 20, 0)
-        pyxel.tri(stop,0, stop + 12, 0, stop,20, 0)
+        pyxel.tri(stop, 0, stop + 12, 0, stop, 20, 0)
         pyxel.rect(WINDOW_WIDTH - 18 - 20 - 4 - 2, 0, WINDOW_WIDTH, 20, 0)
-        pyxel.tri(WINDOW_WIDTH - 18 - 20 - 4 - 2 - 12,0, WINDOW_WIDTH - 18 - 20 - 4 - 2, 0, WINDOW_WIDTH - 18 - 20 - 4 - 2,20, 0)
+        pyxel.tri(
+            WINDOW_WIDTH - 18 - 20 - 4 - 2 - 12,
+            0,
+            WINDOW_WIDTH - 18 - 20 - 4 - 2,
+            0,
+            WINDOW_WIDTH - 18 - 20 - 4 - 2,
+            20,
+            0,
+        )
         with dithering(0.5):
             pyxel.rect(0, 0, stop, 20, 1)
-            pyxel.tri(WINDOW_WIDTH - 18 - 20 - 4 - 2 - 12,0, WINDOW_WIDTH - 18 - 20 - 4 - 2, 0, WINDOW_WIDTH - 18 - 20 - 4 - 2,20, 1)
+            pyxel.tri(
+                WINDOW_WIDTH - 18 - 20 - 4 - 2 - 12,
+                0,
+                WINDOW_WIDTH - 18 - 20 - 4 - 2,
+                0,
+                WINDOW_WIDTH - 18 - 20 - 4 - 2,
+                20,
+                1,
+            )
             # pyxel.rect(0, 0, WINDOW_WIDTH, 3, 1)
             pyxel.rect(WINDOW_WIDTH - 18 - 20 - 4 - 2, 0, WINDOW_WIDTH, 20, 1)
-            pyxel.tri(stop,0, stop + 12, 0, stop,20, 1)
+            pyxel.tri(stop, 0, stop + 12, 0, stop, 20, 1)
         with camera_shift(0, -2):
-            willow_branch(4+4, 0, game_state.stage.name, 7, layout=layout(h=16, va="center"))
-            retro_text(26+4, 1, f"Turn {self.bundle.turn_counter + 1}", 7, layout=layout(h=16, va="center"))
+            willow_branch(
+                4 + 4, 0, game_state.stage.name, 7, layout=layout(h=16, va="center")
+            )
+            retro_text(
+                26 + 4,
+                1,
+                f"Turn {self.bundle.turn_counter + 1}",
+                7,
+                layout=layout(h=16, va="center"),
+            )
             draw_icon(WINDOW_WIDTH - 18 - 2 - 4, 0, 41)
             draw_icon(WINDOW_WIDTH - 18 - 18 - 2 - 4, 0, 20)
         # arcade_text(15, 0, f"$ {game_state.gold}", 7)

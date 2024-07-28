@@ -5,7 +5,6 @@ import pyxel
 
 from genio.base import WINDOW_HEIGHT, WINDOW_WIDTH
 from genio.components import CanAddAnim, HasPos
-
 from genio.ps import Anim
 from genio.scene import Scene
 
@@ -53,7 +52,12 @@ class WeatherEffect:
                 position_xy[0] = position_xy[0] % WINDOW_WIDTH
                 position_xy[1] = position_xy[1] % WINDOW_HEIGHT
             case WeatherType.BORDER_RIGHT_WIND:
-                position_xy = np.array([rng.uniform(WINDOW_WIDTH*0.98, WINDOW_WIDTH), rng.uniform(-20, WINDOW_HEIGHT * 0.7)])
+                position_xy = np.array(
+                    [
+                        rng.uniform(WINDOW_WIDTH * 0.98, WINDOW_WIDTH),
+                        rng.uniform(-20, WINDOW_HEIGHT * 0.7),
+                    ]
+                )
         chosen_anim = rng.choice(self.anim_pool)
         self.parent.add_anim(chosen_anim, *position_xy)
 
@@ -61,9 +65,7 @@ class WeatherEffect:
 class WeatherTestScene:
     def __init__(self) -> None:
         self.anims = []
-        self.weather = WeatherEffect(
-            self, WeatherType.RAINY, 4, ["anims.fallen_leaf"]
-        )
+        self.weather = WeatherEffect(self, WeatherType.RAINY, 4, ["anims.fallen_leaf"])
 
     def update(self) -> None:
         self.weather.update()
@@ -77,8 +79,15 @@ class WeatherTestScene:
 
     def request_next_scene(self) -> Scene | None | str:
         return None
-    
-    def add_anim(self, anim_name: str, x: float, y: float, play_speed: float = 1, attached_to: HasPos | None = None) -> None:
+
+    def add_anim(
+        self,
+        anim_name: str,
+        x: float,
+        y: float,
+        play_speed: float = 1,
+        attached_to: HasPos | None = None,
+    ) -> None:
         self.anims.append(Anim.from_predef(anim_name, x, y))
 
 

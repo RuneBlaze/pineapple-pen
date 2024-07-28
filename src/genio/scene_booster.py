@@ -19,7 +19,9 @@ from typing_extensions import assert_never
 from genio.base import WINDOW_HEIGHT, WINDOW_WIDTH, load_image
 from genio.battle import setup_battle_bundle
 from genio.card import Card
+
 from genio.components import (
+    CanAddAnim,
     DrawDeck,
     GoldRenderer,
     HasPos,
@@ -29,9 +31,12 @@ from genio.components import (
     cute_text,
     perlin_noise,
     retro_text,
+    willow_branch,
+    capital_hill_text
 )
 from genio.constants import CARD_HEIGHT, CARD_WIDTH
 from genio.gamestate import game_state
+from genio.gears.weather import WeatherEffect, WeatherType
 from genio.gui import (
     CardArtSet,
     ResolvingFraming,
@@ -494,7 +499,7 @@ class ButtonElement:
 
     def draw_text_centered(self, xy, button_width):
         if self.secondary_text == "":
-            x_offset = (55 - 3 * len(self.text)) // 2
+            x_offset = (55 - 4 * len(self.text)) // 2
             pyxel.text(xy[0] + x_offset, xy[1] + 4, self.text, 7)
         elif self.secondary_text is None:
             cute_text(*xy, self.text, 7, layout=layout(w=button_width, ha="center"))
@@ -567,17 +572,19 @@ class ScoreItem:
     y: int
     opacity: float
 
+    parent: CanAddAnim
+
     label: str | None = None
 
     tweener: Tweener = field(default_factory=Tweener)
 
     def draw(self) -> None:
-        label_width = 80
+        label_width = 120
         mult = self.opacity
         with dithering(0.5 * mult):
-            draw_rounded_rectangle(self.x, self.y, label_width, 10, 3, 0)
+            draw_rounded_rectangle(self.x, self.y, label_width, 20, 3, 0)
         with dithering(1.0 * mult):
-            retro_text(
+            capital_hill_text(
                 self.x + 2,
                 self.y + 1,
                 self.name,
@@ -585,10 +592,10 @@ class ScoreItem:
                 layout=layout(w=label_width - 4, h=10, ha="left"),
             )
             monetary_value = f"{self.add_mult:04.2f}"
-            retro_text(
+            capital_hill_text(
                 self.x + 2,
-                self.y + 1,
-                f"${monetary_value}" if not self.label else self.label,
+                self.y + 11,
+                f"+${monetary_value}" if not self.label else self.label,
                 7,
                 layout=layout(w=label_width - 4, h=10, ha="right"),
             )
@@ -599,8 +606,17 @@ class ScoreItem:
             itertools.zip_longest(
                 Mutator(18, pytweening.easeInCirc, self, "opacity", 1.0),
                 Mutator(18, pytweening.easeInCirc, self, "y", self.y + 3),
+                # Instant(self.add_remote_burst),
             )
         )
+        self.parent.add_anim(
+            "anims.gold_burst", self.x + 60, self.y + 10
+        )
+
+    # def add_remote_burst(self) -> None:
+    #     self.parent.add_anim(
+    #         "anims.gold_burst3", 280, 188,
+    #     )
 
     def update(self) -> None:
         self.tweener.update()
@@ -685,7 +701,7 @@ class BoosterPackScene(Scene):
         self.score_items = []
         self.score_box = ScoreBox(self)
         self.score_box.launch()
-        self.next_button = ButtonElement("Next", ColorScheme(0, 1), vec2(320, 180), "")
+        self.next_button = ButtonElement("Collect", ColorScheme(0, 1), vec2(320, 180), "")
         self.shop_buttons = [
             ButtonElement(
                 "Reroll", COLOR_SCHEME_SECONDARY, vec2(320 - 55 - 1, 173), "$3"
@@ -694,37 +710,55 @@ class BoosterPackScene(Scene):
         ]
         self.results_fade = 0.0
         self.shop_fade_in = 0.0
+        self.weather = WeatherEffect(self, WeatherType.RAINY, 2, ["anims.fallen_leaf"])
+
+        self.weather2 = WeatherEffect(
+            self, WeatherType.BORDER_RIGHT_WIND, 0.8, ["anims.fallen_leaf2"]
+        )
         self.gold_renderer = GoldRenderer(game_state, self, WINDOW_WIDTH // 2 + 2, 10)
 
     def animate_score_items(self, items: list[IndividualBonusItem]) -> None:
         y_offset = 80
         x_offset = 260
+        items = [IndividualBonusItem("Base", game_state.stage.generate_base_money())] + items
         self.score_items = [
-            ScoreItem(item.title, item.delta, x_offset, i * 12 + y_offset, 1.0)
+            ScoreItem(item.title, item.delta, x_offset, i * 24 + y_offset, 1.0, self)
             for i, item in enumerate(items)
         ]
         for i, item in enumerate(self.score_items):
             item.opacity = 0.0
             item.y -= 3
+            extra_wait = 15 if i == 1 else 0
             self.tweener.append(
                 itertools.chain(
-                    range(3),
+                    range(8 + extra_wait),
                     Instant(item.fade_in),
                 )
             )
-        base_money = game_state.stage.generate_base_money()
+        base_money = 0
         total_money = sum(item.delta for item in items) + base_money
         self.tweener.append(
-            itertools.chain(
-                range(3),
-                Mutator(
-                    60,
-                    pytweening.easeInOutCubic,
-                    self,
-                    "money_accumulated",
-                    total_money,
+            itertools.zip_longest(
+                itertools.chain(
+                    range(3),
+                    Mutator(
+                        60,
+                        pytweening.easeInOutCubic,
+                        self,
+                        "money_accumulated",
+                        total_money,
+                    ),
+                ),
+                itertools.chain(
+                    range(20),
+                    Instant(self.add_sparkles),
                 ),
             )
+        )
+    
+    def add_sparkles(self) -> None:
+        self.add_anim(
+            "anims.gold_burst3", 285, 188,
         )
 
     def pump_help_box(self, title: str, description: str) -> None:
@@ -746,6 +780,9 @@ class BoosterPackScene(Scene):
             for button in self.shop_buttons:
                 button.update()
         self.gold_renderer.update()
+
+        self.weather.update()
+        self.weather2.update()
 
         aggregate_events = []
         self.state_timers[self.state] += 1
@@ -796,6 +833,11 @@ class BoosterPackScene(Scene):
         )
         self.tweener.append(
             Mutator(18, pytweening.easeInCirc, self, "shop_fade_in", 1.0)
+        )
+        self.add_anim(
+            "anims.gold_burst2",
+            WINDOW_WIDTH // 2 + 40,
+            10,
         )
 
     def update_booster_packs(self):
@@ -864,13 +906,13 @@ class BoosterPackScene(Scene):
         with dithering(0.5 * (1 - self.results_fade)):
             draw_rounded_rectangle(250, 40, 140, 160, 5, col=1)
         c1 = 7
-        w = 100
-        x = 270
+        w = 120
+        x = 260
         y = 40
         stage = game_state.stage
         with dithering(1.0 - self.results_fade):
-            arcade_text(x, y + 5, stage.name, c1, layout=layout(w=w, ha="center"))
-            retro_text(x, y + 20, stage.subtitle, c1, layout=layout(w=w, ha="center"))
+            willow_branch(x, y + 5, stage.name, c1, layout=layout(w=w, ha="center"))
+            willow_branch(x, y + 20, stage.subtitle, c1, layout=layout(w=w, ha="center"))
         self.draw_results()
         self.draw_info_box()
 
@@ -896,7 +938,7 @@ class BoosterPackScene(Scene):
         y = 40
         with dithering(0.5):
             draw_rounded_rectangle(250, 40, 140, 160, 5, col=1)
-        arcade_text(x, y + 5, "Shop", c1, layout=layout(w=w, ha="center"))
+        willow_branch(x, y + 5, "Shop", c1, layout=layout(w=w, ha="center"))
         retro_text(x, y + 20, stage.subtitle, c1, layout=layout(w=w, ha="center"))
         with dithering(0.5):
             sw = 12
@@ -915,10 +957,10 @@ class BoosterPackScene(Scene):
 
     def draw_results(self):
         with dithering(1.0 - self.results_fade):
-            pyxel.text(270, 40 + 20 + 10, "- Stage Cleared -", 7)
+            # pyxel.text(270, 40 + 20 + 10, "- Stage Cleared -", 7)
 
             formatted_money = f"${self.money_accumulated:04.2f}"
-            arcade_text(270, 183, formatted_money, 7)
+            willow_branch(270, 178, formatted_money, 7)
             self.next_button.draw_at()
             self.draw_deck.draw_card_label(10, 190)
 
@@ -931,9 +973,9 @@ class BoosterPackScene(Scene):
         with dithering(self.info_box_energy):
             with camera_shift(-(WINDOW_WIDTH - 100) // 2, -15):
                 draw_window_frame(0, 10, 100, 30, 5)
-                cute_text(
+                capital_hill_text(
                     0,
-                    10 + 2,
+                    10 + 6,
                     self.chosen_pack_dup.pack_type.short_humanized_name(),
                     7,
                     layout=layout(w=100, h=11, ha="center"),

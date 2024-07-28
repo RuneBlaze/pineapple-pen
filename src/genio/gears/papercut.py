@@ -1,12 +1,8 @@
-from functools import cache
-
 import numba
 import numpy as np
 import pyxel
-from genio.base import load_image
-from genio.ps import uv_for_16
 from pyxelxl.font import _image_as_ndarray
-from pyxelxl.pyxelxl import rotate
+
 
 @numba.jit(nopython=True)
 def remove_isolated_pixels(image: np.ndarray, bg_color: int) -> np.ndarray:
@@ -30,7 +26,9 @@ def remove_isolated_pixels(image: np.ndarray, bg_color: int) -> np.ndarray:
 
 
 @numba.jit(nopython=True)
-def apply_paper_cut_effect(image: np.ndarray, bg_color: int, radius: int = 1, fill_color: int | None = None) -> np.ndarray:
+def apply_paper_cut_effect(
+    image: np.ndarray, bg_color: int, radius: int = 1, fill_color: int | None = None
+) -> np.ndarray:
     h, w = image.shape
     if fill_color is None:
         fill_color = bg_color
@@ -44,20 +42,30 @@ def apply_paper_cut_effect(image: np.ndarray, bg_color: int, radius: int = 1, fi
                 for di in range(-3, 4):
                     for dj in range(-3, 4):
                         ni, nj = i + di, j + dj
-                        if 0 <= ni < h and 0 <= nj < w and np.sqrt(di**2 + dj**2) <= radius:
+                        if (
+                            0 <= ni < h
+                            and 0 <= nj < w
+                            and np.sqrt(di**2 + dj**2) <= radius
+                        ):
                             if image[ni, nj] != bg_color:
                                 output[i, j] = fill_color
                                 break
     return output
 
 
-def _paper_cut_effect(image: np.ndarray, bg_color: int, fill_color: int | None = None) -> np.ndarray:
+def _paper_cut_effect(
+    image: np.ndarray, bg_color: int, fill_color: int | None = None
+) -> np.ndarray:
     cleaned_image = remove_isolated_pixels(image, bg_color)
-    result_image = apply_paper_cut_effect(cleaned_image, bg_color, fill_color=fill_color)
+    result_image = apply_paper_cut_effect(
+        cleaned_image, bg_color, fill_color=fill_color
+    )
     return result_image
 
 
-def paper_cut_effect(image: pyxel.Image, bg_color: int = 7, fill_color: int | None = None) -> pyxel.Image:
+def paper_cut_effect(
+    image: pyxel.Image, bg_color: int = 7, fill_color: int | None = None
+) -> pyxel.Image:
     buffer = _image_as_ndarray(image)
     new_buffer = _paper_cut_effect(buffer, bg_color, fill_color=fill_color)
     new_image = pyxel.Image(new_buffer.shape[1], new_buffer.shape[0])
