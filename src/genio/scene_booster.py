@@ -29,6 +29,7 @@ from genio.components import (
     blt_burning,
     copy_image,
     cute_text,
+    pal_single_color,
     perlin_noise,
     retro_text,
     willow_branch,
@@ -183,7 +184,9 @@ class BoosterCardSprite:
                 shift = (
                     math.sin((self.state_timers[self.state] + 103 * self.ix) / 10) * 3
                 )
+                
                 with camera_shift(0, shift * self.wave_mag):
+                    self.draw_shadow()
                     blt_rot(
                         self.x,
                         self.y,
@@ -205,6 +208,19 @@ class BoosterCardSprite:
                             self.image.height,
                             colkey=254,
                         )
+    def draw_shadow(self):
+        with dithering(0.5):
+            with pal_single_color(1):
+                blt_rot(
+                    self.x + 2,
+                    self.y + 2,
+                    self.image,
+                    0,
+                    0,
+                    self.image.width,
+                    self.image.height,
+                    colkey=254,
+                )
 
     def set_state(self, state: BoosterCardSpriteState) -> None:
         if self.state == state:
@@ -613,11 +629,6 @@ class ScoreItem:
             "anims.gold_burst", self.x + 60, self.y + 10
         )
 
-    # def add_remote_burst(self) -> None:
-    #     self.parent.add_anim(
-    #         "anims.gold_burst3", 280, 188,
-    #     )
-
     def update(self) -> None:
         self.tweener.update()
 
@@ -886,6 +897,15 @@ class BoosterPackScene(Scene):
 
     def draw_hud(self):
         self.gold_renderer.draw()
+        char_img = load_image("char", "char_celine.png")
+        with dithering(0.5):
+            pyxel.blt(WINDOW_WIDTH  // 2 - 64, 10, char_img, 0, 22, 64, 16, 254)
+        capital_hill_text(WINDOW_WIDTH  // 2 - 64 + 1, 12, "Celine", 0, layout=layout(
+            w=64, h=17, ha="left", va="bottom"
+        ))
+        capital_hill_text(WINDOW_WIDTH  // 2 - 64, 12, "Celine", 7, layout=layout(
+            w=64, h=17, ha="left", va="bottom"
+        ))
 
     def draw(self):
         pyxel.cls(0)
