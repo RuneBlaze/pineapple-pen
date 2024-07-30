@@ -586,3 +586,18 @@ class HasPos(Protocol):
 class MouseHasPos:
     def screen_pos(self) -> tuple[float, float]:
         return pyxel.mouse_x, pyxel.mouse_y
+
+
+# def draw_rounded_rectangle(x: int, y: int, w: int, h: int, r: int, col: int) -> None:
+#     pyxel.rect(x + r, y, w - 2 * r + 1, h + 1, col)
+#     pyxel.rect(x, y + r, r, h - 2 * r, col)
+#     pyxel.rect(x + w - r + 1, y + r, r, h - 2 * r, col)
+#     pyxel.circ(x + r, y + r, r, col)
+#     pyxel.circ(x + w - r, y + r, r, col)
+#     pyxel.circ(x + r, y + h - r, r, col)
+#     pyxel.circ(x + w - r, y + h - r, r, col)
+
+
+def draw_window_frame(x: int, y: int, w: int, h: int, col: int) -> None:
+    draw_rounded_rectangle(x - 1, y - 1, w + 2, h + 2, 4, 7)
+    draw_rounded_rectangle(x, y, w, h, 4, col)

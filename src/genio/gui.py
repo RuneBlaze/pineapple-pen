@@ -55,6 +55,8 @@ from genio.constants import (
 from genio.effect import SinglePointEffect, SinglePointEffectType, StatusDefinition
 from genio.follower_tooltip import FollowerTooltip
 from genio.gamestate import game_state
+from genio.gears.config_menu import ConfigMenuScene
+from genio.gears.icon_button import IconButton
 from genio.gears.median_filter import ImagePiece, sprite_to_pieces
 from genio.gears.signpost import SignPost
 from genio.gears.spritesheet import Spritesheet
@@ -1196,9 +1198,11 @@ class MainScene(Scene):
     pieces: list[ImagePiece]
 
     updatables: list[Updatable | Drawable]
+    subscenes: list[Scene]
 
     def __init__(self):
         self.bundle = game_state.battle_bundle
+        self.subscenes = []
         self.enemy_spritesheet = Spritesheet(
             asset_path("enemies.json"), build_search_index=True
         )
@@ -1271,6 +1275,9 @@ class MainScene(Scene):
         self.play_button = self.image_buttons[0]
         self.resolving_side = ResolvingSide.PLAYER
         self.bundle.card_bundle.events.register_listener(self.on_new_event)
+
+        self.config_button = IconButton(WINDOW_WIDTH - 18 - 2 - 4, 2, 41)
+        self.about_button = IconButton(WINDOW_WIDTH - 18 - 18 - 2 - 4, 2, 20)
         self.putup_player_signpost()
 
     def sprites(self):
@@ -1333,6 +1340,15 @@ class MainScene(Scene):
         return 0
 
     def update(self):
+        if self.subscenes:
+            for subscene in self.subscenes:
+                subscene.update()
+            self.subscenes = [
+                subscene
+                for subscene in self.subscenes
+                if not subscene.request_next_scene()
+            ]
+            return
         if self.wait_anim_countdown > 0:
             if not self.tmp_card_sprites:
                 self.wait_anim_countdown = 0
@@ -1408,6 +1424,9 @@ class MainScene(Scene):
         self.update_buttons_state()
         self.tweens_signpost.update()
         self.background_video.update()
+
+        self.config_button.update()
+        self.about_button.update()
         self.timer += 1
 
     def add_signpost(self, text: str) -> None:
@@ -1558,7 +1577,6 @@ class MainScene(Scene):
             cursor += 8
 
     def draw(self):
-        # pyxel.clip(0, 20, WINDOW_WIDTH, WINDOW_HEIGHT - 20)
         self.draw_background()
         self.draw_deck.draw(10, 190)
         self.follower_tooltip_areas.append(
@@ -1588,7 +1606,8 @@ class MainScene(Scene):
             button.draw()
         self.tooltip.draw()
         self.follower_tooltip.draw()
-
+        for anim in self.anims:
+            anim.draw_myself()
         Anim.draw()
         for updatable in self.updatables:
             if hasattr(updatable, "draw"):
@@ -1598,6 +1617,11 @@ class MainScene(Scene):
             popup.draw()
         self.draw_hud()
         self.framing.draw()
+        for scene in self.subscenes:
+            scene.draw()
+        if self.config_button.btnp and not self.subscenes:
+            self.config_button.btnp = False
+            self.subscenes.append(ConfigMenuScene())
         self.draw_crosshair(pyxel.mouse_x, pyxel.mouse_y)
 
     def draw_hud(self):
@@ -1638,8 +1662,11 @@ class MainScene(Scene):
                 7,
                 layout=layout(h=16, va="center"),
             )
-            draw_icon(WINDOW_WIDTH - 18 - 2 - 4, 0, 41)
-            draw_icon(WINDOW_WIDTH - 18 - 18 - 2 - 4, 0, 20)
+            # draw_icon(WINDOW_WIDTH - 18 - 2 - 4, 0, 41)
+            # draw_icon(WINDOW_WIDTH - 18 - 18 - 2 - 4, 0, 20)
+
+        self.config_button.draw()
+        self.about_button.draw()
 
     def draw_background(self):
         buffer_as_arr = _image_as_ndarray(self.buffer)

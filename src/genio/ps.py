@@ -162,7 +162,6 @@ class Anim:
             e.pos.x = self.x + e.delta_x
             e.pos.y = self.y + e.delta_y
             e.update(e, 1 / 30 * self.play_speed)
-            e.draw(e)
         self.timer += 1
         total_num_particles = 0
         if self.timer and self.timer % (30 * 3) == 0:
@@ -179,6 +178,10 @@ class Anim:
                 for e in self.inner:
                     e.emitting = self.emitting
             self.previously_emitting = self.emitting
+
+    def draw_myself(self) -> None:
+        for e in self.inner:
+            e.draw(e)
 
     def stop(self):
         for e in self.inner:

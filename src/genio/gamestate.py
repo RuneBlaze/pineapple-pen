@@ -10,6 +10,13 @@ class World:
     name: str = "Mystic Wilds"
 
 
+@dataclass
+class GameConfig:
+    larger_font: bool = False
+    music_volume: int = 3
+    sfx_volume: int = 3
+
+
 @dataclass(frozen=True, eq=True)
 class StageDescription:
     name: str
@@ -52,6 +59,7 @@ class GameState:
             "Battle Ended, Celine returned to World 1: Mystic Wilds",
         ]
         self.world = World()
+        self.config = GameConfig()
 
     def gain_gold(self, amount: float) -> None:
         self.gold += amount

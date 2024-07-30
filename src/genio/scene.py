@@ -216,3 +216,19 @@ class AppWithScenes:
         self.async_visualizer.draw()
         self.recorder.update()
         self.recorder.draw()
+
+
+def module_scene(cls: type[Scene]) -> type[Scene]:
+    """
+    Decorator that simplifies the creation of a top-level scene generation function
+    for classes inheriting from `genio.scene.Scene`.
+    """
+
+    def gen_scene() -> Scene:
+        return cls()
+
+    # Add the function to the module's global namespace
+    module = sys.modules[cls.__module__]
+    setattr(module, "gen_scene", gen_scene)
+
+    return cls

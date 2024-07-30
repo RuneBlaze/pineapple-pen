@@ -577,7 +577,6 @@ class StageSelectScene(Scene):
 
         for sign_post in self.sign_posts:
             sign_post.draw()
-        # self.draw_overlay()
         self.draw_mouse_cursor(pyxel.mouse_x, pyxel.mouse_y)
 
     def draw_mouse_cursor(self, x: int, y: int) -> None:
