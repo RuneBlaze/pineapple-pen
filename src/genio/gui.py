@@ -633,12 +633,12 @@ def horizontal_gradient(x, y, w, h, c0, c1):
 class Tooltip:
     """The help box."""
 
-    def __init__(self, title: str, description: str):
+    def __init__(self, title: str, description: str) -> None:
         self.title = title
         self.description = description
         self.counter = 60
 
-    def draw(self):
+    def draw(self) -> None:
         if (not self.title and not self.description) or self.counter <= 0:
             return
         # Draw on mouse, and fade with counter if counter < 50
@@ -671,14 +671,14 @@ class Tooltip:
                     layout=layout(w=rect_width - 16, ha="left", va="top", h=14),
                 )
 
-    def update(self):
+    def update(self) -> None:
         self.counter -= 3
         if self.counter <= 0:
             self.title = ""
             self.description = ""
             self.counter = 0
 
-    def pump_energy(self, title: str, description: str):
+    def pump_energy(self, title: str, description: str) -> None:
         if self.counter >= 40 and (
             self.title != title or self.description != description
         ):
@@ -908,45 +908,6 @@ class EnemyBattlerSprite:
 
     def add_animation(self, lens: str) -> None:
         self.scene.add_anim(lens, self.x, self.y + 32, 1.0)
-
-
-"""
-self.enemy_sprites[i].draw()
-        pyxel.blt(10 + x - 36, 126, short_holder, 0, 0, 80, 64, colkey=254)
-        shadowed_text(10 + x - 30, 121, e.name, 7, layout(w=80, ha="left"))
-        self._draw_hearts_and_shields(10 + x - 31, 131, e.hp, e.shield_points)
-        pyxel.clip(10 + x - 30 - 5, 141, 68, 7)
-        text_width = retro_font.rasterize(e.current_intent, 5, 255, 0, 0).width + 14
-        retro_text(
-                -25 + x - (self.timer) % text_width,
-                141,
-                e.current_intent,
-                col=7,
-            )
-        retro_text(
-                -25 + x - (self.timer) % text_width + text_width,
-                141,
-                e.current_intent,
-                col=7,
-            )
-        pyxel.clip()
-        for i, s in enumerate(e.status_effects):
-            turns_left = s.counter
-            icon = s.icon_id
-            self.draw_stats_icon(
-                    icon_x := 15 + x + i * 14, icon_y := 107, icon, turns_left
-                )
-            self.follower_tooltip_areas.append(
-                    FollowerTooltipArea(
-                        icon_x,
-                        icon_y,
-                        16,
-                        16,
-                        s.name,
-                        s.description,
-                    )
-                )
-"""
 
 
 @functools.cache
@@ -1664,7 +1625,6 @@ class MainScene(Scene):
                 20,
                 1,
             )
-            # pyxel.rect(0, 0, WINDOW_WIDTH, 3, 1)
             pyxel.rect(WINDOW_WIDTH - 18 - 20 - 4 - 2, 0, WINDOW_WIDTH, 20, 1)
             pyxel.tri(stop, 0, stop + 12, 0, stop, 20, 1)
         with camera_shift(0, -2):
@@ -1680,24 +1640,14 @@ class MainScene(Scene):
             )
             draw_icon(WINDOW_WIDTH - 18 - 2 - 4, 0, 41)
             draw_icon(WINDOW_WIDTH - 18 - 18 - 2 - 4, 0, 20)
-        # arcade_text(15, 0, f"$ {game_state.gold}", 7)
 
     def draw_background(self):
-        m = self.background_video.appearance
         buffer_as_arr = _image_as_ndarray(self.buffer)
         pyxel.cls(0)
         pyxel.pal(3, 5)
         pyxel.pal(11, 12)
         buffer_as_arr[:] = 0
         self.background_video.draw_image()
-        # t = pytweening.easeOutCirc(min(self.background_video.actual_timer / 500.0, 1))
-        # buffer_as_arr[m < t] = 254
-        # pyxel.pal()
-        # with dithering(0.5):
-        #     for mask in self.background_video.masks:
-        #         pyxel.blt(0, 0, mask, 0, 0, 427, 240, colkey=254)
-        # with dithering(0.5):
-        #     pyxel.blt(0, 0, self.background_video.masks[0], 0, 0, 427, 240, colkey=254)
 
     def draw_stats_icon(
         self, x: int, y: int, icon: int, turns_counter: int | None = None
@@ -1709,15 +1659,10 @@ class MainScene(Scene):
             )
 
     def draw_battlers(self):
-        short_holder = load_image("ui", "short-holder.png")
         long_holder = load_image("ui", "long-holder.png")
         self.draw_player_info(long_holder)
         for i, sprite in enumerate(self.enemy_sprites):
             sprite.draw()
-        # for i, (x, e) in enumerate(
-        #     zip(layout_center_for_n(2, 6 * 50), self.bundle.enemies)
-        # ):
-        #     self.render_enemy_sprite(short_holder, i, x, e)
 
     def render_enemy_sprite(
         self, short_holder: pyxel.Image, i: int, x: int, e: EnemyBattler

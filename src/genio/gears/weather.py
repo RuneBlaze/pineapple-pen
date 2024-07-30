@@ -46,9 +46,6 @@ class WeatherEffect:
                 position_xy += np.array([0.5, 0.5])
                 position_xy[0] *= WINDOW_WIDTH
                 position_xy[1] *= WINDOW_HEIGHT
-                # position_xy[0] = np.clip(position_xy[0], 0, WINDOW_WIDTH)
-                # position_xy[1] = np.clip(position_xy[1], 0, WINDOW_HEIGHT)
-                # warp around
                 position_xy[0] = position_xy[0] % WINDOW_WIDTH
                 position_xy[1] = position_xy[1] % WINDOW_HEIGHT
             case WeatherType.BORDER_RIGHT_WIND:

@@ -536,10 +536,16 @@ class GoldRenderer:
     def draw(self):
         draw_icon(WINDOW_WIDTH // 2, self.y, 258)
         text = f"${self.display_gold:04.2f}"
-        willow_branch(self.x + 18, self.y, text, 7, layout=layout(w=80, h=16, va="center"))
+        willow_branch(
+            self.x + 18, self.y, text, 7, layout=layout(w=80, h=16, va="center")
+        )
         with dithering(self.red_flash_energy):
             willow_branch(
-                self.x + 1 + 18, self.y + 1, text, 8, layout=layout(w=80, h=16, va="center")
+                self.x + 1 + 18,
+                self.y + 1,
+                text,
+                8,
+                layout=layout(w=80, h=16, va="center"),
             )
 
 

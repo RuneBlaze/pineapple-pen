@@ -62,3 +62,4 @@ class GameState:
 
 
 game_state = GameState()
+"""Singleton instance of the game state."""

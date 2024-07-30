@@ -19,21 +19,19 @@ from typing_extensions import assert_never
 from genio.base import WINDOW_HEIGHT, WINDOW_WIDTH, load_image
 from genio.battle import setup_battle_bundle
 from genio.card import Card
-
 from genio.components import (
     CanAddAnim,
     DrawDeck,
     GoldRenderer,
     HasPos,
-    arcade_text,
     blt_burning,
+    capital_hill_text,
     copy_image,
     cute_text,
     pal_single_color,
     perlin_noise,
     retro_text,
     willow_branch,
-    capital_hill_text
 )
 from genio.constants import CARD_HEIGHT, CARD_WIDTH
 from genio.gamestate import game_state
@@ -184,7 +182,7 @@ class BoosterCardSprite:
                 shift = (
                     math.sin((self.state_timers[self.state] + 103 * self.ix) / 10) * 3
                 )
-                
+
                 with camera_shift(0, shift * self.wave_mag):
                     self.draw_shadow()
                     blt_rot(
@@ -208,6 +206,7 @@ class BoosterCardSprite:
                             self.image.height,
                             colkey=254,
                         )
+
     def draw_shadow(self):
         with dithering(0.5):
             with pal_single_color(1):
@@ -625,9 +624,7 @@ class ScoreItem:
                 # Instant(self.add_remote_burst),
             )
         )
-        self.parent.add_anim(
-            "anims.gold_burst", self.x + 60, self.y + 10
-        )
+        self.parent.add_anim("anims.gold_burst", self.x + 60, self.y + 10)
 
     def update(self) -> None:
         self.tweener.update()
@@ -712,7 +709,9 @@ class BoosterPackScene(Scene):
         self.score_items = []
         self.score_box = ScoreBox(self)
         self.score_box.launch()
-        self.next_button = ButtonElement("Collect", ColorScheme(0, 1), vec2(320, 180), "")
+        self.next_button = ButtonElement(
+            "Collect", ColorScheme(0, 1), vec2(320, 180), ""
+        )
         self.shop_buttons = [
             ButtonElement(
                 "Reroll", COLOR_SCHEME_SECONDARY, vec2(320 - 55 - 1, 173), "$3"
@@ -731,7 +730,9 @@ class BoosterPackScene(Scene):
     def animate_score_items(self, items: list[IndividualBonusItem]) -> None:
         y_offset = 80
         x_offset = 260
-        items = [IndividualBonusItem("Base", game_state.stage.generate_base_money())] + items
+        items = [
+            IndividualBonusItem("Base", game_state.stage.generate_base_money())
+        ] + items
         self.score_items = [
             ScoreItem(item.title, item.delta, x_offset, i * 24 + y_offset, 1.0, self)
             for i, item in enumerate(items)
@@ -766,10 +767,12 @@ class BoosterPackScene(Scene):
                 ),
             )
         )
-    
+
     def add_sparkles(self) -> None:
         self.add_anim(
-            "anims.gold_burst3", 285, 188,
+            "anims.gold_burst3",
+            285,
+            188,
         )
 
     def pump_help_box(self, title: str, description: str) -> None:
@@ -899,13 +902,21 @@ class BoosterPackScene(Scene):
         self.gold_renderer.draw()
         char_img = load_image("char", "char_celine.png")
         with dithering(0.5):
-            pyxel.blt(WINDOW_WIDTH  // 2 - 64, 10, char_img, 0, 22, 64, 16, 254)
-        capital_hill_text(WINDOW_WIDTH  // 2 - 64 + 1, 12, "Celine", 0, layout=layout(
-            w=64, h=17, ha="left", va="bottom"
-        ))
-        capital_hill_text(WINDOW_WIDTH  // 2 - 64, 12, "Celine", 7, layout=layout(
-            w=64, h=17, ha="left", va="bottom"
-        ))
+            pyxel.blt(WINDOW_WIDTH // 2 - 64, 10, char_img, 0, 22, 64, 16, 254)
+        capital_hill_text(
+            WINDOW_WIDTH // 2 - 64 + 1,
+            12,
+            "Celine",
+            0,
+            layout=layout(w=64, h=17, ha="left", va="bottom"),
+        )
+        capital_hill_text(
+            WINDOW_WIDTH // 2 - 64,
+            12,
+            "Celine",
+            7,
+            layout=layout(w=64, h=17, ha="left", va="bottom"),
+        )
 
     def draw(self):
         pyxel.cls(0)
@@ -932,7 +943,9 @@ class BoosterPackScene(Scene):
         stage = game_state.stage
         with dithering(1.0 - self.results_fade):
             willow_branch(x, y + 5, stage.name, c1, layout=layout(w=w, ha="center"))
-            willow_branch(x, y + 20, stage.subtitle, c1, layout=layout(w=w, ha="center"))
+            willow_branch(
+                x, y + 20, stage.subtitle, c1, layout=layout(w=w, ha="center")
+            )
         self.draw_results()
         self.draw_info_box()
 
