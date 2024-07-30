@@ -16,6 +16,11 @@ class GameConfig:
     music_volume: int = 3
     sfx_volume: int = 3
 
+    def reset(self) -> None:
+        self.larger_font = False
+        self.music_volume = 3
+        self.sfx_volume = 3
+
 
 @dataclass(frozen=True, eq=True)
 class StageDescription:

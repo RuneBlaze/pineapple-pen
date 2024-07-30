@@ -22,6 +22,8 @@ from genio.gears.button import (
 from genio.scene import Scene, module_scene
 from genio.tween import Instant, Tweener
 
+from genio.gamestate import game_state
+
 
 def sin_01(t: float, dilation: float) -> float:
     return (math.sin(t * dilation) + 1) / 2
@@ -135,6 +137,13 @@ class ConfigMenu:
             vec2(self.x + 100 - 57, self.y + 6 + 16 * 3),
             "",
         )
+        self.sync()
+    
+    def sync(self) -> None:
+        game_config = self.game_config
+        self.radios[0].chosen = 1 if game_config.larger_font else 0
+        self.radios[1].chosen = game_config.music_volume
+        self.radios[2].chosen = game_config.sfx_volume
 
     def draw(self) -> None:
         width = 200
@@ -168,7 +177,7 @@ class ConfigMenuScene(Scene):
     def __init__(self) -> None:
         self.tweener = Tweener()
         self.background_opacity = 0.0
-        self.config_menu = ConfigMenu((WINDOW_WIDTH - 200) // 2, 50, GameConfig())
+        self.config_menu = ConfigMenu((WINDOW_WIDTH - 200) // 2, 70, game_state.config)
         self.tweener.append_mutate(
             self,
             "background_opacity",
@@ -189,10 +198,21 @@ class ConfigMenuScene(Scene):
                 self.config_menu.draw()
         self.draw_mouse_cursor(pyxel.mouse_x, pyxel.mouse_y)
 
+    def sync(self) -> None:
+        config = game_state.config
+        config.larger_font = self.config_menu.radios[0].chosen == 1
+        config.music_volume = self.config_menu.radios[1].chosen
+        config.sfx_volume = self.config_menu.radios[2].chosen
+    
+    def reset(self) -> None:
+        game_state.config.reset()
+        self.config_menu.sync()
+
     def update(self) -> None:
         self.tweener.update()
         self.config_menu.update()
-        if self.config_menu.confirm_button.btnp:
+        if self.config_menu.confirm_button.btnp and not self.tweener:
+            self.sync()
             self.tweener.append_mutate(
                 self,
                 "background_opacity",
@@ -201,6 +221,8 @@ class ConfigMenuScene(Scene):
                 "ease_in_quad",
             )
             self.tweener.append(Instant(self.mark_dead))
+        if self.config_menu.reset_button.btnp:
+            self.reset()
 
     def request_next_scene(self) -> Scene | None | str:
         if self.dead:

@@ -459,24 +459,6 @@ class EnergyRenderer:
                     7,
                     layout=layout(w=w, h=16, ha="center", va="center"),
                 )
-        # with dithering(opacity):
-        #     text = f"{self.target.energy}/{self.target.default_energy}"
-        #     retro_text(
-        #         self.x - 8,
-        #         self.y - 8,
-        #         text,
-        #         7,
-        #         layout=layout(w=16, h=16, ha="center", va="center"),
-        #     )
-        # with dithering(1 - opacity):
-        #     text = f"{self.target.energy - self.target.tentative_energy_cost()}/{self.target.default_energy}"
-        #     retro_text(
-        #         self.x - 8,
-        #         self.y - 8,
-        #         text,
-        #         7,
-        #         layout=layout(w=16, h=16, ha="center", va="center"),
-        #     )
 
 
 camera_stack = []
@@ -586,16 +568,6 @@ class HasPos(Protocol):
 class MouseHasPos:
     def screen_pos(self) -> tuple[float, float]:
         return pyxel.mouse_x, pyxel.mouse_y
-
-
-# def draw_rounded_rectangle(x: int, y: int, w: int, h: int, r: int, col: int) -> None:
-#     pyxel.rect(x + r, y, w - 2 * r + 1, h + 1, col)
-#     pyxel.rect(x, y + r, r, h - 2 * r, col)
-#     pyxel.rect(x + w - r + 1, y + r, r, h - 2 * r, col)
-#     pyxel.circ(x + r, y + r, r, col)
-#     pyxel.circ(x + w - r, y + r, r, col)
-#     pyxel.circ(x + r, y + h - r, r, col)
-#     pyxel.circ(x + w - r, y + h - r, r, col)
 
 
 def draw_window_frame(x: int, y: int, w: int, h: int, col: int) -> None:
