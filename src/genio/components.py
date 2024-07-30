@@ -31,6 +31,8 @@ arcade_text = Font(asset_path("retro-pixel-arcade.ttf")).specialize(font_size=8)
 capital_hill_text = Font(asset_path("Capital_Hill.ttf")).specialize(font_size=8)
 willow_branch = Font(asset_path("Willow_Branch.ttf")).specialize(font_size=8)
 noble_blabber = Font(asset_path("Noble_Blabber.ttf")).specialize(font_size=8)
+tomorrow_night_text = Font(asset_path("Tomorrow_Night.ttf")).specialize(font_size=8)
+racoon_serif = Font(asset_path("RaccoonSerif-Mini.ttf")).specialize(font_size=5)
 
 
 def shadowed_text(

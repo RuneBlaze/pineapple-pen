@@ -632,6 +632,9 @@ def horizontal_gradient(x, y, w, h, c0, c1):
     pyxel.dither(1.0)
 
 
+from genio.components import capital_hill_text
+
+
 class Tooltip:
     """The help box."""
 
@@ -651,10 +654,11 @@ class Tooltip:
         amy = my * t + ((1 - t) * pyxel.height * 0.9) - 60
         dither_amount = 1.0 if self.counter > 50 else (self.counter / 50) ** 2
         rect_width = 80
-        rect_height = 14
+        rect_height = 15
         if self.description:
             rect_width *= 2
-            rect_height *= 2
+            rect_height *= 2 if not game_state.should_use_large_font() else 2.5
+            rect_height = int(rect_height)
         draw_mixed_rounded_rect(dither_amount, amx, amy, w=rect_width, h=rect_height)
         with dithering(dither_amount):
             cute_text(
@@ -665,12 +669,20 @@ class Tooltip:
                 layout=layout(w=rect_width, ha="center", va="center", h=14),
             )
             if self.description:
-                retro_text(
+                font = (
+                    capital_hill_text
+                    if game_state.should_use_large_font()
+                    else retro_text
+                )
+                extra_y_padding = 3 if game_state.should_use_large_font() else 0
+                font(
                     amx - rect_width // 2 + 8,
-                    amy + 10,
+                    amy + 11 + extra_y_padding,
                     self.description,
                     7,
-                    layout=layout(w=rect_width - 16, ha="left", va="top", h=14),
+                    layout=layout(
+                        w=rect_width - 16, ha="left", va="top", h=rect_height - 11
+                    ),
                 )
 
     def update(self) -> None:

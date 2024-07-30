@@ -900,8 +900,6 @@ class BoosterPackScene(Scene):
 
     def draw_results(self):
         with dithering(1.0 - self.results_fade):
-            # pyxel.text(270, 40 + 20 + 10, "- Stage Cleared -", 7)
-
             formatted_money = f"${self.money_accumulated:04.2f}"
             willow_branch(270, 178, formatted_money, 7)
             self.next_button.draw_at()

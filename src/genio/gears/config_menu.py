@@ -12,7 +12,7 @@ from genio.components import (
     draw_rounded_rectangle,
     draw_window_frame,
 )
-from genio.gamestate import GameConfig
+from genio.gamestate import GameConfig, game_state
 from genio.gears.button import (
     COLOR_SCHEME_PRIMARY,
     COLOR_SCHEME_SECONDARY,
@@ -21,8 +21,6 @@ from genio.gears.button import (
 )
 from genio.scene import Scene, module_scene
 from genio.tween import Instant, Tweener
-
-from genio.gamestate import game_state
 
 
 def sin_01(t: float, dilation: float) -> float:
@@ -138,7 +136,7 @@ class ConfigMenu:
             "",
         )
         self.sync()
-    
+
     def sync(self) -> None:
         game_config = self.game_config
         self.radios[0].chosen = 1 if game_config.larger_font else 0
@@ -203,7 +201,7 @@ class ConfigMenuScene(Scene):
         config.larger_font = self.config_menu.radios[0].chosen == 1
         config.music_volume = self.config_menu.radios[1].chosen
         config.sfx_volume = self.config_menu.radios[2].chosen
-    
+
     def reset(self) -> None:
         game_state.config.reset()
         self.config_menu.sync()

@@ -17,8 +17,8 @@ class PyxelDefaultFont(DrawTextLike):
         y: int,
         s: str,
         col: int,
-        layout: LayoutOpts | None = ...,
-        target: Image | None = ...,
+        layout: LayoutOpts | None = None,
+        target: Image | None = None,
     ) -> None:
         if target:
             raise ValueError("PyxelDefaultFont does not support target")

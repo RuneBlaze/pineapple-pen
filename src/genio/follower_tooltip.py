@@ -1,14 +1,13 @@
 import textwrap
 from dataclasses import dataclass
 
-import pyxel
-
 from genio.components import (
     HasPos,
     dithering,
     draw_mixed_rounded_rect_left_aligned,
     retro_text,
 )
+from genio.gears.text_layout import pyxel_text
 
 
 @dataclass(eq=True, frozen=True)
@@ -41,7 +40,7 @@ class FollowerTooltip:
             with dithering(self.dither_amount()):
                 retro_text(bx + 3, by + 2, self.inner.title, 7)
                 for i, line in enumerate(wrapped_description):
-                    pyxel.text(bx + 3, by + 11 + i * 9, line, 7)
+                    pyxel_text(bx + 3, by + 11 + i * 9, line, 7)
 
     def dither_amount(self) -> float:
         return min(1.0, self.energy)

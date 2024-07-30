@@ -73,6 +73,9 @@ class GameState:
         self.gold -= amount
         self.gold = max(0, self.gold)
 
+    def should_use_large_font(self) -> bool:
+        return self.config.larger_font
+
 
 game_state = GameState()
 """Singleton instance of the game state."""

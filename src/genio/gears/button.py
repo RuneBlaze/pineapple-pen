@@ -8,11 +8,14 @@ import pyxel
 from pyxelxl import layout
 
 from genio.components import (
+    capital_hill_text,
     cute_text,
     dithering,
     draw_rounded_rectangle,
     retro_text,
 )
+from genio.gamestate import game_state
+from genio.gears.text_layout import pyxel_text
 
 
 @dataclass
@@ -68,15 +71,26 @@ class ButtonElement:
             self.draw_text_centered(xy, button_width)
         return vec2(button_width + 2, 16)
 
-    def draw_text_centered(self, xy, button_width):
+    def draw_text_centered(self, xy: Vec2, button_width: int) -> None:
+        font = capital_hill_text if game_state.should_use_large_font() else pyxel_text
         if self.secondary_text == "":
-            x_offset = (55 - 4 * len(self.text)) // 2
-            pyxel.text(xy[0] + x_offset, xy[1] + 4, self.text, 7)
+            font(
+                xy[0],
+                xy[1] + 4,
+                self.text,
+                7,
+                layout=layout(w=button_width, ha="center"),
+            )
         elif self.secondary_text is None:
             cute_text(*xy, self.text, 7, layout=layout(w=button_width, ha="center"))
         else:
-            x_offset = (55 - 3 * len(self.text)) // 2
-            pyxel.text(xy[0] + x_offset, xy[1] + 2, self.text, 7)
+            font(
+                xy[0],
+                xy[1] + 2,
+                self.text,
+                7,
+                layout=layout(w=button_width, ha="center"),
+            )
             retro_text(
                 xy[0],
                 xy[1] + 7,
