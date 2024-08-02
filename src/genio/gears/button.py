@@ -54,6 +54,9 @@ class ButtonElement:
     hovering: bool = False
     btnp: bool = False
 
+    def draw(self) -> None:
+        self.draw_at()
+
     def draw_at(self) -> Vec2:
         xy = self.position
         button_width = 55

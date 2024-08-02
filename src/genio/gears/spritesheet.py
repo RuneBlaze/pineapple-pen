@@ -1,5 +1,5 @@
 import json
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from functools import cache
 
 import numpy as np
@@ -57,28 +57,36 @@ def pil_image_to_pyxel_image(image: Image.Image) -> pyxel.Image:
     return buffer_to_image(buffer)
 
 
+def iterate_cells_of_spritesheet(path: str) -> Iterator[tuple[str, Image.Image]]:
+    with open(path) as f:
+        data = json.load(f)
+    parent_image = Image.open(path.replace(".json", ".png")).convert("RGBA")
+    for frame_name, frame_metadata in data["frames"].items():
+        frame_name = frame_name.split(".")[0]
+        frame_name = frame_name.replace("(", "").replace(")", "")
+        frame_name = frame_name.lower()
+        x, y, w, h = (
+            frame_metadata["frame"]["x"],
+            frame_metadata["frame"]["y"],
+            frame_metadata["frame"]["w"],
+            frame_metadata["frame"]["h"],
+        )
+        yield (
+            frame_name,
+            pil_image_to_pyxel_image(parent_image.crop((x, y, x + w, y + h))),
+        )
+
+
 class Spritesheet(Mapping[str, pyxel.Image]):
     embeddings: np.ndarray
 
-    def __init__(self, path: str, build_search_index: bool = False) -> None:
+    def __init__(self, path: str | list[str], build_search_index: bool = False) -> None:
         super().__init__()
-        with open(path) as f:
-            self.data = json.load(f)
+        paths = path if isinstance(path, list) else [path]
         self.images = {}
-        parent_image = Image.open(path.replace(".json", ".png")).convert("RGBA")
-        for frame_name, frame_metadata in self.data["frames"].items():
-            frame_name = frame_name.split(".")[0]
-            frame_name = frame_name.replace("(", "").replace(")", "")
-            frame_name = frame_name.lower()
-            x, y, w, h = (
-                frame_metadata["frame"]["x"],
-                frame_metadata["frame"]["y"],
-                frame_metadata["frame"]["w"],
-                frame_metadata["frame"]["h"],
-            )
-            self.images[frame_name] = pil_image_to_pyxel_image(
-                parent_image.crop((x, y, x + w, y + h))
-            )
+        for path in paths:
+            for frame_name, frame_image in iterate_cells_of_spritesheet(path):
+                self.images[frame_name] = frame_image
         self._keys = []
         if build_search_index:
             self.build_search_index()

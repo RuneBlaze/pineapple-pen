@@ -90,7 +90,6 @@ colors = [15]
 angle = [180, 20]
 duration = 2
 burst = [true, 1]
-# gravity = true
 
 [[anims.stroke]]
 frequency = 4
@@ -507,3 +506,9 @@ default = [
     "`[destroy CARD_SPECIFIER..]` - Destroy a specific card, more multiple cards. E.g., `[destroy kb5a]` (destroy the card with short ID `kb5a`). Note that this line by itself only allows the destruction of *cards*, not rules.",
     "[destroy-rule R??] - Destroy a rule. E.g., `[destroy-rule R01]` (destroy rule `R01`).",
 ]
+
+[inspo]
+our_land = "{% include 'poems/our-land.md' %}"
+the_snow_storm = "{% include 'poems/the-snow-storm.md' %}"
+the_waste_land = "{% include 'poems/the-waste-land.txt' %}"
+wild_geese = "{% include 'poems/wild-geese.md' %}"

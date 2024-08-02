@@ -1,10 +1,21 @@
 from __future__ import annotations
 
+import re
 import uuid
 from base64 import b32encode
 from dataclasses import dataclass, field
+from functools import lru_cache
 
 from parse import parse
+
+keywords = re.compile(
+    r"\b(?:noun|verb|adjective|adverb|pronoun|preposition|conjunction|interjection|article|determiner|auxiliary verb|modal verb|particle|gerund|infinitive|participle)\b"
+)
+
+
+@lru_cache(16)
+def judge_is_flashcard_like(card_description: str) -> bool:
+    return re.search(keywords, card_description) is not None
 
 
 @dataclass
@@ -43,3 +54,9 @@ class Card:
 
     def __hash__(self) -> int:
         return hash(self.id)
+
+    def is_flashcard_like(self) -> bool:
+        return self.is_singleword_title() and judge_is_flashcard_like(self.description)
+
+    def is_singleword_title(self) -> bool:
+        return " " not in self.name

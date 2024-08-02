@@ -1,0 +1,1259 @@
+{ "frames": {
+   "Layer 1.aseprite": {
+    "frame": { "x": 477, "y": 350, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "joker.aseprite": {
+    "frame": { "x": 53, "y": 0, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "many hearts.aseprite": {
+    "frame": { "x": 106, "y": 0, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "ace of spades.aseprite": {
+    "frame": { "x": 159, "y": 0, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "king.aseprite": {
+    "frame": { "x": 212, "y": 0, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "queen.aseprite": {
+    "frame": { "x": 265, "y": 0, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "spades.aseprite": {
+    "frame": { "x": 318, "y": 0, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "chips.aseprite": {
+    "frame": { "x": 371, "y": 0, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "magical castle.aseprite": {
+    "frame": { "x": 424, "y": 0, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "magical spire.aseprite": {
+    "frame": { "x": 477, "y": 0, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "evil castle.aseprite": {
+    "frame": { "x": 530, "y": 0, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "magical forest.aseprite": {
+    "frame": { "x": 583, "y": 0, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "green mountains.aseprite": {
+    "frame": { "x": 0, "y": 70, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "mystic peak.aseprite": {
+    "frame": { "x": 53, "y": 70, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "cloudy mountains.aseprite": {
+    "frame": { "x": 106, "y": 70, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "woody water.aseprite": {
+    "frame": { "x": 159, "y": 70, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "floating logs and lake.aseprite": {
+    "frame": { "x": 212, "y": 70, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "mountain and lakes.aseprite": {
+    "frame": { "x": 265, "y": 70, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "dunes.aseprite": {
+    "frame": { "x": 318, "y": 70, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "oasis.aseprite": {
+    "frame": { "x": 371, "y": 70, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "desert.aseprite": {
+    "frame": { "x": 424, "y": 70, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "ruins.aseprite": {
+    "frame": { "x": 477, "y": 70, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "jungle ruins.aseprite": {
+    "frame": { "x": 530, "y": 70, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "stone ruins.aseprite": {
+    "frame": { "x": 583, "y": 70, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "snowy tundra.aseprite": {
+    "frame": { "x": 0, "y": 140, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "shimmering tundra.aseprite": {
+    "frame": { "x": 53, "y": 140, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "northern lights.aseprite": {
+    "frame": { "x": 106, "y": 140, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "gothic castle.aseprite": {
+    "frame": { "x": 159, "y": 140, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "night castle.aseprite": {
+    "frame": { "x": 212, "y": 140, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "defiled church.aseprite": {
+    "frame": { "x": 265, "y": 140, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "lush graveyard.aseprite": {
+    "frame": { "x": 318, "y": 140, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "graveyard.aseprite": {
+    "frame": { "x": 371, "y": 140, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "overgrown eastern graveyard.aseprite": {
+    "frame": { "x": 424, "y": 140, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "relaxing cliffs.aseprite": {
+    "frame": { "x": 477, "y": 140, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "sunset cliffs.aseprite": {
+    "frame": { "x": 530, "y": 140, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "desert cliffs.aseprite": {
+    "frame": { "x": 583, "y": 140, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "library.aseprite": {
+    "frame": { "x": 0, "y": 210, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "magical temple.aseprite": {
+    "frame": { "x": 53, "y": 210, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "waterfall.aseprite": {
+    "frame": { "x": 106, "y": 210, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "lush waterfall.aseprite": {
+    "frame": { "x": 159, "y": 210, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "urban rooftop.aseprite": {
+    "frame": { "x": 212, "y": 210, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "foggy skylines.aseprite": {
+    "frame": { "x": 265, "y": 210, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "skylines.aseprite": {
+    "frame": { "x": 318, "y": 210, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "underwater cave.aseprite": {
+    "frame": { "x": 371, "y": 210, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "eerie underwater.aseprite": {
+    "frame": { "x": 424, "y": 210, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "lush water cave.aseprite": {
+    "frame": { "x": 477, "y": 210, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "fire.aseprite": {
+    "frame": { "x": 530, "y": 210, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "fire ring.aseprite": {
+    "frame": { "x": 583, "y": 210, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "fire slash.aseprite": {
+    "frame": { "x": 0, "y": 280, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "waves.aseprite": {
+    "frame": { "x": 53, "y": 280, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "splash.aseprite": {
+    "frame": { "x": 106, "y": 280, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "water.aseprite": {
+    "frame": { "x": 159, "y": 280, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "earth elemental.aseprite": {
+    "frame": { "x": 212, "y": 280, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "teal earth.aseprite": {
+    "frame": { "x": 265, "y": 280, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "mossy earth.aseprite": {
+    "frame": { "x": 318, "y": 280, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "air elemental.aseprite": {
+    "frame": { "x": 371, "y": 280, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "leaf air.aseprite": {
+    "frame": { "x": 424, "y": 280, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "lightning.aseprite": {
+    "frame": { "x": 477, "y": 280, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "ghostly.aseprite": {
+    "frame": { "x": 530, "y": 280, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "blackhole.aseprite": {
+    "frame": { "x": 583, "y": 280, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "darkness.aseprite": {
+    "frame": { "x": 0, "y": 350, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "black orb.aseprite": {
+    "frame": { "x": 53, "y": 350, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "rainbow.aseprite": {
+    "frame": { "x": 106, "y": 350, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "sparkles.aseprite": {
+    "frame": { "x": 159, "y": 350, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "light elemental.aseprite": {
+    "frame": { "x": 212, "y": 350, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "sword.aseprite": {
+    "frame": { "x": 265, "y": 350, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "fiery strike.aseprite": {
+    "frame": { "x": 318, "y": 350, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "duo flaming strike.aseprite": {
+    "frame": { "x": 371, "y": 350, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "flame tails.aseprite": {
+    "frame": { "x": 424, "y": 350, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "barrier.aseprite": {
+    "frame": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "energy block.aseprite": {
+    "frame": { "x": 530, "y": 350, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "magical door.aseprite": {
+    "frame": { "x": 583, "y": 350, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "flaming fist.aseprite": {
+    "frame": { "x": 0, "y": 420, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "aftershadow.aseprite": {
+    "frame": { "x": 53, "y": 420, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "Lightning Speed.aseprite": {
+    "frame": { "x": 106, "y": 420, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "wind slash.aseprite": {
+    "frame": { "x": 159, "y": 420, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "ice barrier.aseprite": {
+    "frame": { "x": 212, "y": 420, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "freeze.aseprite": {
+    "frame": { "x": 265, "y": 420, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "mystic pulse.aseprite": {
+    "frame": { "x": 318, "y": 420, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "Sonic Boom.aseprite": {
+    "frame": { "x": 371, "y": 420, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "poison cloud.aseprite": {
+    "frame": { "x": 424, "y": 420, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "stunning shock.aseprite": {
+    "frame": { "x": 477, "y": 420, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "Paralysis shock.aseprite": {
+    "frame": { "x": 530, "y": 420, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "freezing shock.aseprite": {
+    "frame": { "x": 583, "y": 420, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "freezing.aseprite": {
+    "frame": { "x": 0, "y": 490, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "freezing stun.aseprite": {
+    "frame": { "x": 53, "y": 490, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "ember.aseprite": {
+    "frame": { "x": 106, "y": 490, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "burning.aseprite": {
+    "frame": { "x": 159, "y": 490, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "Paralyzing Ray.aseprite": {
+    "frame": { "x": 212, "y": 490, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "hidden beams.aseprite": {
+    "frame": { "x": 265, "y": 490, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "shock.aseprite": {
+    "frame": { "x": 318, "y": 490, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "confusion spiral.aseprite": {
+    "frame": { "x": 371, "y": 490, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "blinding flash.aseprite": {
+    "frame": { "x": 424, "y": 490, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "flash.aseprite": {
+    "frame": { "x": 477, "y": 490, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "time slow.aseprite": {
+    "frame": { "x": 530, "y": 490, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "time corruption.aseprite": {
+    "frame": { "x": 583, "y": 490, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "Silencing Wave.aseprite": {
+    "frame": { "x": 0, "y": 560, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "Weakening Mist.aseprite": {
+    "frame": { "x": 53, "y": 560, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "grass fragment.aseprite": {
+    "frame": { "x": 106, "y": 560, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "fragment.aseprite": {
+    "frame": { "x": 159, "y": 560, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "toxic spikes.aseprite": {
+    "frame": { "x": 212, "y": 560, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "Hallucination Aura.aseprite": {
+    "frame": { "x": 265, "y": 560, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "Corrosive Touch.aseprite": {
+    "frame": { "x": 318, "y": 560, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "viral cloud.aseprite": {
+    "frame": { "x": 371, "y": 560, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "computer virus.aseprite": {
+    "frame": { "x": 424, "y": 560, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "mystic binding.aseprite": {
+    "frame": { "x": 477, "y": 560, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "Mystic Chains.aseprite": {
+    "frame": { "x": 530, "y": 560, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "healing light.aseprite": {
+    "frame": { "x": 583, "y": 560, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "inner heal.aseprite": {
+    "frame": { "x": 0, "y": 630, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "blending.aseprite": {
+    "frame": { "x": 53, "y": 630, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "Arcane Symbol.aseprite": {
+    "frame": { "x": 106, "y": 630, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "Energizing Aura.aseprite": {
+    "frame": { "x": 159, "y": 630, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "golden burst.aseprite": {
+    "frame": { "x": 212, "y": 630, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "ward.aseprite": {
+    "frame": { "x": 265, "y": 630, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "Healing Waters.aseprite": {
+    "frame": { "x": 318, "y": 630, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "fairy river.aseprite": {
+    "frame": { "x": 371, "y": 630, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "tranquil river.aseprite": {
+    "frame": { "x": 424, "y": 630, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "strengthen.aseprite": {
+    "frame": { "x": 477, "y": 630, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "Restorative Breeze.aseprite": {
+    "frame": { "x": 530, "y": 630, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "peaceful.aseprite": {
+    "frame": { "x": 583, "y": 630, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "Healing Bloom.aseprite": {
+    "frame": { "x": 0, "y": 700, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "peaceful bloom.aseprite": {
+    "frame": { "x": 53, "y": 700, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "fiery fireworks.aseprite": {
+    "frame": { "x": 106, "y": 700, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "splash.aseprite": {
+    "frame": { "x": 159, "y": 700, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "fireworks.aseprite": {
+    "frame": { "x": 212, "y": 700, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "Horticulture.aseprite": {
+    "frame": { "x": 265, "y": 700, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "Ethereal Garden.aseprite": {
+    "frame": { "x": 318, "y": 700, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "Celestial Harmony.aseprite": {
+    "frame": { "x": 371, "y": 700, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "bash.aseprite": {
+    "frame": { "x": 424, "y": 700, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "slash.aseprite": {
+    "frame": { "x": 477, "y": 700, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "strike.aseprite": {
+    "frame": { "x": 530, "y": 700, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "pierce.aseprite": {
+    "frame": { "x": 583, "y": 700, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "smash.aseprite": {
+    "frame": { "x": 0, "y": 770, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "crush.aseprite": {
+    "frame": { "x": 53, "y": 770, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "punch.aseprite": {
+    "frame": { "x": 106, "y": 770, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "kick.aseprite": {
+    "frame": { "x": 159, "y": 770, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "stab.aseprite": {
+    "frame": { "x": 212, "y": 770, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   },
+   "thrust.aseprite": {
+    "frame": { "x": 265, "y": 770, "w": 43, "h": 60 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 43, "h": 60 },
+    "sourceSize": { "w": 43, "h": 60 },
+    "duration": 100
+   }
+ },
+ "meta": {
+  "app": "https://www.aseprite.org/",
+  "version": "1.3.7-arm64",
+  "image": "card art.png",
+  "format": "RGBA8888",
+  "size": { "w": 626, "h": 830 },
+  "scale": "1",
+  "frameTags": [
+  ],
+  "layers": [
+   { "name": "Layer 1", "opacity": 255, "blendMode": "normal" },
+   { "name": "joker", "opacity": 255, "blendMode": "normal" },
+   { "name": "many hearts", "opacity": 255, "blendMode": "normal" },
+   { "name": "ace of spades", "opacity": 255, "blendMode": "normal" },
+   { "name": "king", "opacity": 255, "blendMode": "normal" },
+   { "name": "queen", "opacity": 255, "blendMode": "normal" },
+   { "name": "spades", "opacity": 255, "blendMode": "normal" },
+   { "name": "chips", "opacity": 255, "blendMode": "normal" },
+   { "name": "magical castle", "opacity": 255, "blendMode": "normal" },
+   { "name": "magical spire", "opacity": 255, "blendMode": "normal" },
+   { "name": "evil castle", "opacity": 255, "blendMode": "normal" },
+   { "name": "magical forest", "opacity": 255, "blendMode": "normal" },
+   { "name": "green mountains", "opacity": 255, "blendMode": "normal" },
+   { "name": "mystic peak", "opacity": 255, "blendMode": "normal" },
+   { "name": "cloudy mountains", "opacity": 255, "blendMode": "normal" },
+   { "name": "woody water", "opacity": 255, "blendMode": "normal" },
+   { "name": "floating logs and lake", "opacity": 255, "blendMode": "normal" },
+   { "name": "mountain and lakes", "opacity": 255, "blendMode": "normal" },
+   { "name": "dunes", "opacity": 255, "blendMode": "normal" },
+   { "name": "oasis", "opacity": 255, "blendMode": "normal" },
+   { "name": "desert", "opacity": 255, "blendMode": "normal" },
+   { "name": "ruins", "opacity": 255, "blendMode": "normal" },
+   { "name": "jungle ruins", "opacity": 255, "blendMode": "normal" },
+   { "name": "stone ruins", "opacity": 255, "blendMode": "normal" },
+   { "name": "snowy tundra", "opacity": 255, "blendMode": "normal" },
+   { "name": "shimmering tundra", "opacity": 255, "blendMode": "normal" },
+   { "name": "northern lights", "opacity": 255, "blendMode": "normal" },
+   { "name": "gothic castle", "opacity": 255, "blendMode": "normal" },
+   { "name": "night castle", "opacity": 255, "blendMode": "normal" },
+   { "name": "defiled church", "opacity": 255, "blendMode": "normal" },
+   { "name": "lush graveyard", "opacity": 255, "blendMode": "normal" },
+   { "name": "graveyard", "opacity": 255, "blendMode": "normal" },
+   { "name": "overgrown eastern graveyard", "opacity": 255, "blendMode": "normal" },
+   { "name": "relaxing cliffs", "opacity": 255, "blendMode": "normal" },
+   { "name": "sunset cliffs", "opacity": 255, "blendMode": "normal" },
+   { "name": "desert cliffs", "opacity": 255, "blendMode": "normal" },
+   { "name": "library", "opacity": 255, "blendMode": "normal" },
+   { "name": "magical temple", "opacity": 255, "blendMode": "normal" },
+   { "name": "waterfall", "opacity": 255, "blendMode": "normal" },
+   { "name": "lush waterfall", "opacity": 255, "blendMode": "normal" },
+   { "name": "urban rooftop", "opacity": 255, "blendMode": "normal" },
+   { "name": "foggy skylines", "opacity": 255, "blendMode": "normal" },
+   { "name": "skylines", "opacity": 255, "blendMode": "normal" },
+   { "name": "underwater cave", "opacity": 255, "blendMode": "normal" },
+   { "name": "eerie underwater", "opacity": 255, "blendMode": "normal" },
+   { "name": "lush water cave", "opacity": 255, "blendMode": "normal" },
+   { "name": "fire", "opacity": 255, "blendMode": "normal" },
+   { "name": "fire ring", "opacity": 255, "blendMode": "normal" },
+   { "name": "fire slash", "opacity": 255, "blendMode": "normal" },
+   { "name": "waves", "opacity": 255, "blendMode": "normal" },
+   { "name": "splash", "opacity": 255, "blendMode": "normal" },
+   { "name": "water", "opacity": 255, "blendMode": "normal" },
+   { "name": "earth elemental", "opacity": 255, "blendMode": "normal" },
+   { "name": "teal earth", "opacity": 255, "blendMode": "normal" },
+   { "name": "mossy earth", "opacity": 255, "blendMode": "normal" },
+   { "name": "air elemental", "opacity": 255, "blendMode": "normal" },
+   { "name": "leaf air", "opacity": 255, "blendMode": "normal" },
+   { "name": "lightning", "opacity": 255, "blendMode": "normal" },
+   { "name": "ghostly", "opacity": 255, "blendMode": "normal" },
+   { "name": "blackhole", "opacity": 255, "blendMode": "normal" },
+   { "name": "darkness", "opacity": 255, "blendMode": "normal" },
+   { "name": "black orb", "opacity": 255, "blendMode": "normal" },
+   { "name": "rainbow", "opacity": 255, "blendMode": "normal" },
+   { "name": "sparkles", "opacity": 255, "blendMode": "normal" },
+   { "name": "light elemental", "opacity": 255, "blendMode": "normal" },
+   { "name": "sword", "opacity": 255, "blendMode": "normal" },
+   { "name": "fiery strike", "opacity": 255, "blendMode": "normal" },
+   { "name": "duo flaming strike", "opacity": 255, "blendMode": "normal" },
+   { "name": "flame tails", "opacity": 255, "blendMode": "normal" },
+   { "name": "barrier", "opacity": 255, "blendMode": "normal" },
+   { "name": "energy block", "opacity": 255, "blendMode": "normal" },
+   { "name": "magical door", "opacity": 255, "blendMode": "normal" },
+   { "name": "flaming fist", "opacity": 255, "blendMode": "normal" },
+   { "name": "aftershadow", "opacity": 255, "blendMode": "normal" },
+   { "name": "Lightning Speed", "opacity": 255, "blendMode": "normal" },
+   { "name": "wind slash", "opacity": 255, "blendMode": "normal" },
+   { "name": "ice barrier", "opacity": 255, "blendMode": "normal" },
+   { "name": "freeze", "opacity": 255, "blendMode": "normal" },
+   { "name": "mystic pulse", "opacity": 255, "blendMode": "normal" },
+   { "name": "Sonic Boom", "opacity": 255, "blendMode": "normal" },
+   { "name": "poison cloud", "opacity": 255, "blendMode": "normal" },
+   { "name": "stunning shock", "opacity": 255, "blendMode": "normal" },
+   { "name": "Paralysis shock", "opacity": 255, "blendMode": "normal" },
+   { "name": "freezing shock", "opacity": 255, "blendMode": "normal" },
+   { "name": "freezing", "opacity": 255, "blendMode": "normal" },
+   { "name": "freezing stun", "opacity": 255, "blendMode": "normal" },
+   { "name": "ember", "opacity": 255, "blendMode": "normal" },
+   { "name": "burning", "opacity": 255, "blendMode": "normal" },
+   { "name": "Paralyzing Ray", "opacity": 255, "blendMode": "normal" },
+   { "name": "hidden beams", "opacity": 255, "blendMode": "normal" },
+   { "name": "shock", "opacity": 255, "blendMode": "normal" },
+   { "name": "confusion spiral", "opacity": 255, "blendMode": "normal" },
+   { "name": "blinding flash", "opacity": 255, "blendMode": "normal" },
+   { "name": "flash", "opacity": 255, "blendMode": "normal" },
+   { "name": "time slow", "opacity": 255, "blendMode": "normal" },
+   { "name": "time corruption", "opacity": 255, "blendMode": "normal" },
+   { "name": "Silencing Wave", "opacity": 255, "blendMode": "normal" },
+   { "name": "Weakening Mist", "opacity": 255, "blendMode": "normal" },
+   { "name": "grass fragment", "opacity": 255, "blendMode": "normal" },
+   { "name": "fragment", "opacity": 255, "blendMode": "normal" },
+   { "name": "toxic spikes", "opacity": 255, "blendMode": "normal" },
+   { "name": "Hallucination Aura", "opacity": 255, "blendMode": "normal" },
+   { "name": "Corrosive Touch", "opacity": 255, "blendMode": "normal" },
+   { "name": "viral cloud", "opacity": 255, "blendMode": "normal" },
+   { "name": "computer virus", "opacity": 255, "blendMode": "normal" },
+   { "name": "mystic binding", "opacity": 255, "blendMode": "normal" },
+   { "name": "Mystic Chains", "opacity": 255, "blendMode": "normal" },
+   { "name": "healing light", "opacity": 255, "blendMode": "normal" },
+   { "name": "inner heal", "opacity": 255, "blendMode": "normal" },
+   { "name": "blending", "opacity": 255, "blendMode": "normal" },
+   { "name": "Arcane Symbol", "opacity": 255, "blendMode": "normal" },
+   { "name": "Energizing Aura", "opacity": 255, "blendMode": "normal" },
+   { "name": "golden burst", "opacity": 255, "blendMode": "normal" },
+   { "name": "ward", "opacity": 255, "blendMode": "normal" },
+   { "name": "Healing Waters", "opacity": 255, "blendMode": "normal" },
+   { "name": "fairy river", "opacity": 255, "blendMode": "normal" },
+   { "name": "tranquil river", "opacity": 255, "blendMode": "normal" },
+   { "name": "strengthen", "opacity": 255, "blendMode": "normal" },
+   { "name": "Restorative Breeze", "opacity": 255, "blendMode": "normal" },
+   { "name": "peaceful", "opacity": 255, "blendMode": "normal" },
+   { "name": "Healing Bloom", "opacity": 255, "blendMode": "normal" },
+   { "name": "peaceful bloom", "opacity": 255, "blendMode": "normal" },
+   { "name": "fiery fireworks", "opacity": 255, "blendMode": "normal" },
+   { "name": "splash", "opacity": 255, "blendMode": "normal" },
+   { "name": "fireworks", "opacity": 255, "blendMode": "normal" },
+   { "name": "Horticulture", "opacity": 255, "blendMode": "normal" },
+   { "name": "Ethereal Garden", "opacity": 255, "blendMode": "normal" },
+   { "name": "Celestial Harmony", "opacity": 255, "blendMode": "normal" },
+   { "name": "bash", "opacity": 255, "blendMode": "normal" },
+   { "name": "slash", "opacity": 255, "blendMode": "normal" },
+   { "name": "strike", "opacity": 255, "blendMode": "normal" },
+   { "name": "pierce", "opacity": 255, "blendMode": "normal" },
+   { "name": "smash", "opacity": 255, "blendMode": "normal" },
+   { "name": "crush", "opacity": 255, "blendMode": "normal" },
+   { "name": "punch", "opacity": 255, "blendMode": "normal" },
+   { "name": "kick", "opacity": 255, "blendMode": "normal" },
+   { "name": "stab", "opacity": 255, "blendMode": "normal" },
+   { "name": "thrust", "opacity": 255, "blendMode": "normal" }
+  ],
+  "slices": [
+  ]
+ }
+}

@@ -864,6 +864,8 @@ class BoosterPackScene(Scene):
 
         with camera_shift(0, min(self.help_box_energy, 1) * 3):
             self.help_box.draw(min(self.help_box_energy, 1))
+        for anim in self.anims:
+            anim.draw()
         Anim.draw()
         self.framing.draw()
         self.draw_mouse_cursor(pyxel.mouse_x, pyxel.mouse_y)

@@ -18,11 +18,11 @@ from genio.battle import _generate_enemy_profile
 from genio.bezier import QuadBezier
 from genio.components import (
     CanAddAnim,
+    GoldRenderer,
     HasPos,
-    arcade_text,
-    retro_text,
 )
 from genio.gamestate import StageDescription, game_state
+from genio.gears.fontpack import fonts
 from genio.gears.map_pin import MapPin
 from genio.gears.signpost import SignPost
 from genio.gears.weather import WeatherEffect, WeatherType
@@ -150,8 +150,8 @@ class StageInfoBox:
         with dithering(0.5):
             draw_rounded_rectangle(x, y, w, 140, 4, 5)
         c1 = 7
-        arcade_text(x, y + 5, d.name, c1, layout=layout(w=w, ha="center"))
-        retro_text(x, y + 20, d.subtitle, c1, layout=layout(w=w, ha="center"))
+        fonts.willow_branch(x, y + 5, d.name, c1, layout=layout(w=w, ha="center"))
+        fonts.capital_hill(x, y + 20, d.subtitle, c1, layout=layout(w=w, ha="center"))
 
         self.draw_danger_level(w, x, y)
 
@@ -383,6 +383,7 @@ class StageSelectScene(Scene):
         super().__init__()
         self.executor = ThreadPoolExecutor(2)
         self.camera = cam = Camera()
+        self.gold_renderer = GoldRenderer(game_state, self, WINDOW_WIDTH // 2 + 2, 10)
 
         stage_descriptions = [
             StageDescription.default(),
@@ -562,19 +563,17 @@ class StageSelectScene(Scene):
         pyxel.cls(0)
         with self.camera.focus():
             draw_lush_background()
-
             for marker in self.map_markers:
                 marker.draw()
-
+            for anim in self.anims:
+                anim.draw_myself()
             Anim.draw()
             for bezier in self.beziers:
                 bezier.draw()
             self.map_pin.draw()
         self.info_box.draw()
-
-        Anim.draw()
         pyxel.clip()
-
+        self.draw_hud()
         for sign_post in self.sign_posts:
             sign_post.draw()
         self.draw_mouse_cursor(pyxel.mouse_x, pyxel.mouse_y)
@@ -591,6 +590,26 @@ class StageSelectScene(Scene):
             WINDOW_HEIGHT - 50,
             "W1: " + game_state.world.name,
             7,
+        )
+
+    def draw_hud(self):
+        self.gold_renderer.draw()
+        char_img = load_image("char", "char_celine.png")
+        with dithering(0.5):
+            pyxel.blt(WINDOW_WIDTH // 2 - 64, 10, char_img, 0, 22, 64, 16, 254)
+        fonts.capital_hill(
+            WINDOW_WIDTH // 2 - 64 + 1,
+            12,
+            "Celine",
+            0,
+            layout=layout(w=64, h=17, ha="left", va="bottom"),
+        )
+        fonts.capital_hill(
+            WINDOW_WIDTH // 2 - 64,
+            12,
+            "Celine",
+            7,
+            layout=layout(w=64, h=17, ha="left", va="bottom"),
         )
 
 

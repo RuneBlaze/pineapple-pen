@@ -7,9 +7,10 @@ from pyxelxl.font import _image_as_ndarray
 
 from genio.base import asset_path, load_image
 from genio.card import Card
+from genio.components import retro_font
 from genio.constants import CARD_HEIGHT, CARD_WIDTH
 from genio.gears.spritesheet import Spritesheet
-from genio.scene import Scene
+from genio.scene import Scene, module_scene
 
 card_text = Font(asset_path("Capital_Hill.ttf")).specialize(font_size=8)
 
@@ -64,11 +65,50 @@ def printable_tokens(word: str) -> list[str] | None:
 class CardPrinter:
     def __init__(self) -> None:
         self.spritesheet = Spritesheet(
-            asset_path("preprocess.json"),
+            [asset_path("preprocess.json"), asset_path("card_art.json")],
             build_search_index=True,
         )
 
     def print_card(self, card: Card) -> pyxel.Image:
+        card_name = card.name
+        match card_name:
+            case "3 of Spades":
+                return load_image("cards", "three-of-spades.png")
+            case "6 of Hearts":
+                return load_image("cards", "six-of-hearts.png")
+            case "4 of Diamonds":
+                return load_image("cards", "four-of-diamonds.png")
+            case "4 of Spades":
+                return load_image("cards", "four-of-spades.png")
+            case "The Fool":
+                image = copy_image(load_image("cards", "the-fool.png"))
+                return image
+            case "The Emperor":
+                image = copy_image(load_image("cards", "the-emperor.png"))
+                return image
+            case "Block":
+                image = copy_image(load_image("cards", "block.png"))
+                return image
+            case "Slash":
+                image = copy_image(load_image("cards", "slash.png"))
+                return image
+            case "left":
+                image = copy_image(load_image("cards", "left.png"))
+                return image
+            case "right":
+                image = copy_image(load_image("cards", "right.png"))
+                return image
+            case "Smash":
+                image = copy_image(load_image("cards", "smash.png"))
+                return image
+            case _:
+                return self._print_card(card)
+
+    def _print_card(self, card: Card) -> pyxel.Image:
+        if card.is_flashcard_like():
+            image = copy_image(load_image("card_flash.png"))
+            self.add_flashcard_text_to_card(card.name, image)
+            return image
         image = copy_image(empty_card())
         background = self.spritesheet.search_image(card.name)
         return self.render_card_image(card, image, background)
@@ -83,14 +123,12 @@ class CardPrinter:
         image.pset(CARD_WIDTH - 3, 2, 7)
         image.pset(2, CARD_HEIGHT - 3, 7)
         image.pset(CARD_WIDTH - 3, CARD_HEIGHT - 3, 7)
-        skip = False
         single_word = card.name
         printables = printable_tokens(single_word)
         if printables:
             for rot180_i, single_word in enumerate(printables):
                 rot180 = bool(rot180_i)
                 self.print_text(image, single_word, rot180)
-        # self.print_text(image, single_word, rot180)
         return image
 
     def print_text(self, image: pyxel.Image, single_word: str, rot180: bool):
@@ -115,6 +153,32 @@ class CardPrinter:
                 if compression >= 2:
                     bx += 3 * (i % 2)
                 self.apply_serif_text(image, i, ch, y_offset, bx, compression, rot180)
+
+    def add_flashcard_text_to_card(self, text: str, image: pyxel.Image) -> None:
+        rasterized = retro_font.rasterize(
+            text,
+            5,
+            254,
+            fg_col=0,
+            bg_col=7,
+            layout=layout(
+                w=CARD_HEIGHT,
+                ha="center",
+                h=CARD_WIDTH,
+                va="center",
+            ),
+        )
+        rasterized = _image_as_ndarray(rasterized)
+        pad_width = CARD_HEIGHT - rasterized.shape[1]
+        rasterized = np.pad(rasterized, ((0, pad_width), (0, 0)), constant_values=7)
+        rasterized = np.rot90(rasterized)
+        rasterized = np.pad(rasterized, ((pad_width, 0), (0, 0)), constant_values=7)
+        # blt manually
+        for y, row in enumerate(rasterized):
+            for x, col in enumerate(row):
+                if col != 0:
+                    continue
+                image.pset(x, y, col)
 
     def apply_serif_text(
         self,
@@ -160,10 +224,11 @@ class CardPrinter:
         )
 
 
+@module_scene
 class CardPrinterTestScene(Scene):
     def __init__(self) -> None:
         super().__init__()
-        self.card = Card(name="rule breaker")
+        self.card = Card(name="Inland Empire")
         self.card_image = CardPrinter().print_card(self.card)
         self.another_image = load_image("card_smash.png")
 
@@ -180,7 +245,3 @@ class CardPrinterTestScene(Scene):
 
     def on_enter(self) -> None:
         pass
-
-
-def gen_scene() -> Scene:
-    return CardPrinterTestScene()

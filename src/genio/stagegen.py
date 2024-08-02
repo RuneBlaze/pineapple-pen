@@ -1,6 +1,7 @@
 from dataclasses import dataclass
-from typing import Annotated
+from typing import Annotated, Protocol
 
+from genio.card import Card
 from genio.core.base import promptly
 
 
@@ -60,8 +61,13 @@ def generate_bonus_items(base_money: float, battle_logs: list[str]) -> BonusItem
     """
 
 
+class CardsLike(Protocol):
+    def to_cards(self) -> list[Card]:
+        ...
+
+
 @dataclass
-class GenerateSATFlashCardResult:
+class GenerateSATFlashCardResult(CardsLike):
     """A set of precisely 5 flashcards for SAT preparation."""
 
     flashcards: Annotated[
@@ -73,12 +79,58 @@ class GenerateSATFlashCardResult:
         ),
     ]
 
+    def to_cards(self) -> list[Card]:
+        return [Card(card["word"], card["definition"]) for card in self.flashcards]
+
+
+@dataclass
+class GenerateSTSCardResult(CardsLike):
+    """A set of cards inspired by slay the spire."""
+
+    cards: Annotated[
+        list[dict],
+        (
+            "A list of cards, objects containing two keys: 'name' and 'description', "
+            "inspired by Slay the Spire. Each card should have a unique name and a "
+            "concise description of its effects or abilities without including costs.",
+        ),
+    ]
+
+    def to_cards(self) -> list[Card]:
+        return [Card(card["name"], card["description"]) for card in self.cards]
+
+
+@promptly()
+def generate_sts_cards(avoid: list[str] | None = None) -> GenerateSTSCardResult:
+    """\
+    Act as an excellent game designer. Create a set of 5 cards inspired by the game Slay the Spire.
+    Each card should have a unique name and a concise description of its effects or abilities without including costs.
+
+    {-% if avoid %}
+    However, some words have already been generated and should be avoided. Their precise titles are below.
+    {% for word in avoid %}
+    - {{ word }}
+    {% endfor %}
+    {-% endif %}
+
+    {{ formatting_instructions }}
+    """
+
 
 @promptly
-def generate_sat_flashcards() -> GenerateSATFlashCardResult:
+def generate_sat_flashcards(
+    avoid: list[str] | None = None,
+) -> GenerateSATFlashCardResult:
     """\
     Act as an excellent tutor and a test prep professional by designing
     a set of 5 flashcards for SAT preparation, as if pulled from a dictionary.
+
+    {-% if avoid %}
+    However, some words have already been generated and should be avoided. Their precise titles are below.
+    {% for word in avoid %}
+    - {{ word }}
+    {% endfor %}
+    {-% endif %}
 
     Write words in their entire form, and provide their definitions.
     Choose words that are no longer than 9 characters.

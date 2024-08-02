@@ -5,6 +5,7 @@ import json
 import random
 import re
 from abc import ABC
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, fields, is_dataclass
 from datetime import time
 from functools import cache, partial, wraps
@@ -93,7 +94,6 @@ class TemplateRegistryLoader(BaseLoader):
             target_path := (PROJECT_ROOT / Path("assets/includes") / template)
         ).exists():
             return target_path.read_text(), str(target_path), lambda: True
-        # predef = slurp_toml("assets/strings.toml")
         predef = slurp_toml(asset_path("strings.toml"))
         if can_access(predef, template):
             return access(predef, template), template, lambda: True
@@ -599,7 +599,25 @@ def load_writer_archetypes() -> list[WriterArchetype]:
     return [WriterArchetype(**archetype) for archetype in parsed_data["writer"]]
 
 
-def slurp_toml(path):
+def fmap_leaves(then: Callable[[Any], Any], data: Any) -> Any:
+    if isinstance(data, dict):
+        return {k: fmap_leaves(then, v) for k, v in data.items()}
+    if isinstance(data, list):
+        return [fmap_leaves(then, v) for v in data]
+    if isinstance(data, tuple):
+        return tuple(fmap_leaves(then, v) for v in data)
+    return then(data)
+
+
+def render_jinjaish_string(template: str | Any) -> Any:
+    if not isinstance(template, str):
+        return template
+    if template.startswith("{%"):
+        return render_text(template, {})
+    return template
+
+
+def slurp_toml(path: str) -> dict:
     with open(path) as f:
         return tomlkit_to_popo(tomllib.load(f))
 

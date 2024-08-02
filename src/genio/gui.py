@@ -9,7 +9,7 @@ from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Literal, Protocol
+from typing import Any, Protocol
 
 import numpy as np
 import pytweening
@@ -55,6 +55,7 @@ from genio.constants import (
 from genio.effect import SinglePointEffect, SinglePointEffectType, StatusDefinition
 from genio.follower_tooltip import FollowerTooltip
 from genio.gamestate import game_state
+from genio.gears.card_printer import CardPrinter
 from genio.gears.config_menu import ConfigMenuScene
 from genio.gears.icon_button import IconButton
 from genio.gears.median_filter import ImagePiece, sprite_to_pieces
@@ -70,7 +71,6 @@ from genio.layout import (
 )
 from genio.ps import Anim
 from genio.scene import Scene
-from genio.semantic_search import SerializedCardArt, search_closest_document
 from genio.tween import Instant, MutableTweening, Mutator, Shake, Tweener
 from genio.utils.weaklist import WeakList
 
@@ -104,114 +104,6 @@ def ndarray_to_image(img: np.ndarray) -> pyxel.Image:
     data_ptr = image.data_ptr()
     np.frombuffer(data_ptr, dtype=np.uint8)[:] = img.flatten()
     return image
-
-
-def copy_image(image: pyxel.Image) -> pyxel.Image:
-    img = pyxel.Image(image.width, image.height)
-    img.blt(0, 0, image, 0, 0, image.width, image.height)
-    return img
-
-
-class CardArtSet:
-    unfaded: np.ndarray
-    faded: np.ndarray
-
-    def __init__(self, base_image: pyxel.Image, document: SerializedCardArt) -> None:
-        self.unfaded = document.unfaded
-        self.faded = document.unfaded
-        self.base_image = base_image
-
-    def imprint(self, card_name: str, rarity: Literal[0, 1, 2]) -> pyxel.Image:
-        match card_name:
-            case "3 of Spades":
-                return load_image("cards", "three-of-spades.png")
-            case "6 of Hearts":
-                return load_image("cards", "six-of-hearts.png")
-            case "4 of Diamonds":
-                return load_image("cards", "four-of-diamonds.png")
-            case "4 of Spades":
-                return load_image("cards", "four-of-spades.png")
-            case "The Fool":
-                image = copy_image(load_image("cards", "the-fool.png"))
-                self.add_retro_text_to_card("O", image)
-                return image
-            case "The Emperor":
-                image = copy_image(load_image("cards", "the-emperor.png"))
-                self.add_retro_text_to_card("IV", image)
-                return image
-            case "Block":
-                image = copy_image(load_image("cards", "block.png"))
-                return image
-            case "Slash":
-                image = copy_image(load_image("cards", "slash.png"))
-                return image
-            case "left":
-                image = copy_image(load_image("cards", "left.png"))
-                return image
-            case "right":
-                image = copy_image(load_image("cards", "right.png"))
-                return image
-            case "Smash":
-                image = copy_image(load_image("cards", "smash.png"))
-                return image
-        image = copy_image(load_image("card_flash.png"))
-        self.add_flashcard_text_to_card(card_name, image)
-        return image
-
-    def add_retro_text_to_card(self, text: str, image: pyxel.Image) -> None:
-        retro_text(
-            0,
-            2,
-            text,
-            col=7,
-            layout=layout(w=CARD_WIDTH, ha="center", break_words=True),
-            target=image,
-        )
-
-    def add_flashcard_text_to_card(self, text: str, image: pyxel.Image) -> None:
-        rasterized = retro_font.rasterize(
-            text,
-            5,
-            254,
-            fg_col=0,
-            bg_col=7,
-            layout=layout(
-                w=CARD_HEIGHT,
-                ha="center",
-                h=CARD_WIDTH,
-                va="center",
-            ),
-        )
-        rasterized = _image_as_ndarray(rasterized)
-        pad_width = CARD_HEIGHT - rasterized.shape[1]
-        rasterized = np.pad(rasterized, ((0, pad_width), (0, 0)), constant_values=7)
-        rasterized = np.rot90(rasterized)
-        rasterized = np.pad(rasterized, ((pad_width, 0), (0, 0)), constant_values=7)
-        # blt manually
-        for y, row in enumerate(rasterized):
-            for x, col in enumerate(row):
-                if col != 0:
-                    continue
-                image.pset(x, y, col)
-
-    def _print_card_name(self, image: pyxel.Image, card_name: str, rarity: int) -> None:
-        shadowed_retro_text = functools.partial(
-            retro_text,
-            s=card_name,
-            layout=layout(w=33, ha="center", break_words=True),
-            target=image,
-        )
-        if rarity >= 1:
-            shadowed(shadowed_retro_text, 5, 10 - 2, 7)
-        else:
-            retro_text(
-                5,
-                10 - 2,
-                card_name,
-                0,
-                layout=layout(w=33, ha="center", break_words=True),
-                target=image,
-            )
 
 
 def shadowed(fn, x, y, col):
@@ -258,11 +150,9 @@ class CardSprite:
         self.dragging = False
         self.drag_offset_x = 0
         self.drag_offset_y = 0
-        base_image = pyxel.Image(43, 60)
-        base_image.blt(0, 0, 0, 0, 0, 43, 60, colkey=0)
-        self.card_art = CardArtSet(base_image, search_closest_document(card.name))
-        self.is_rare = rarity = bool(card.description)
-        self.image = self.card_art.imprint(card.name, int(rarity))
+        self.card_printer = app.card_printer
+        self.is_rare = False
+        self.refresh_art()
         self.state = CardState.INITIALIZE
         self.update_delay = 8 * index + 5
         self.tweens = Tweener()
@@ -280,7 +170,7 @@ class CardSprite:
         self.hover_timer = -1
 
     def refresh_art(self):
-        self.image = self.card_art.imprint(self.card.name, int(self.is_rare))
+        self.image = self.card_printer.print_card(self.card)
 
     def transition_to_active(self):
         self.state = CardState.ACTIVE
@@ -1211,6 +1101,7 @@ class MainScene(Scene):
 
     updatables: list[Updatable | Drawable]
     subscenes: list[Scene]
+    card_printer: CardPrinter
 
     def __init__(self):
         self.bundle = game_state.battle_bundle
@@ -1218,6 +1109,7 @@ class MainScene(Scene):
         self.enemy_spritesheet = Spritesheet(
             asset_path("enemies.json"), build_search_index=True
         )
+        self.card_printer = CardPrinter()
         self.card_sprites = []
         self.tmp_card_sprites = []
         self.background_video = Video("background/*.png")

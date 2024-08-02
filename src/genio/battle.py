@@ -42,6 +42,7 @@ from genio.effect import (
     TransformCardEffect,
     parse_effect,
 )
+from genio.gears.card_printer import CardPrinter
 from genio.predef import access_predef, predef
 from genio.subst import Subst
 
@@ -1184,6 +1185,7 @@ def setup_battle_bundle(
 
 class MainSceneLike(CanAddAnim, Protocol):
     bundle: BattleBundle
+    card_printer: CardPrinter
 
     def should_all_cards_disabled(self) -> bool:
         ...
