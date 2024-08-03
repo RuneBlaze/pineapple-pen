@@ -8,6 +8,7 @@ from collections import Counter, deque
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
+from typing import ClassVar
 
 import pyxel
 from pyxelxl.font import _image_as_ndarray
@@ -23,6 +24,8 @@ from genio.eventbus import Event, LLMInboundEv, LLMOutboundEv, event_bus
 from genio.gears.async_visualizer import AsyncVisualizer
 from genio.gears.recorder import Recorder
 from genio.predef import refresh_predef
+from genio.sound_events import SoundEv
+from genio.tween import Instant
 
 logger = get_logger()
 
@@ -91,10 +94,14 @@ class AppState(Enum):
 
 
 class AppWithScenes:
+    instance: ClassVar[AppWithScenes] | None = None
     scenes: deque[Scene]
     screenshot: pyxel.Image | None
 
     def __init__(self, scene: Scene):
+        if AppWithScenes.instance is not None:
+            raise RuntimeError("AppWithScenes is a singleton")
+        AppWithScenes.instance = self
         self.scenes = deque()
         self.add_scene(scene)
         self.state = AppState.RUNNING
@@ -119,9 +126,11 @@ class AppWithScenes:
     def add_anim(self, *args, **kwargs) -> None:
         self.scenes[0].add_anim(*args, **kwargs)
 
+    def emit_sound_event(self, event: SoundEv) -> None:
+        self.events.append(event.value)
+
     def on_event(self, event: Event) -> None:
         logger.info("AppWithScenes.on_event", ev=event)
-        print(event, event == LLMOutboundEv(), event == LLMInboundEv())
         match event:
             case LLMOutboundEv():
                 logger.info("AppWithScenes.on_event; case 0", ev=event)
@@ -232,3 +241,11 @@ def module_scene(cls: type[Scene]) -> type[Scene]:
     setattr(module, "gen_scene", gen_scene)
 
     return cls
+
+
+def emit_sound_event(event: SoundEv) -> None:
+    AppWithScenes.instance.emit_sound_event(event)
+
+
+def EmitSound(sound_ev: SoundEv) -> Instant:
+    return Instant(lambda: emit_sound_event(sound_ev))

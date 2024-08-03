@@ -35,6 +35,7 @@ from genio.components import (
     MouseHasPos,
     Popup,
     camera_shift,
+    capital_hill_text,
     cute_text,
     dithering,
     draw_mixed_rounded_rect,
@@ -70,50 +71,10 @@ from genio.layout import (
     pingpong,
 )
 from genio.ps import Anim
-from genio.scene import Scene
+from genio.scene import EmitSound, Scene, emit_sound_event
+from genio.sound_events import SoundEv
 from genio.tween import Instant, MutableTweening, Mutator, Shake, Tweener
 from genio.utils.weaklist import WeakList
-
-
-def center_crop(img: np.ndarray, size: tuple[int, int]) -> np.ndarray:
-    h, w = img.shape[:2]
-    if h < size[0] or w < size[1]:
-        raise ValueError("Image is smaller than the crop size")
-    x = (w - size[1]) // 2
-    y = (h - size[0]) // 2
-    return img[y : y + size[0], x : x + size[1]]
-
-
-def paste_center(
-    src: np.ndarray, target: np.ndarray, offset: int = 0, ignore: int | None = None
-) -> None:
-    x = (target.shape[1] - src.shape[1]) // 2
-    y = (target.shape[0] - src.shape[0]) // 2
-    if ignore is not None:
-        target[y + offset : y + src.shape[0] + offset, x : x + src.shape[1]] = np.where(
-            src == ignore,
-            target[y + offset : y + src.shape[0] + offset, x : x + src.shape[1]],
-            src,
-        )
-    else:
-        target[y + offset : y + src.shape[0] + offset, x : x + src.shape[1]] = src[:]
-
-
-def ndarray_to_image(img: np.ndarray) -> pyxel.Image:
-    image = pyxel.Image(img.shape[1], img.shape[0])
-    data_ptr = image.data_ptr()
-    np.frombuffer(data_ptr, dtype=np.uint8)[:] = img.flatten()
-    return image
-
-
-def shadowed(fn, x, y, col):
-    for dx, dy in [[1, 0], [-1, 0], [0, 1], [0, -1]]:
-        fn(dx + x, dy + y, col=0)
-    fn(x, y, col=col)
-
-
-def clip_magnitude(x, max_magnitude):
-    return max(-max_magnitude, min(max_magnitude, x))
 
 
 def round_off_rating(number):
@@ -134,7 +95,7 @@ def sin_01(t: float, dilation: float) -> float:
 class CardSprite:
     def __init__(
         self, index: int, card: Card, app: MainSceneLike, selected: bool = False
-    ):
+    ) -> None:
         self.index = index
         self.app = app
         self.change_index(index)
@@ -161,6 +122,7 @@ class CardSprite:
         self.fade_timer = 0
         self.tweens.append(
             itertools.chain(
+                EmitSound(SoundEv.CARD_MOVE),
                 MutableTweening(
                     12, pytweening.easeInOutQuad, self, (self.target_x, self.target_y)
                 ),
@@ -206,6 +168,7 @@ class CardSprite:
         self.tweens.append(
             itertools.chain(
                 range(10 + 4 * my_index),
+                EmitSound(SoundEv.CARD_MOVE),
                 MutableTweening(
                     15, pytweening.easeInOutQuad, self, (target_x, target_y)
                 ),
@@ -219,6 +182,7 @@ class CardSprite:
         self.tweens.append(
             itertools.chain(
                 range(int((10 + i * 5) * baseline)),
+                EmitSound(SoundEv.CARD_MOVE),
                 MutableTweening(
                     15,
                     pytweening.easeInOutQuad,
@@ -522,9 +486,6 @@ def horizontal_gradient(x, y, w, h, c0, c1):
     pyxel.dither(1.0)
 
 
-from genio.components import capital_hill_text
-
-
 class Tooltip:
     """The help box."""
 
@@ -591,18 +552,6 @@ class Tooltip:
         self.counter = min(60, self.counter)
         self.title = title
         self.description = description
-
-
-def button(
-    x: int, y: int, w: int, h: int, text: str, color: int, hover_color: int
-) -> None:
-    if x <= pyxel.mouse_x <= x + w and y <= pyxel.mouse_y <= y + h:
-        pyxel.rect(x, y, w, h, hover_color)
-    else:
-        pyxel.rect(x, y, w, h, color)
-    pyxel.rectb(x, y, w, h, 0)
-    retro_text(x + 2, y + 2, text, 0, layout=layout(w=w, h=h, ha="center", va="center"))
-    retro_text(x, y, text, 7, layout=layout(w=w, h=h, ha="center", va="center"))
 
 
 class FlashState:
@@ -1358,6 +1307,7 @@ class MainScene(Scene):
         self.tweener.append(range(delay), Instant(fn))
 
     def play_selected(self) -> None:
+        emit_sound_event(SoundEv.CONFIRM)
         self.wait_anim_countdown = 30
         selected_card_sprites = [card for card in self.card_sprites if card.selected]
         if not selected_card_sprites:
@@ -1410,11 +1360,13 @@ class MainScene(Scene):
                     case SinglePointEffectType.DAMAGE:
                         sprite.add_popup(str(int(effect.damage)), 7)
                         sprite.add_animation("anims.burst")
+                        emit_sound_event(SoundEv.HIT)
                     case SinglePointEffectType.HEAL:
                         sprite.add_popup(str(int(effect.heal)), 11)
                         sprite.add_animation("anims.heal")
                     case SinglePointEffectType.SHIELD_GAIN:
                         sprite.add_animation("anims.shield_gain")
+                        emit_sound_event(SoundEv.DEFEND)
                     case SinglePointEffectType.SHIELD_LOSS:
                         sprite.add_popup(f"shield {effect.delta_shield}", 7)
                         sprite.add_animation("anims.debuff")

@@ -51,8 +51,14 @@ chara = "mechanical golem"
 
 210 = "Poisoned"
 224 = "Slow"
+225 = "Confused"
+230 = "Cursed"
 217 = "Vulnerable"
 245 = "Brandish"
+246 = "Defensive"
+214 = "Burnt"
+215 = "Frozen"
+219 = "Taunt"
 
 [anims]
 

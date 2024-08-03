@@ -2,9 +2,12 @@ import math
 from collections import Counter, deque
 from concurrent.futures import Future, ThreadPoolExecutor
 from enum import Enum
+from typing import Literal
 
+import numpy as np
 import pyxel
 from pyxelxl import blt_rot
+from pyxelxl.font import _image_as_ndarray
 
 from genio.base import Video, load_image
 from genio.card import Card
@@ -19,6 +22,7 @@ from genio.components import (
 from genio.constants import CARD_HEIGHT, CARD_WIDTH
 from genio.gears.button import COLOR_SCHEME_PRIMARY, ButtonElement, vec2
 from genio.gears.card_printer import CardPrinter
+from genio.gears.fontpack import fonts
 from genio.ps import Anim
 from genio.scene import Scene, module_scene
 from genio.stagegen import (
@@ -35,7 +39,9 @@ class CardState(Enum):
 
 
 class CollectionCardSprite:
-    def __init__(self, x: int, y: int, card: Card, printer: CardPrinter) -> None:
+    def __init__(
+        self, x: int, y: int, card: Card, printer: CardPrinter, appear_delay: int = 0
+    ) -> None:
         self.x = x
         self.y = y
         self.card = card
@@ -46,8 +52,12 @@ class CollectionCardSprite:
         self.state_timer = Counter()
 
         self.tweener = Tweener()
+        self.appear_delay = appear_delay
 
     def update(self) -> None:
+        if self.appear_delay:
+            self.appear_delay -= 1
+            return
         self.tweener.update()
         self.timer += 1
         self.state_timer[self.state] += 1
@@ -71,6 +81,8 @@ class CollectionCardSprite:
                 )
 
     def draw(self) -> None:
+        if self.appear_delay:
+            return
         match self.state:
             case CardState.APPEARING:
                 blt_burning(
@@ -103,7 +115,7 @@ PADDING = 10
 
 
 def grid_layout(ix: int) -> tuple[int, int]:
-    return ix % 4 * (CARD_WIDTH + PADDING), ix // 4 * (CARD_HEIGHT + PADDING)
+    return ix % 5 * (CARD_WIDTH + PADDING), ix // 5 * (CARD_HEIGHT + PADDING)
 
 
 class GenerateCardsType(Enum):
@@ -126,6 +138,8 @@ class SceneCollection(Scene):
                 0, 0, Card("Rivers", "This is a test card"), self.printer
             )
         )
+        self.timer = 0
+        self.current_page = 0
         self.generate_buttons = [
             ButtonElement(
                 "Generate",
@@ -176,6 +190,7 @@ class SceneCollection(Scene):
 
         self.anims = [anim for anim in self.anims if not anim.dead]
         self.check_mailbox()
+        self.timer += 1
 
     def check_mailbox(self) -> None:
         if self.mailbox and self.mailbox[0].done():
@@ -183,7 +198,9 @@ class SceneCollection(Scene):
             next_ix = len(self.cards)
             for i, card in enumerate(result.to_cards()):
                 x, y = grid_layout(i + next_ix)
-                self.cards.append(CollectionCardSprite(x, y, card, self.printer))
+                self.cards.append(
+                    CollectionCardSprite(x, y, card, self.printer, len(self.cards) * 10)
+                )
 
     def generate_new_cards(self, typ: GenerateCardsType) -> None:
         match typ:
@@ -210,10 +227,30 @@ class SceneCollection(Scene):
 
         for anim in self.anims:
             anim.draw_myself()
-
+        self.draw_page_turner(100, 120)
         Anim.draw()
-
         self.draw_crosshair(pyxel.mouse_x, pyxel.mouse_y)
+
+    def draw_page_turner(self, x: int, y: int) -> None:
+        self.draw_page_number(x, y)
+        mag = math.sin(self.timer / 15) * 1
+        self.draw_clickable_arrow(x + 28 - mag, y + 4)
+        self.draw_clickable_arrow(x - 13 + mag, 124, direction="left")
+
+    def draw_page_number(self, x: int, y: int) -> None:
+        fonts.willow_branch(x, y, "1/", 7)
+        inverted_8 = pyxel.Image(15, 15)
+        fonts.willow_branch(0, 0, "8", 7, target=inverted_8)
+        _image_as_ndarray(inverted_8)[:] = np.rot90(_image_as_ndarray(inverted_8), 1)
+        pyxel.blt(x + 12, y - 3, inverted_8, 0, 0, 100, 100, 0)
+
+    def draw_clickable_arrow(
+        self, x: int, y: int, direction: Literal["left", "right"] = "right"
+    ) -> None:
+        if direction == "right":
+            pyxel.tri(x, y, x + 8, y + 4, x, y + 8, 7)
+        else:
+            pyxel.tri(x + 8, y, x, y + 4, x + 8, y + 8, 7)
 
     def words_in_collection(self) -> list[str]:
         return [card.card.name for card in self.cards]

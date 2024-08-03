@@ -94,20 +94,16 @@ class Spritesheet(Mapping[str, pyxel.Image]):
     def build_search_index(self) -> None:
         self._keys = list(self.images.keys())
         gen = SentenceEmbeddingGenerator.default()
-        embeddings = [gen.sentence_embedding(k) for k in self._keys]
-        shapes = [e.shape for e in embeddings]
-        self.embeddings = np.stack(embeddings)
+        self.embeddings = np.stack([gen.sentence_embedding(k) for k in self._keys])
 
     def search(self, query: str) -> str:
         gen = SentenceEmbeddingGenerator.default()
         query_embedding = gen.sentence_embedding(query)
         scores = np.linalg.norm(self.embeddings - query_embedding, axis=1)
-        print(list(zip(self._keys, scores)))
         best_ix = np.argmin(scores)
         return self._keys[best_ix]
 
     def search_image(self, query: str) -> pyxel.Image:
-        print(self.search(query))
         return self[self.search(query)]
 
     def __getitem__(self, key):

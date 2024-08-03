@@ -43,6 +43,7 @@ from genio.effect import (
     parse_effect,
 )
 from genio.gears.card_printer import CardPrinter
+from genio.gears.sentence_embed import Corpus
 from genio.predef import access_predef, predef
 from genio.subst import Subst
 
@@ -615,6 +616,18 @@ def flat_map(fn, iterable):
     return chain.from_iterable(map(fn, iterable))
 
 
+@cache
+def iconset() -> Corpus[int]:
+    strings = []
+    ids = []
+    for k, v in predef["icons"].items():
+        strings.append(v)
+        ids.append(int(k))
+    return Corpus(strings, ids)
+
+
+iconset()
+
 @dataclass
 class StatusEffect:
     defn: StatusDefinition
@@ -648,10 +661,7 @@ class StatusEffect:
 
     @cached_property
     def icon_id(self) -> int:
-        for k, v in predef["icons"].items():
-            if v.lower() == self.name.lower():
-                return int(k)
-        raise ValueError(f"No icon found for status '{self.name}'")
+        return iconset().search(self.defn.name)[1]
 
     def is_expired(self) -> bool:
         return self.counter <= 0
@@ -659,9 +669,7 @@ class StatusEffect:
     def _describe_myself(self) -> None:
         subst = self.defn.subst.show()
         name = self.defn.name
-        print("XXXX")
         interpreted = _interpret_status_effect(name, subst)
-        print("YYYY")
         self.description = interpreted.interpretation
 
     def describe_myself(self) -> str:

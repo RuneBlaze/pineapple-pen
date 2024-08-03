@@ -34,7 +34,7 @@ class FrameWriter:
 
     def record_frame(self) -> None:
         arr = _image_as_ndarray(pyxel.screen).copy()
-        self.buffer.append(FrameData(buffer=arr, events=list(self.parent.events)))
+        self.buffer.append(FrameData(buffer=arr, events=list(set(self.parent.events))))
 
     def flush(self, tmp_buffer: Sequence[np.ndarray], path: Path) -> None:
         path.mkdir(parents=True, exist_ok=True)
