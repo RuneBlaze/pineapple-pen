@@ -628,6 +628,7 @@ def iconset() -> Corpus[int]:
 
 iconset()
 
+
 @dataclass
 class StatusEffect:
     defn: StatusDefinition
