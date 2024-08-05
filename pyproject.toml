@@ -42,6 +42,9 @@ cramjam = "^2.8.3"
 einops = "^0.8.0"
 webp = "^0.4.0"
 hnswlib = "^0.8.0"
+soundfile = "^0.12.1"
+librosa = "^0.10.2.post1"
+simpleaudio = "^1.0.4"
 
 
 [tool.poetry.group.dev.dependencies]

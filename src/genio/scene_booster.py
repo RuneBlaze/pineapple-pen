@@ -42,9 +42,9 @@ from genio.gears.button import (
     ColorScheme,
     vec2,
 )
+from genio.gears.card_printer import CardPrinter
 from genio.gears.weather import WeatherEffect, WeatherType
 from genio.gui import (
-    CardArtSet,
     ResolvingFraming,
     camera_shift,
     card_back,
@@ -54,7 +54,6 @@ from genio.layout import layout_center_for_n
 from genio.ps import Anim
 from genio.scene import Scene
 from genio.scene_stages import draw_lush_background
-from genio.semantic_search import search_closest_document
 from genio.stagegen import (
     IndividualBonusItem,
     generate_bonus_items,
@@ -118,14 +117,15 @@ class BoosterCardSpriteState(Enum):
 class BoosterCardSprite:
     """A card appearing in a booster pack."""
 
-    def __init__(self, x: int, y: int, ix: int, card: Card) -> None:
+    def __init__(
+        self, x: int, y: int, ix: int, card: Card, card_printer: CardPrinter
+    ) -> None:
         base_image = pyxel.Image(43, 60)
         base_image.blt(0, 0, 0, 0, 0, 43, 60, colkey=0)
-        self.card_art = CardArtSet(base_image, search_closest_document(card.name))
 
         self.x = x
         self.y = y
-        self.image = self.card_art.imprint(card.name, 0)
+        self.image = card_printer.print_card(card)
         self.ix = ix
 
         self.wave_mag = 1.0
@@ -585,6 +585,8 @@ class BoosterPackScene(Scene):
     def __init__(self) -> None:
         super().__init__()
 
+        self.card_printer = CardPrinter()
+
         self.framing = ResolvingFraming(self)
         self.money_accumulated = 0.0
 
@@ -865,7 +867,7 @@ class BoosterPackScene(Scene):
         with camera_shift(0, min(self.help_box_energy, 1) * 3):
             self.help_box.draw(min(self.help_box_energy, 1))
         for anim in self.anims:
-            anim.draw()
+            anim.draw_myself()
         Anim.draw()
         self.framing.draw()
         self.draw_mouse_cursor(pyxel.mouse_x, pyxel.mouse_y)
@@ -933,7 +935,7 @@ class BoosterPackScene(Scene):
         for i, card in enumerate(cards):
             target_x = layout_center_for_n(len(cards), 400)[i] - CARD_WIDTH // 2
             target_y = WINDOW_HEIGHT // 2 - CARD_HEIGHT // 2
-            spr = BoosterCardSprite(target_x, target_y, i, card)
+            spr = BoosterCardSprite(target_x, target_y, i, card, self.card_printer)
             self.card_sprites.append(spr)
 
     def make_cards_disappear(self) -> None:

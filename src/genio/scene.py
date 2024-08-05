@@ -11,6 +11,7 @@ from enum import Enum
 from typing import ClassVar
 
 import pyxel
+import simpleaudio as sa
 from pyxelxl.font import _image_as_ndarray
 from structlog import get_logger
 
@@ -23,7 +24,7 @@ from genio.components import (
 from genio.eventbus import Event, LLMInboundEv, LLMOutboundEv, event_bus
 from genio.gears.async_visualizer import AsyncVisualizer
 from genio.gears.recorder import Recorder
-from genio.predef import refresh_predef
+from genio.predef import access_predef, refresh_predef
 from genio.sound_events import SoundEv
 from genio.tween import Instant
 
@@ -97,6 +98,7 @@ class AppWithScenes:
     instance: ClassVar[AppWithScenes] | None = None
     scenes: deque[Scene]
     screenshot: pyxel.Image | None
+    events: list[SoundEv]
 
     def __init__(self, scene: Scene):
         if AppWithScenes.instance is not None:
@@ -119,9 +121,15 @@ class AppWithScenes:
 
         self.recorder = Recorder(self)
         self.events = []
+        self.sound_effects = []
+        self.load_sound_effects()
 
         pyxel.load(asset_path("sprites.pyxres"))
         pyxel.run(self.update, self.draw)
+
+    def load_sound_effects(self) -> None:
+        for p in access_predef("sounds.predefined"):
+            self.sound_effects.append(sa.WaveObject.from_wave_file(asset_path(p)))
 
     def add_anim(self, *args, **kwargs) -> None:
         self.scenes[0].add_anim(*args, **kwargs)
@@ -199,7 +207,12 @@ class AppWithScenes:
                     self.screenshot = None
         if pyxel.btnp(pyxel.KEY_S):
             self.recorder.toggle_recording()
+        self.play_all_audios()
         self.events.clear()
+
+    def play_all_audios(self) -> None:
+        for ev in self.events:
+            self.sound_effects[ev].play()
 
     def draw(self):
         self.scenes[0].draw()

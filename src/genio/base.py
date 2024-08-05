@@ -20,7 +20,7 @@ else:
 WINDOW_WIDTH, WINDOW_HEIGHT = 427, 240
 
 
-def asset_path(*args: str):
+def asset_path(*args: str) -> str:
     if os.path.isabs(args[0]):
         return args[0]
     return os.path.join(WORKING_DIR, "assets", *args)

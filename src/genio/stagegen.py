@@ -106,12 +106,12 @@ def generate_sts_cards(avoid: list[str] | None = None) -> GenerateSTSCardResult:
     Act as an excellent game designer. Create a set of 5 cards inspired by the game Slay the Spire.
     Each card should have a unique name and a concise description of its effects or abilities without including costs.
 
-    {-% if avoid %}
+    {% if avoid %}
     However, some words have already been generated and should be avoided. Their precise titles are below.
     {% for word in avoid %}
     - {{ word }}
     {% endfor %}
-    {-% endif %}
+    {% endif %}
 
     {{ formatting_instructions }}
     """
@@ -125,12 +125,12 @@ def generate_sat_flashcards(
     Act as an excellent tutor and a test prep professional by designing
     a set of 5 flashcards for SAT preparation, as if pulled from a dictionary.
 
-    {-% if avoid %}
+    {% if avoid %}
     However, some words have already been generated and should be avoided. Their precise titles are below.
     {% for word in avoid %}
     - {{ word }}
     {% endfor %}
-    {-% endif %}
+    {% endif %}
 
     Write words in their entire form, and provide their definitions.
     Choose words that are no longer than 9 characters.

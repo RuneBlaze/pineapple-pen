@@ -518,3 +518,11 @@ our_land = "{% include 'poems/our-land.md' %}"
 the_snow_storm = "{% include 'poems/the-snow-storm.md' %}"
 the_waste_land = "{% include 'poems/the-waste-land.txt' %}"
 wild_geese = "{% include 'poems/wild-geese.md' %}"
+
+
+[sounds]
+
+predefined = [
+    "/Users/lbq/Downloads/Steampunk Vol 2/Mechanisms/Steam UI Click.wav",
+    "/Users/lbq/Documents/sound_effect_4.wav"
+]
