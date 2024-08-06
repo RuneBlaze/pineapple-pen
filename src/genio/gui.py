@@ -489,7 +489,7 @@ def horizontal_gradient(x, y, w, h, c0, c1):
 class Tooltip:
     """The help box."""
 
-    def __init__(self, title: str, description: str) -> None:
+    def __init__(self, title: str = "", description: str = "") -> None:
         self.title = title
         self.description = description
         self.counter = 60
@@ -497,7 +497,6 @@ class Tooltip:
     def draw(self) -> None:
         if (not self.title and not self.description) or self.counter <= 0:
             return
-        # Draw on mouse, and fade with counter if counter < 50
         mx, my = pyxel.mouse_x, pyxel.mouse_y
         amx, amy = mx, my
         t = 0.05
@@ -510,6 +509,8 @@ class Tooltip:
             rect_width *= 2
             rect_height *= 2 if not game_state.should_use_large_font() else 2.5
             rect_height = int(rect_height)
+        if len(self.description) > 40:
+            rect_height += 15
         draw_mixed_rounded_rect(dither_amount, amx, amy, w=rect_width, h=rect_height)
         with dithering(dither_amount):
             cute_text(

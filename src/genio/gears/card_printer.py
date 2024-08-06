@@ -47,7 +47,10 @@ def paste_center(
 
 @functools.cache
 def empty_card() -> pyxel.Image:
-    return pyxel.Image.from_image(asset_path("card.png"))
+    image = pyxel.Image.from_image(asset_path("card.png"))
+    image_arr = _image_as_ndarray(image)
+    image_arr[image_arr == 0] = 254
+    return image
 
 
 def printable_tokens(word: str) -> list[str] | None:

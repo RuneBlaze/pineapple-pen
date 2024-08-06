@@ -44,6 +44,7 @@ class Corpus(Generic[T]):
         self.index = p
         self.strings = strings
         self.userdata = userdata
+        self.exact_strings = {s.lower(): i for i, s in enumerate(strings)}
 
         self.search_cache = {}
 
@@ -54,6 +55,10 @@ class Corpus(Generic[T]):
         return self.strings[labels[0][0]], self.userdata[labels[0][0]]
 
     def search(self, query: str) -> tuple[str, T]:
+        if query.lower() in self.exact_strings:
+            return self.strings[self.exact_strings[query.lower()]], self.userdata[
+                self.exact_strings[query.lower()]
+            ]
         if query in self.search_cache:
             return self.search_cache[query]
         result = self._search(query)

@@ -7,7 +7,7 @@ import PIL.Image as Image
 import pyxel
 from pyxelxl.font import _image_as_ndarray
 
-from genio.gears.sentence_embed import SentenceEmbeddingGenerator
+from genio.gears.sentence_embed import Corpus
 
 
 @cache
@@ -93,15 +93,15 @@ class Spritesheet(Mapping[str, pyxel.Image]):
 
     def build_search_index(self) -> None:
         self._keys = list(self.images.keys())
-        gen = SentenceEmbeddingGenerator.default()
-        self.embeddings = np.stack([gen.sentence_embedding(k) for k in self._keys])
+        self.corpus = Corpus(self._keys)
 
     def search(self, query: str) -> str:
-        gen = SentenceEmbeddingGenerator.default()
-        query_embedding = gen.sentence_embedding(query)
-        scores = np.linalg.norm(self.embeddings - query_embedding, axis=1)
-        best_ix = np.argmin(scores)
-        return self._keys[best_ix]
+        return self.corpus.search(query)[0]
+        # gen = SentenceEmbeddingGenerator.default()
+        # query_embedding = gen.sentence_embedding(query)
+        # scores = np.linalg.norm(self.embeddings - query_embedding, axis=1)
+        # best_ix = np.argmin(scores)
+        # return self._keys[best_ix]
 
     def search_image(self, query: str) -> pyxel.Image:
         return self[self.search(query)]

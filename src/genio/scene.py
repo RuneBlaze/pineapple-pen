@@ -100,13 +100,13 @@ class AppWithScenes:
     screenshot: pyxel.Image | None
     events: list[SoundEv]
 
-    def __init__(self, scene: Scene):
+    def __init__(self, scene: Scene, record_from_start: bool = False) -> None:
         if AppWithScenes.instance is not None:
             raise RuntimeError("AppWithScenes is a singleton")
         AppWithScenes.instance = self
         self.scenes = deque()
         self.add_scene(scene)
-        self.state = AppState.RUNNING
+        self.state = AppState.TRANSITION_IN
         self.state_timers = Counter()
         self.async_visualizer = AsyncVisualizer(self)
         self.noise = perlin_noise_with_horizontal_gradient(
@@ -120,6 +120,9 @@ class AppWithScenes:
         event_bus.add_listener(self.on_event, "app")
 
         self.recorder = Recorder(self)
+        if record_from_start:
+            logger.info("Recording from start")
+            self.recorder.toggle_recording()
         self.events = []
         self.sound_effects = []
         self.load_sound_effects()

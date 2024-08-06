@@ -115,9 +115,10 @@ def gauge(x, y, w, h, c0, c1, value, max_value, label=None):
 
 
 @contextlib.contextmanager
-def pal_single_color(col: int):
-    for i in range(16):
-        pyxel.pal(i, col)
+def pal_single_color(col: int | None):
+    if col is not None:
+        for i in range(16):
+            pyxel.pal(i, col)
     yield
     pyxel.pal()
 

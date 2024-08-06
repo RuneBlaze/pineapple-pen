@@ -81,8 +81,8 @@ if __name__ == "__main__":
             rgb_tensor = frame_to_rgb_tensor(frame)
             conv = rgb_tensor
             events.extend(evs)
-        for i in conv:
-            pil_images.append(Image.fromarray(i))
+            for i in conv:
+                pil_images.append(Image.fromarray(i))
         output_p = Path(c) / "export.webp"
         output_audio_p = Path(c) / "export.wav"
         webp.save_images(pil_images, str(output_p), lossless=True, fps=30)

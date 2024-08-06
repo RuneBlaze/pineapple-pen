@@ -524,5 +524,5 @@ wild_geese = "{% include 'poems/wild-geese.md' %}"
 
 predefined = [
     "/Users/lbq/Downloads/Steampunk Vol 2/Mechanisms/Steam UI Click.wav",
-    "/Users/lbq/Documents/sound_effect_4.wav"
+    "/Users/lbq/Documents/dealing_cards,_NES_l.wav"
 ]
