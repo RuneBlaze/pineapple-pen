@@ -40,9 +40,9 @@ description = "A malevolent gelatinous creature, the Slime oozes malice as it sh
 pattern = ["attack player for 2 damage", "block for 1 shield points"]
 
 [enemies.evil_mask]
-name = "Evil Mask"
+name = "Stone Golem"
 hit_points = 4
-description = "A cursed mask that feeds on the fear of its victims, the Evil Mask haunts the dreams of the unwary."
+description = "A cursed golem that feeds on the fear of its victims, the Stone Golem haunts the dreams of the unwary."
 pattern = ["attack player for 2 damage", "block for 1 shield points"]
 chara = "mechanical golem"
 

@@ -73,7 +73,7 @@ class CardPrinter:
         )
 
     def print_card(self, card: Card) -> pyxel.Image:
-        card_name = card.name
+        card_name = card.card_art_name or card.name
         match card_name:
             case "3 of Spades":
                 return load_image("cards", "three-of-spades.png")
@@ -113,7 +113,7 @@ class CardPrinter:
             self.add_flashcard_text_to_card(card.name, image)
             return image
         image = copy_image(empty_card())
-        background = self.spritesheet.search_image(card.name)
+        background = self.spritesheet.search_image(card.card_art_name or card.name)
         return self.render_card_image(card, image, background)
 
     def render_card_image(

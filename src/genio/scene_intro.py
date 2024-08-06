@@ -25,7 +25,7 @@ from genio.gears.card_printer import CardPrinter
 from genio.gui import ResolvingFraming, Tooltip
 from genio.ps import Anim
 from genio.scene import Scene, module_scene
-from genio.tween import Instant, Mutator, Tweener
+from genio.tween import Instant, Mutator, Shake, Tweener
 
 
 class RagdollCardSpriteState:
@@ -53,6 +53,9 @@ class RagdollCardSprite:
         self.state_timer = Counter()
         self.highlight_timer = 0
         self.flashing_energy = 0
+
+    def schedule_small_shake(self):
+        self.tweens.append(Shake(self, 20, 5))
 
     def flash(self) -> None:
         self.tweens.append_mutate(self, "flashing_energy", 5, 1, "ease_in_out_quad")
@@ -289,7 +292,15 @@ class SceneIntro(Scene):
 
     def movement_2(self) -> None:
         self.framing.putup()
+
+        self.card_sprites[1].schedule_small_shake()
         self.tweener.append(
+            range(2),
+            Instant(
+                lambda: self.add_anim(
+                    "anims.transform_card", -1, -1, attached_to=self.card_sprites[1]
+                )
+            ),
             range(15),
             Instant(
                 self.pre_transform_the_card,
@@ -305,10 +316,13 @@ class SceneIntro(Scene):
     def transform_the_card(self, card: Card) -> None:
         self.card_sprites[0].becomes(card)
         self.card_sprites[0].flash()
-        for _ in range(3):
+        for _ in range(2):
             self.add_anim(
                 "anims.transform_card", -1, -1, attached_to=self.card_sprites[0]
             )
+        self.add_anim(
+            "anims.create_card", -1, -1, attached_to=self.card_sprites[0]
+        )
         self.tweener.append(
             range(15),
             Instant(
@@ -319,7 +333,8 @@ class SceneIntro(Scene):
     def create_another_card(self) -> None:
         card1 = Card(
             "Letter Remover",
-            "Remove a letter from the target card's name, prioritizes the first letter.",
+            "Strip away one letter of the target card's name, the initial letter preferred.",
+            card_art_name="sun moon",
         )
         self.card_sprites.append(
             RagdollCardSprite(

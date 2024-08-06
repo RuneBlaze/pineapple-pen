@@ -215,7 +215,8 @@ class AppWithScenes:
 
     def play_all_audios(self) -> None:
         for ev in self.events:
-            self.sound_effects[ev].play()
+            if ev < len(self.sound_effects):
+                self.sound_effects[ev].play()
 
     def draw(self):
         self.scenes[0].draw()
@@ -260,7 +261,8 @@ def module_scene(cls: type[Scene]) -> type[Scene]:
 
 
 def emit_sound_event(event: SoundEv) -> None:
-    AppWithScenes.instance.emit_sound_event(event)
+    if ins := AppWithScenes.instance:
+        ins.emit_sound_event(event)
 
 
 def EmitSound(sound_ev: SoundEv) -> Instant:

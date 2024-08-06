@@ -24,6 +24,8 @@ class Card:
     description: str | None = None
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
 
+    card_art_name: str | None = None
+
     def to_record(self) -> dict:
         return {
             "id": self.id,
