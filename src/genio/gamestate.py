@@ -54,14 +54,14 @@ class GameState:
         )
         self.gold = 10
         self.battle_bundle.battle_logs = [
-            "Turn 0: Celine, the Magical Swordswoman gained shield 1.0",
-            "Turn 0: Celine, the Magical Swordswoman gained shield 1.0",
+            "Turn 0: Celine, the Magical Swordswoman dealt damage 1.0",
             "Turn 1: Celine, the Magical Swordswoman received damage 2.0",
             "Turn 1: Celine, the Magical Swordswoman received damage 2.0",
-            "Turn 1: Evil Mask A received damage 2.0",
-            "Turn 1: Evil Mask B received other effect...",
-            "Turn 1: Evil Mask A received damage 2.0",
-            "Battle Ended, Celine returned to World 1: Mystic Wilds",
+            "Turn 1: Stone Golem A received damage 2.0",
+            "Turn 1: Stone Golem B received Vulnerable +2",
+            "Turn 1: Stone Golem A received damage 2.0",
+            "Turn 1: Stone Golem B received damage 3.0 due to vulnerable",
+            "Battle Ended, victorious, Celine returned to World 1: Mystic Wilds",
         ]
         self.world = World()
         self.config = GameConfig()

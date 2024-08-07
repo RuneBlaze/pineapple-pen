@@ -320,9 +320,7 @@ class SceneIntro(Scene):
             self.add_anim(
                 "anims.transform_card", -1, -1, attached_to=self.card_sprites[0]
             )
-        self.add_anim(
-            "anims.create_card", -1, -1, attached_to=self.card_sprites[0]
-        )
+        self.add_anim("anims.create_card", -1, -1, attached_to=self.card_sprites[0])
         self.tweener.append(
             range(15),
             Instant(

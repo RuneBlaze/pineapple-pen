@@ -26,7 +26,7 @@ Driven by a quest for justice and an insatiable curiosity, Celine ventures throu
 cards = [
     "left * 3",
     "right * 3",
-    "Smash * 1 # Deal 1 damage and apply vulnerable for 1 turn.",
+    "Smash * 1 # Deal 1 damage and apply vulnerable for 2 turn.",
     "Slash * 4 # Deal 2 damage to a target.",
     "Block * 3 # Gain 1 shield point.",
     "4 of Spades * 2",

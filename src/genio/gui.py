@@ -509,7 +509,7 @@ class Tooltip:
             rect_width *= 2
             rect_height *= 2 if not game_state.should_use_large_font() else 2.5
             rect_height = int(rect_height)
-        if len(self.description) > 45:
+        if len(self.description) > 50:
             rect_height += 17
         draw_mixed_rounded_rect(dither_amount, amx, amy, w=rect_width, h=rect_height)
         with dithering(dither_amount):

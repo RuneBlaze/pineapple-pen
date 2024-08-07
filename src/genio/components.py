@@ -534,7 +534,9 @@ class GoldRenderer:
             )
 
 
-def draw_rounded_rectangle(x: int, y: int, w: int, h: int, r: int, col: int) -> None:
+def draw_rounded_rectangle(x: int, y: int, w: int, h: int, r: int, col: int | None) -> None:
+    if col is None:
+        return
     pyxel.rect(x + r, y, w - 2 * r + 1, h + 1, col)
     pyxel.rect(x, y + r, r, h - 2 * r, col)
     pyxel.rect(x + w - r + 1, y + r, r, h - 2 * r, col)

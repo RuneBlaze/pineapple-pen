@@ -7,6 +7,7 @@ from collections import Counter, deque
 from concurrent.futures import Future
 from concurrent.futures.thread import ThreadPoolExecutor
 from enum import Enum
+from random import randint
 
 import numpy as np
 import pytweening
@@ -22,6 +23,7 @@ from genio.components import (
     HasPos,
 )
 from genio.gamestate import StageDescription, game_state
+from genio.gears.button import COLOR_SCHEME_PRIMARY, ButtonElement, ColorScheme, vec2
 from genio.gears.fontpack import fonts
 from genio.gears.map_pin import MapPin
 from genio.gears.signpost import SignPost
@@ -40,8 +42,9 @@ executor = ThreadPoolExecutor(4)
 
 
 def generate_stage_description(stage_name: str) -> StageDescription:
+    inspiration_id = randint(0, 3)
     results = generate_stage_description_low_level(
-        stage_name, game_state.battle_bundle.battle_logs
+        stage_name, game_state.battle_bundle.battle_logs, inspiration_id
     )
     futs = []
     for enemy_idea in results.enemy_troop:
@@ -406,10 +409,21 @@ class StageSelectScene(Scene):
         self.currently_selected = None
         self.start_generation()
         self.weather = WeatherEffect(self, WeatherType.RAINY, 2, ["anims.fallen_leaf"])
-
         self.weather2 = WeatherEffect(
             self, WeatherType.BORDER_RIGHT_WIND, 0.8, ["anims.fallen_leaf2"]
         )
+
+        self.confirm_button = ButtonElement(
+            "Enter Stage",
+            ColorScheme(
+                None,
+                1,
+            ),
+            vec2(WINDOW_WIDTH - 100, WINDOW_HEIGHT - 50),
+            "",
+        )
+
+        self.something_selected_timer = 0
 
         self.sign_posts.append(
             SignPost(
@@ -513,12 +527,16 @@ class StageSelectScene(Scene):
             marker.state == MapMarkerState.SELECTED for marker in self.map_markers
         )
         if any_selected:
+            self.something_selected_timer += 1
             for i, marker in enumerate(self.map_markers):
                 if marker.hovering and not marker.state == MapMarkerState.SELECTED:
                     for other_marker in self.map_markers:
                         if other_marker.state == MapMarkerState.SELECTED:
                             marker.set_state(MapMarkerState.IDLE)
                             continue
+        else:
+            self.something_selected_timer -= 1
+            self.something_selected_timer = max(0, self.something_selected_timer)
         for i, marker in enumerate(self.map_markers):
             if marker.state == MapMarkerState.SELECTED and self.currently_selected != i:
                 self.tweens.append(
@@ -553,6 +571,7 @@ class StageSelectScene(Scene):
         self.sign_posts = [
             sign_post for sign_post in self.sign_posts if not sign_post.is_dead()
         ]
+        self.confirm_button.update()
         if two_selected:
             for marker in self.map_markers:
                 if marker.state == MapMarkerState.SELECTED and not marker.hovering:
@@ -574,6 +593,10 @@ class StageSelectScene(Scene):
         self.info_box.draw()
         pyxel.clip()
         self.draw_hud()
+        confirm_button_energy = self.something_selected_timer / 15
+        confirm_button_energy = min(1.0, confirm_button_energy)
+        with dithering(confirm_button_energy):
+            self.confirm_button.draw()
         for sign_post in self.sign_posts:
             sign_post.draw()
         self.draw_mouse_cursor(pyxel.mouse_x, pyxel.mouse_y)

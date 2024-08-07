@@ -122,7 +122,10 @@ executor = ThreadPoolExecutor(2)
 
 @dataclass
 class StatusDefinitionInterpretation:
-    interpretation: Annotated[str, "The description of the status effect."]
+    interpretation: Annotated[
+        str,
+        "The description of the status effect. Don't include the name of the status effect itself -- no extra formatting. Just explain it plainly in one sentence. For example: 'takes 1 damage at the end of each turn.'",
+    ]
 
 
 @promptly()

@@ -117,6 +117,37 @@ def generate_sts_cards(avoid: list[str] | None = None) -> GenerateSTSCardResult:
     """
 
 
+@dataclass
+class GenerateSpywareCardResult(CardsLike):
+    """A set of cards inspired by spycraft, linguistic word-play, double-O-seven."""
+
+    cards: Annotated[
+        list[dict],
+        (
+            "A list of cards, objects containing two keys: 'name' and 'description', "
+            "inspired by spyware. Each card should have a unique name and a "
+            "concise description of its effects or abilities without including costs.",
+        ),
+    ]
+
+    def to_cards(self) -> list[Card]:
+        return [Card(card["name"], card["description"]) for card in self.cards]
+
+
+@promptly()
+def generate_spyware_cards() -> GenerateSpywareCardResult:
+    """\
+    Act as an excellent game designer. Create a set of 5 cards inspired by the world of espionage, linguistic word-play, and double-O-seven.
+
+    Consult the following rulebook:
+
+    {% include 'rulebook.md' %}
+
+    {{ formatting_instructions }}
+    """
+    ...
+
+
 @promptly
 def generate_sat_flashcards(
     avoid: list[str] | None = None,
@@ -169,7 +200,9 @@ class GenerateStageResult:
 
 @promptly()
 def generate_stage_description(
-    stage_name: str, adventure_logs: list[str]
+    stage_name: str,
+    adventure_logs: list[str],
+    inspiration: int,
 ) -> GenerateStageResult:
     """\
     Act as an excellent game writer. The player will arrive at a new stage named
@@ -180,7 +213,26 @@ def generate_stage_description(
     capturing your main inspiration.
 
     Next, write a short lore text of no more than twenty words that captures the
-    essence of the stage. Your writing style should be mystical, eerie, and contemplative.
+    essence of the stage.
+    Avoid stereotypical tropes such as "whispers", etc..
+
+    Your writing style should take *strong* inspiration from the following:
+
+    ```plaintext
+    {% if inspiration == 0 %}
+        {% include 'poems/our-land.md' %}
+    {% elif inspiration == 1 %}
+        {% include 'poems/the-snow-storm.md' %}
+    {% elif inspiration == 2 %}
+        {% include 'poems/the-waste-land.txt' %}
+    {% elif inspiration == 3 %}
+        {% include 'poems/wild-geese.md' %}
+    {% elif inspiration == 4 %}
+        {% include 'poems/our-land.md' %}
+    {% elif inspiration == 5 %}
+        {% include 'poems/our-land.md' %}
+    {% endif %}
+    ```
 
     Finally, assign a danger level to the stage, a number between 1 and 5.
     1 should indicate a beginner level stage, 3 is a somewhat challenging

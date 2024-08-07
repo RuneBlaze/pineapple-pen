@@ -28,7 +28,7 @@ from genio.scene import Scene, module_scene
 from genio.stagegen import (
     CardsLike,
     generate_sat_flashcards,
-    generate_sts_cards,
+    generate_spyware_cards,
 )
 from genio.tween import Tweener
 
@@ -136,7 +136,7 @@ class SceneCollection(Scene):
         self.cards.append(
             CollectionCardSprite(
                 0, 0, Card("Rivers", "This is a test card"), self.printer
-            )
+            ),
         )
         self.timer = 0
         self.current_page = 0
@@ -157,6 +157,22 @@ class SceneCollection(Scene):
         self.mailbox = deque()
         self.executor = ThreadPoolExecutor(2)
         self.background_video = Video("background/*.png")
+
+        self.add_card(
+            Card(
+                "Letter Remover",
+                "Strip away one letter from each card in your hand, preferring to remove the initial letter.",
+                card_art_name="sun moon",
+            ),
+        )
+
+        self.add_card(
+            Card(
+                "Pluralize",
+                "Transform each card's name in your hand into its plural form.",
+                card_art_name="web of intrigue",
+            )
+        )
 
     def add_anim(
         self,
@@ -202,6 +218,11 @@ class SceneCollection(Scene):
                     CollectionCardSprite(x, y, card, self.printer, len(self.cards) * 10)
                 )
 
+    def add_card(self, card: Card) -> None:
+        next_ix = len(self.cards)
+        x, y = grid_layout(next_ix)
+        self.cards.append(CollectionCardSprite(x, y, card, self.printer, 0))
+
     def generate_new_cards(self, typ: GenerateCardsType) -> None:
         match typ:
             case GenerateCardsType.SAT:
@@ -211,11 +232,7 @@ class SceneCollection(Scene):
                     )
                 )
             case GenerateCardsType.GENERIC_STS:
-                self.mailbox.append(
-                    self.executor.submit(
-                        generate_sts_cards, avoid=self.words_in_collection()
-                    )
-                )
+                self.mailbox.append(self.executor.submit(generate_spyware_cards))
 
     def draw(self) -> None:
         pyxel.cls(0)

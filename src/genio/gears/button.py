@@ -20,8 +20,8 @@ from genio.gears.text_layout import pyxel_text
 
 @dataclass
 class ColorScheme:
-    primary: int
-    secondary: int
+    primary: int | None
+    secondary: int | None
 
 
 COLOR_SCHEME_PRIMARY = ColorScheme(3, 11)

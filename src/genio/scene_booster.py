@@ -15,7 +15,6 @@ from pyxelxl import blt_rot, layout
 from typing_extensions import assert_never
 
 from genio.base import WINDOW_HEIGHT, WINDOW_WIDTH, load_image
-from genio.battle import setup_battle_bundle
 from genio.card import Card
 from genio.components import (
     CanAddAnim,
@@ -58,6 +57,7 @@ from genio.stagegen import (
     IndividualBonusItem,
     generate_bonus_items,
     generate_sat_flashcards,
+    generate_spyware_cards,
 )
 from genio.tween import Instant, Mutator, Tweener
 
@@ -305,6 +305,10 @@ class BoosterPack:
         self.dead = False
         self.price = 8 if pack_type == BoosterPackType.SPY_THEMED else 10
 
+    @property
+    def z_value(self) -> int:
+        return self.state.value
+
     def screen_pos(self) -> tuple[float, float]:
         return self.x + self.image.width // 2, self.y + self.image.height // 2
 
@@ -444,11 +448,29 @@ class BoosterPack:
         self.events.append("faded_out")
 
     def generate_cards(self) -> list[Card]:
-        generated = generate_sat_flashcards()
-        return [
-            Card(name=card["word"], description=card["definition"])
-            for card in generated.flashcards
+        gen_fn = (
+            generate_sat_flashcards
+            if self.pack_type == BoosterPackType.STANDARDIZED_TEST_THEMED
+            else generate_spyware_cards
+        )
+        generated = gen_fn()
+        predefined = [
+            Card(
+                "Letter Remover",
+                "Strip away one letter from each card in your hand, preferring to remove the initial letter.",
+                card_art_name="sun moon",
+            ),
+            Card(
+                "Pluralize",
+                "Transform each card's name in your hand into its plural form.",
+                card_art_name="web of intrigue",
+            ),
         ]
+        results = generated.to_cards()
+        if self.pack_type == BoosterPackType.SPY_THEMED:
+            results = predefined + results
+        results = results[:5]
+        return results
 
 
 @dataclass
@@ -603,12 +625,13 @@ class BoosterPackScene(Scene):
         self.tweener = Tweener()
 
         self.card_sprites = []
-        self.bundle = setup_battle_bundle(
-            "initial_deck", "players.starter", ["enemies.evil_mask"] * 2
-        )
+        self.bundle = game_state.battle_bundle
         self.timer = 0
         self.anims = []
         self.draw_deck = DrawDeck(self.bundle.card_bundle)
+        self.bundle.card_bundle.deck.extend(
+            self.bundle.card_bundle.hand,
+        )
         self.chosen_pack = None
         self.info_box_energy = 0.0
         self.chosen_pack_dup = None
@@ -859,10 +882,11 @@ class BoosterPackScene(Scene):
                 x, y + 20, stage.subtitle, c1, layout=layout(w=w, ha="center")
             )
         self.draw_results()
-        self.draw_info_box()
 
         if not self.state.is_results_like():
             self.draw_shop()
+
+        self.draw_info_box()
 
         with camera_shift(0, min(self.help_box_energy, 1) * 3):
             self.help_box.draw(min(self.help_box_energy, 1))
@@ -897,7 +921,7 @@ class BoosterPackScene(Scene):
         for button in self.shop_buttons:
             button.draw_at()
 
-        for pack in self.booster_packs:
+        for pack in sorted(self.booster_packs, key=lambda pack: pack.z_value):
             pack.draw()
         for i, spr in enumerate(self.card_sprites):
             spr.draw()
