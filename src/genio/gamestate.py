@@ -33,7 +33,7 @@ class StageDescription:
     @staticmethod
     def default() -> StageDescription:
         return StageDescription(
-            "1-1",
+            "1-2A",
             "Beneath the Soil",
             "Beneath the sturdy bamboo, even sturdier roots spread out. Only foolish humans and youkai can see nothing but the surface.",
             1,
@@ -50,7 +50,7 @@ class GameState:
     def __init__(self) -> None:
         self.stage = StageDescription.default()
         self.battle_bundle = setup_battle_bundle(
-            "initial_deck", "players.starter", ["enemies.evil_mask"] * 2
+            "initial_deck", "players.starter", ["enemies.grove_guardian"] * 1
         )
         self.gold = 10
         self.battle_bundle.battle_logs = [

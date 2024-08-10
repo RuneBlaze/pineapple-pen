@@ -14,7 +14,9 @@ keywords = re.compile(
 
 
 @lru_cache(16)
-def judge_is_flashcard_like(card_description: str) -> bool:
+def judge_is_flashcard_like(card_description: str | None) -> bool:
+    if not card_description:
+        return False
     return re.search(keywords, card_description) is not None
 
 

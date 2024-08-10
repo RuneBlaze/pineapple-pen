@@ -713,7 +713,7 @@ class EnemyBattlerSprite:
                 121,
                 e.name,
                 7,
-                layout(w=80, ha="left"),
+                layout(w=100, ha="left"),
                 dither_mult=self.opacity,
             )
             self.scene._draw_hearts_and_shields(
@@ -1513,7 +1513,7 @@ class MainScene(Scene):
                 4 + 4, 0, game_state.stage.name, 7, layout=layout(h=16, va="center")
             )
             retro_text(
-                26 + 4,
+                26 + 4 + 10,
                 1,
                 f"Turn {self.bundle.turn_counter + 1}",
                 7,

@@ -24,6 +24,8 @@ from typing_extensions import (
     assert_never,
 )
 
+from random import randint
+
 from genio.artifacts import parse_stylize
 from genio.card import Card
 from genio.components import CanAddAnim
@@ -65,13 +67,20 @@ def parse_card_description(description: str) -> tuple[str, str, int]:
 
     return name, desc, copies
 
+from parse import search
 
 def create_deck(cards: list[str]) -> list[Card]:
     deck = []
     for card_description in cards:
         name, desc, copies = parse_card_description(card_description)
+        effective_name = None
+        if '[' in name:
+            main_part, bracket_part = search("{}[{}]", name).fixed
+            name = main_part
+            effective_name = bracket_part
+            
         for _ in range(copies):
-            deck.append(Card(name=name, description=desc))
+            deck.append(Card(name=name, description=desc,card_art_name=effective_name))
     return deck
 
 
@@ -81,13 +90,13 @@ class ResolvedResults:
 
     reason: Annotated[
         str,
-        "Justification for the completion. How the *action* connects the concepts serially. If we are resolving a player's action, connect the cards that the player has played in sequence almost like a literary game. Do not include results in reason.",
+        "Justification for the completion. How the *action* connects the concepts serially. If we are resolving a player's action, connect the cards that the player has played in sequence almost like a literary game. Do not include results in reason. Note that this is only the natural language justification.",
     ]
     results: Annotated[
         str,
         (
             "The results of the actions taken by either the player or the enemies, and the consequences of those actions. "
-            "The nuemrical deltas should be given in square brackets like [Slime: damaged 5]. "
+            "The nuemrical deltas should be given in square brackets like [Slime: damaged 5], or like [transform mplx to <mplify: enhance the power of one card for one turn.>]. If transforming, remember to give new and creative descriptions (after the colon) to the transformed cards. For example, if you are doing [transform 5yij to <lash: Deal 2 damage to a target.>;]\n[transform euxh to <ight: located on the right side.>;] then you are doing it wrong, as the descriptions are not new or not creative. Unleash your inner game designer."
         ),
     ]
     significance: Annotated[
@@ -200,6 +209,14 @@ def _generate_enemy_profile(
     Your should adhere to this idea for your generation:
 
     {{ idea }}
+
+    Here is the syntax for the types of "moves" you might consider. Note that this is only an example
+    for style guidance.
+
+    ```json5
+    // Example for one pattern of enemy
+    ["attack player for 2 damage", "block for 1 shield points"]
+    ```
 
     {{ formatting_instructions }}
     """
@@ -398,7 +415,10 @@ class CardBundle:
         self.hand_limit = hand_limit
         self.default_draw_count = 6
 
-        self.deck = shuffle(deck)
+        seed = access_predef("system.seed", randint(0, 2**32 - 1))
+        logger.info("CardBundle created", seed=seed)
+
+        self.deck = shuffle(deck, seed=seed)
         self.hand = []
         self.graveyard = []
         self.resolving = []
@@ -970,7 +990,7 @@ class BattleBundle:
                                 f"Transform {transform.from_card.name} to {transform.to_card.name}"
                             )
                         case other:
-                            assert_never(other)
+                            ...
                 case (battler, single_effect) if isinstance(
                     single_effect, SinglePointEffect
                 ):
