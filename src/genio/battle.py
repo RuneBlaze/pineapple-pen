@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from functools import cache, cached_property
 from heapq import heappop, heappush
 from itertools import chain
+from random import randint
 from typing import Annotated, Generic, Literal
 
 import numpy as np
@@ -21,10 +22,7 @@ from typing_extensions import (
     Any,
     Protocol,
     TypeVar,
-    assert_never,
 )
-
-from random import randint
 
 from genio.artifacts import parse_stylize
 from genio.card import Card
@@ -67,20 +65,22 @@ def parse_card_description(description: str) -> tuple[str, str, int]:
 
     return name, desc, copies
 
+
 from parse import search
+
 
 def create_deck(cards: list[str]) -> list[Card]:
     deck = []
     for card_description in cards:
         name, desc, copies = parse_card_description(card_description)
         effective_name = None
-        if '[' in name:
+        if "[" in name:
             main_part, bracket_part = search("{}[{}]", name).fixed
             name = main_part
             effective_name = bracket_part
-            
+
         for _ in range(copies):
-            deck.append(Card(name=name, description=desc,card_art_name=effective_name))
+            deck.append(Card(name=name, description=desc, card_art_name=effective_name))
     return deck
 
 

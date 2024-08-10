@@ -33,7 +33,7 @@ class StageDescription:
     @staticmethod
     def default() -> StageDescription:
         return StageDescription(
-            "1-2A",
+            "1-1",
             "Beneath the Soil",
             "Beneath the sturdy bamboo, even sturdier roots spread out. Only foolish humans and youkai can see nothing but the surface.",
             1,

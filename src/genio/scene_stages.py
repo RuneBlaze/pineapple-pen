@@ -23,7 +23,7 @@ from genio.components import (
     HasPos,
 )
 from genio.gamestate import StageDescription, game_state
-from genio.gears.button import COLOR_SCHEME_PRIMARY, ButtonElement, ColorScheme, vec2
+from genio.gears.button import ButtonElement, ColorScheme, vec2
 from genio.gears.fontpack import fonts
 from genio.gears.map_pin import MapPin
 from genio.gears.signpost import SignPost

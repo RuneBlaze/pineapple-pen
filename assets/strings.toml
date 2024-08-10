@@ -1,19 +1,9 @@
-[enemies.starter]
-name = "Jon, the Hopeless Romantic"
-profile = """
-Jon, the Hopeless Romantic, is a 26-year-old, standing at 5'10" with a slender build. He is of mixed race, with a blend of Asian and Caucasian heritage that gives him a unique and captivating appearance. His dark, wavy hair often falls over his expressive brown eyes, which light up whenever he talks about his passions.
-
-Jon works as a junior editor at a publishing house, where he spends his days immersed in the world of literature. His job fuels his love for storytelling and gives him a steady supply of romantic novels to draw inspiration from. Outside of work, Jon can often be found in cozy cafes, scribbling poems in his leather-bound notebook or reciting verses at local poetry slams.
-
-In conversation, Jon speaks with a gentle, almost lyrical cadence. His words are carefully chosen, often adorned with poetic flair, making even mundane topics sound enchanting. Jon's earnest and sincere demeanor can sometimes come off as overly sentimental, but his genuine kindness and unwavering belief in love endear him to those who take the time to know him.
-"""
-
 [players.starter]
 name = "Celine, the Magical Swordswoman"
 hit_points = 7
 mp = 6
 profile = """
-Celine, the Magical Swordswoman, is a fierce and determined warrior with an ethereal touch. At 24 years old, she stands at 5'1", her petite frame belying the formidable strength and agility she possesses. Her short, auburn hair cascades around her heart-shaped face, and her bright green eyes, filled with a piercing intensity, reflect the fire of her unyielding spirit.
+Celine, the Magical Swordswoman, is a fierce and determined warrior with an ethereal touch. Her petite frame belying the formidable strength and agility she possesses. Her short, auburn hair cascades around her heart-shaped face, and her bright green eyes, filled with a piercing intensity, reflect the fire of her unyielding spirit.
 
 Celine's mastery of both blade and magic makes her a formidable opponent in any battle. She wields an enchanted sword that shimmers with arcane energy, capable of unleashing devastating spells with every strike. Her attire, a blend of practical armor and mystical garments, is adorned with subtle feline motifs, hinting at her connection to ancient, magical traditions.
 
@@ -30,10 +20,6 @@ cards = [
     "Slash * 4 # Deal 2 damage to a target.",
     "Block * 3 # Gain 1 shield point.",
     "4 of Spades * 2",
-    "Double Agent # Apply 'Intangible' to yourself for 1 turn. Deal 6 damage to the enemy. If the enemy is not affected by 'Intangible', they gain 3 shield points.",
-    "accede # (verb) to agree to a request or demand; consent.",
-    "eloquent # (adjective) fluent or persuasive in speaking or writing.",
-    "Letter Remover[sun and moon] # Strip away one letter from each card in your hand, preferring to remove the initial letter."
 ]
 
 
@@ -554,10 +540,7 @@ wild_geese = "{% include 'poems/wild-geese.md' %}"
 
 [sounds]
 
-predefined = [
-    "/Users/lbq/Downloads/Steampunk Vol 2/Mechanisms/Steam UI Click.wav",
-    "/Users/lbq/Documents/dealing_cards,_NES_l.wav"
-]
+predefined = []
 
 [system]
 
