@@ -11,7 +11,6 @@ from enum import Enum
 from typing import ClassVar
 
 import pyxel
-import simpleaudio as sa
 from pyxelxl.font import _image_as_ndarray
 from structlog import get_logger
 
@@ -24,7 +23,7 @@ from genio.components import (
 from genio.eventbus import Event, LLMInboundEv, LLMOutboundEv, event_bus
 from genio.gears.async_visualizer import AsyncVisualizer
 from genio.gears.recorder import Recorder
-from genio.predef import access_predef, refresh_predef
+from genio.predef import refresh_predef
 from genio.sound_events import SoundEv
 from genio.tween import Instant
 
@@ -131,8 +130,9 @@ class AppWithScenes:
         pyxel.run(self.update, self.draw)
 
     def load_sound_effects(self) -> None:
-        for p in access_predef("sounds.predefined"):
-            self.sound_effects.append(sa.WaveObject.from_wave_file(asset_path(p)))
+        ...
+        # for p in access_predef("sounds.predefined"):
+        #     self.sound_effects.append(sa.WaveObject.from_wave_file(asset_path(p)))
 
     def add_anim(self, *args, **kwargs) -> None:
         self.scenes[0].add_anim(*args, **kwargs)
