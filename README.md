@@ -17,17 +17,33 @@ poetry install
 
 ## Running the Game
 
-Ensure `GOOGLE_API_KEY` is in your environment variables.
+Ensure `GOOGLE_API_KEY` is in your environment variables, or else Gemini will not work.
 
 ```bash
-just play # Run the main scene.
+just play # Run the main scene, where you fight enemies.
 ```
 
-Choosing scenes to run:
+Others scenes to run:
 
  - `poetry run python -m genio.main --module genio.scene_stages` to run the stage selection scene
  - `poetry run python -m genio.main --module genio.scene_booster` to run the booster pack / stage results scene
  - `poetry run python -m genio.main --module genio.scene_intro` to run the "explanation" or intro scene
+
+To add/test new cards, the simplest way is to modify `strings.toml` inside `assets`.
+
+```toml
+# The initial deck. As stated in the video, this *is* the entire definition of the cards. Not pre-programmed logic is needed.
+[initial_deck]
+
+cards = [
+    "left * 3",
+    "right * 3",
+    "Smash * 1 # Deal 1 damage and apply vulnerable for 2 turn.",
+    "Slash * 4 # Deal 2 damage to a target.",
+    "Block * 3 # Gain 1 shield point.",
+    "4 of Spades * 2",
+]
+```
 
 ## Licenses of the other projects
 

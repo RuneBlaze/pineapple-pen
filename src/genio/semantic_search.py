@@ -1,12 +1,6 @@
-import tarfile
 from dataclasses import dataclass
-from functools import cache
 
 import numpy as np
-import safetensors.numpy as stnp
-from sentence_transformers import SentenceTransformer
-
-from genio.base import asset_path
 
 
 def fix_palette(quantized_image):
@@ -35,45 +29,20 @@ class SerializedCardArt:
         self.unfaded = fix_palette(self.unfaded)
 
 
-model = SentenceTransformer("all-MiniLM-L6-v2")
+# model = SentenceTransformer("all-MiniLM-L6-v2")
 
-tar = tarfile.open(asset_path("cards.tar.gz"), "r:gz")
+# tar = tarfile.open(asset_path("cards.tar.gz"), "r:gz")
 
-documents = []
-for member in tar.getmembers():
-    f = tar.extractfile(member)
-    if f is not None:
-        if "._" in member.name:
-            continue
-        documents.append(stnp.load(f.read()))
-        break
-tar.close()
+# documents = []
+# for member in tar.getmembers():
+#     f = tar.extractfile(member)
+#     if f is not None:
+#         if "._" in member.name:
+#             continue
+#         documents.append(stnp.load(f.read()))
+#         break
+# tar.close()
 
-documents = [SerializedCardArt(**d) for d in documents]
+# documents = [SerializedCardArt(**d) for d in documents]
 
-document_vectors = np.array([d.embedding for d in documents])
-
-
-@cache
-def _search_closest_document(sentence: str) -> dict:
-    sentence_embedding = model.encode(sentence)
-    similarities = np.dot(document_vectors, sentence_embedding)
-    idx = np.argmax(similarities)
-    return {"index": idx, "similarity": similarities[idx]}
-
-
-def search_closest_document(sentence: str) -> SerializedCardArt:
-    # FIXME: this feature is deprecated, so returning the first document for now.
-    return documents[0]
-
-
-if __name__ == "__main__":
-    while True:
-        sentence = input("Enter a sentence: ")
-        if sentence == "exit":
-            break
-        result = _search_closest_document(sentence)
-        print(
-            f"Most similar document: {result['index']} with similarity {result['similarity']}"
-        )
-        print(documents[result["index"]].prompt)
+# document_vectors = np.array([d.embedding for d in documents])

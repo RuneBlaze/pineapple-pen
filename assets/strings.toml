@@ -525,7 +525,7 @@ Eg6. [transform mplx to <mplify: enhance the power of one card for one turn.>]
 Eg7. [transform vrgy to <urge: immediately draw and play one card.>]
 Eg8. [transform nxdt to <exdt: remove a debuff and gain 2 shield points.>]
 
-*Always provide a new, unique, and creative description for the transformed card. Have strong card name to description alignment*. The new descriptions should *prioritize status effects* if possible. ADD STATUS EFFECTS TO THE NEW DESCRIPTION. MAKE THEM MORE POWERFUL.
+*Always provide a new, unique, and creative description for the transformed card. Have strong card name to description alignment*. The new descriptions should *prioritize status effects* if possible. As a hunch, add status effects to the new cards.
 
 DO NOT do things like: `[tkim: transform to <lash: Deal 2 damage to a target.>;]` because it is invalid syntax -- use `transform X to Y` instead. DO NOT RECREATE "<lash: Deal 2 damage to a target.>" because lash should be different from slash. For example, *lash* should give a status effect or have a different effect from *slash*.
     """,
