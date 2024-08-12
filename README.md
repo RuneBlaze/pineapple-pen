@@ -1,7 +1,7 @@
 Pen Apple
 =============
 
-A roguelike deckbuilder.
+A roguelike deckbuilder, code-name `genio`.
 
 ## Setting Up
 

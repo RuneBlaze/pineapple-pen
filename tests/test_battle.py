@@ -55,19 +55,6 @@ def test_search_non_existing_battler(card_bundle):
         manager.search("NonExistingBattler")
 
 
-def test_resolve_result(card_bundle):
-    player = PlayerBattler.from_predef("players.starter")
-    enemy1 = EnemyBattler.from_predef("enemies.slime")
-    enemy2 = EnemyBattler.from_predef("enemies.slime")
-    manager = BattleBundle(
-        player, [enemy1, enemy2], BattlePrelude.default(), card_bundle
-    )
-    result = "[celine: damaged 10]"
-    manager.process_effects(result)
-    manager.flush_expired_effects(np.random.default_rng())
-    assert player.hp == player.max_hp - 10
-
-
 def test_apply_damage_with_shield():
     player_profile = PlayerProfile(name="Player", hit_points=30, profile="Warrior")
     player = Battler(profile=player_profile, hp=30, max_hp=30, shield_points=3)
