@@ -5,7 +5,7 @@ A roguelike deckbuilder, code-name `genio`.
 
 ## Setting Up
 
-We tested with Python 3.10.12 (but any Python above 3.10) should work. Our testing was done on an Apple M1 MacBook Pro, but nothing in the code should be platform-specific.
+We tested with Python 3.10.12 (but any Python above 3.10) should work. Our testing was done on an Apple M1 MacBook Pro, but nothing in the code should be platform-specific. Remember to install SDL2 `sudo apt-get install -y libsdl2-2.0-0` if on Ubuntu, possibly also required on macOS if SDL is reported to be missing.
 
 We use [Just](https://github.com/casey/just) as our command runner, and [Poetry](https://python-poetry.org/) to manage dependencies. Install both for the smoothest experience.
 
@@ -20,7 +20,7 @@ poetry install
 Ensure `GOOGLE_API_KEY` is in your environment variables, or else Gemini will not work.
 
 ```bash
-just play # Run the main scene, where you fight enemies.
+just play # Run the main scene, where you play cards and fight enemies.
 ```
 
 Others scenes to run:
@@ -142,3 +142,7 @@ Much support code specifically done for this game is in other projects.
 
  1. https://github.com/RuneBlaze/marble-noise -- Rust code of how the noise background is generated
  2. https://github.com/RuneBlaze/pyxelxl -- Rust + Python library of drawing TTF, rotating sprites in Pyxel
+
+## Contact Information
+
+If you encounter any issues or have questions, feel free to file an issue here. I check my GitHub (nearly) every day.
