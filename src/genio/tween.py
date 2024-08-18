@@ -3,6 +3,7 @@ from __future__ import annotations
 import itertools
 from collections import deque
 from collections.abc import Callable, Iterator, Mapping
+from dataclasses import dataclass
 from typing import Any, Literal, TypeAlias
 
 import numpy as np
@@ -78,25 +79,37 @@ class BezierTweening:
 
 
 class Mutator:
+    lens: ImperativeLens
+
     def __init__(
         self,
         duration: int,
         inner: Callable[[float], float],
         this: object,
         lens: str,
-        target: float,
+        target: float | tuple[float, ...] | Callable[[], float | tuple[float, ...]],
     ) -> None:
         self.inner = Tweening(duration, inner)
         self.this = this
-        self.lens = lens
+        self.lens = parse_lens(lens)
         self.target = target
+        self.initial_value = self.lens.getter(self.this)
+
+    def actual_target(self) -> float | tuple[float, ...]:
+        if isinstance(self.target, tuple):
+            return self.target
+        elif isinstance(self.target, int | float):
+            return self.target
+        elif isinstance(self.target, np.int64 | np.float64 | np.ndarray):
+            return self.target
+        else:
+            return self.target()
 
     def __iter__(self):
         for t in self.inner:
-            setattr(
+            self.lens.setter(
                 self.this,
-                self.lens,
-                lerp(getattr(self.this, self.lens), self.target, t),
+                lerp(self.initial_value, self.actual_target(), t),
             )
             yield
 
@@ -119,6 +132,18 @@ PredefinedTween: TypeAlias = Literal[
     "ease_out_expo",
     "ease_in_out_expo",
 ]
+
+
+def wrap_tween(
+    tween: Callable[[float], float],
+) -> Callable[[float | tuple[float, ...]], float | tuple[float, ...]]:
+    def inner(t: float | tuple[float, ...]) -> float | tuple[float, ...]:
+        if isinstance(t, tuple):
+            return tuple(tween(x) for x in t)
+        return tween(t)
+
+    return inner
+
 
 PREDEFINED_TWEENS: Mapping[PredefinedTween, Callable[[float], float]] = {
     "linear": pytweening.linear,
@@ -171,14 +196,73 @@ class Shake:
             yield
 
 
+class ImperativeLens(Protocol):
+    def getter(self, parent: Any) -> Any:
+        ...
+
+    def setter(self, parent: Any, value: Any) -> None:
+        ...
+
+
+def nested_getattr(obj: Any, attr: str) -> Any:
+    for a in attr.split("."):
+        obj = getattr(obj, a)
+    return obj
+
+
+def nested_setattr(obj: Any, attr: str, value: Any) -> None:
+    attrs = attr.split(".")
+    for a in attrs[:-1]:
+        obj = getattr(obj, a)
+    setattr(obj, attrs[-1], value)
+
+
+@dataclass
+class AttributeLens:
+    attribute: str
+
+    def getter(self, parent: Any) -> Any:
+        return nested_getattr(parent, self.attribute)
+
+    def setter(self, parent: Any, value: Any) -> None:
+        nested_setattr(parent, self.attribute, value)
+
+
+@dataclass
+class ProductLens:
+    lenses: tuple[ImperativeLens]
+
+    def __post_init__(self):
+        self.lenses = tuple(self.lenses)
+
+    def getter(self, parent: Any) -> tuple:
+        return tuple(lens.getter(parent) for lens in self.lenses)
+
+    def setter(self, parent: Any, value: tuple) -> None:
+        for lens, v in zip(self.lenses, value):
+            lens.setter(parent, v)
+
+
+def parse_lens(lens: str) -> ImperativeLens:
+    if " " in lens:
+        return ProductLens(tuple(map(parse_lens, lens.split(" "))))
+    return AttributeLens(lens)
+
+
 class Tweener:
     """A scheduler for tweening animations."""
 
     variable_play_speed: bool
 
-    def __init__(self, variable_play_speed: bool = False):
+    def __init__(self, variable_play_speed: bool = False, parent: Any = None):
         self.inner = deque()
         self.variable_play_speed = variable_play_speed
+        self.parent = parent
+        if self.parent is None:
+            self.tracks = [Tweener(variable_play_speed, self) for _ in range(4)]
+
+    def track(self, n: int) -> Tweener:
+        return self.tracks[n]
 
     def _append(self, tween: Iterator):
         self.inner.append(itertools.chain(tween))

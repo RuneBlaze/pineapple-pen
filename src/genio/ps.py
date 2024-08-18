@@ -219,6 +219,9 @@ class Anim:
             config = name
         emitters = convert_to_emitter_configs(config)
         return Anim(x, y, emitters, play_speed, attached_to)
+    
+    def is_dead(self) -> bool:
+        return self.dead
 
 
 lua = LuaRuntime(unpack_returned_tuples=True)

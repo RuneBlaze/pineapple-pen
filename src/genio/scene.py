@@ -14,7 +14,7 @@ import pyxel
 from pyxelxl.font import _image_as_ndarray
 from structlog import get_logger
 
-from genio.base import WINDOW_HEIGHT, WINDOW_WIDTH, asset_path
+from genio.base import WINDOW_HEIGHT, WINDOW_WIDTH, asset_path, load_image
 from genio.components import (
     mask_screen,
     mask_screen_out,
@@ -44,6 +44,10 @@ class Scene(ABC):
 
     def request_next_scene(self) -> Scene | None | str:
         return None
+
+    def draw_cursor(self, x, y):
+        cursor = load_image("cursor.png")
+        pyxel.blt(x, y, cursor, 0, 0, 16, 16, colkey=254)
 
 
 class ReloadableScene(Scene):

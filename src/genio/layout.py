@@ -46,8 +46,8 @@ def pingpong(n: int, dilation: int = 1, double_end_points: bool = False):
 
 
 def lerp(
-    uv: np.ndarray | tuple[float, float] | float,
-    target: np.ndarray | tuple[float, float] | float,
+    uv: np.ndarray | tuple[float, ...] | float,
+    target: np.ndarray | tuple[float, ...] | float,
     t: float,
 ) -> tuple[float, float]:
     if isinstance(uv, np.ndarray) or isinstance(target, np.ndarray):
