@@ -24,4 +24,4 @@ class FontPack:
         )
 
 
-fonts = FontPack()
+fonts: FontPack = FontPack()

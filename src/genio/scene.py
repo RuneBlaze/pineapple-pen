@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 from collections import Counter, deque
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from enum import Enum
 from typing import ClassVar
 
@@ -63,6 +64,7 @@ class ReloadableScene(Scene):
         self.current_version.draw()
 
     def on_request_reload(self):
+        app_with_scenes = AppWithScenes.instance
         refresh_predef()
         to_reload_modules = [
             module
@@ -77,6 +79,7 @@ class ReloadableScene(Scene):
                 continue
             importlib.reload(module)
         self.current_version = self.scene_factory()
+        AppWithScenes.instance = app_with_scenes
 
     def request_next_scene(self) -> Scene | None | str:
         return self.current_version.request_next_scene()
@@ -95,6 +98,16 @@ class AppState(Enum):
     RUNNING = 1
     TRANSITION_OUT = 2
     TRANSITION_IN = 3
+
+
+@dataclass
+class MouseDownEvent:
+    x: int
+    y: int
+    canceled: bool = False
+
+    def stop_propagation(self) -> None:
+        self.canceled = True
 
 
 class AppWithScenes:
@@ -128,6 +141,8 @@ class AppWithScenes:
             self.recorder.toggle_recording()
         self.events = []
         self.sound_effects = []
+
+        self.input_events = []
         self.load_sound_effects()
 
         pyxel.load(asset_path("sprites.pyxres"))
@@ -167,6 +182,8 @@ class AppWithScenes:
         self.state_timers[state] = 0
 
     def update(self) -> None:
+        if pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT):
+            self.input_events.append(MouseDownEvent(pyxel.mouse_x, pyxel.mouse_y))
         self.scenes[0].update()
         self.async_visualizer.update()
         if (
@@ -216,6 +233,7 @@ class AppWithScenes:
             self.recorder.toggle_recording()
         self.play_all_audios()
         self.events.clear()
+        self.input_events.clear()
 
     def play_all_audios(self) -> None:
         for ev in self.events:
@@ -271,3 +289,9 @@ def emit_sound_event(event: SoundEv) -> None:
 
 def EmitSound(sound_ev: SoundEv) -> Instant:
     return Instant(lambda: emit_sound_event(sound_ev))
+
+
+def input_events() -> list[MouseDownEvent]:
+    if ins := AppWithScenes.instance:
+        return ins.input_events
+    return []
