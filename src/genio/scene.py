@@ -109,6 +109,12 @@ class MouseDownEvent:
     def stop_propagation(self) -> None:
         self.canceled = True
 
+    def camera_adjusted_xy(self) -> tuple[int, int]:
+        from surv.components import Camera
+        if not (cam := Camera.focused_instance):
+            return self.x, self.y
+        return self.x + cam.x, self.y + cam.y
+
 
 class AppWithScenes:
     instance: ClassVar[AppWithScenes] | None = None
@@ -234,6 +240,8 @@ class AppWithScenes:
         self.play_all_audios()
         self.events.clear()
         self.input_events.clear()
+        from surv.components import Camera
+        Camera.focused_instance = None
 
     def play_all_audios(self) -> None:
         for ev in self.events:

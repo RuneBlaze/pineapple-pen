@@ -506,10 +506,6 @@ def promptly(f=None, demangle: bool = True):
         ctxt = []
         ba.apply_defaults()
         args = dict(ba.arguments.items())
-        if args:
-            ctxt.append("```yml")
-            ctxt.append(yaml.dump(args))
-            ctxt.append("```")
         input_str = "\n".join(ctxt)
         formatting_instructions = inst_for_struct(return_type)
         rest = (
