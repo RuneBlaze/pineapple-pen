@@ -454,7 +454,6 @@ def inst_for_struct(klass, ignore_set: set[str] | None = None) -> str:
     prompt += "}\n"
     prompt += "```\n"
     prompt += "Please return a JSON object."
-    logger.info(f"Prompt: {prompt}")
     return prompt
 
 
