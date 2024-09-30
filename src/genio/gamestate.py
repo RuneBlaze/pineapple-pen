@@ -50,19 +50,10 @@ class GameState:
     def __init__(self) -> None:
         self.stage = StageDescription.default()
         self.battle_bundle = setup_battle_bundle(
-            "initial_deck", "players.starter", ["enemies.grove_guardian"] * 1
+            "initial_deck", "players.starter", ["enemies.evil_mask"] * 2
         )
         self.gold = 10
-        self.battle_bundle.battle_logs = [
-            "Turn 0: Celine, the Magical Swordswoman dealt damage 1.0",
-            "Turn 1: Celine, the Magical Swordswoman received damage 2.0",
-            "Turn 1: Celine, the Magical Swordswoman received damage 2.0",
-            "Turn 1: Stone Golem A received damage 2.0",
-            "Turn 1: Stone Golem B received Vulnerable +2",
-            "Turn 1: Stone Golem A received damage 2.0",
-            "Turn 1: Stone Golem B received damage 3.0 due to vulnerable",
-            "Battle Ended, victorious, Celine returned to World 1: Mystic Wilds",
-        ]
+        self.battle_bundle.battle_logs = []
         self.world = World()
         self.config = GameConfig()
 

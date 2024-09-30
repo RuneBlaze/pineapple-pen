@@ -15,6 +15,8 @@ To install Python dependencies:
 poetry install
 ```
 
+Checkout commit `4f24a925844396d175e5ca3e80d8954351a493cc` if you want to see the code at the end of the competition.
+
 ## Running the Game
 
 Ensure `GOOGLE_API_KEY` is in your environment variables, or else Gemini will not work.

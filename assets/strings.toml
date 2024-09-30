@@ -515,19 +515,6 @@ default = [
     "[destroy-rule R??] - Destroy a rule. E.g., `[destroy-rule R01]` (destroy rule `R01`).",
     "To change a card, do not discard the card then create a new one. Use the `transform` effect instead.",
     """When transforming cards, always give new descriptions to the transformed cards. For example, when transforming 'apple' to 'orange', provide a new description for 'orange' that fits its new identity. When transforming 'apple' to 'pple', the new description might be 'Gain 1 hp and draw 1 card' instead of 'Gain 2 hp'. Be imaginative and ensure the new description is different from the original. Here are some more examples:
-Eg1. Transform 'fireball' to 'ireball': 'deal 3 damage to all enemies' -> 'deal 1 damage and apply burn to one enemy'.
-Eg2. Transform 'shield' to 'sield': 'gain 5 shield points' -> 'block the next attack and draw a card'.
-Eg3. Transform 'heal' to 'eal': 'restore 5 hp' -> 'restore 3 hp and remove a debuff'. 
-But remember to use the `[transform CARD_SPECIFIER to <card name: new and transformed card description>]` syntax, e.g.: 
-Eg4. [transform kb5a to <Raise Shield: gain two shield points>]
-Eg5. [transform zqdl to <eft: located on the left side.>]
-Eg6. [transform mplx to <mplify: enhance the power of one card for one turn.>]
-Eg7. [transform vrgy to <urge: immediately draw and play one card.>]
-Eg8. [transform nxdt to <exdt: remove a debuff and gain 2 shield points.>]
-
-*Always provide a new, unique, and creative description for the transformed card. Have strong card name to description alignment*. The new descriptions should *prioritize status effects* if possible. As a hunch, add status effects to the new cards.
-
-DO NOT do things like: `[tkim: transform to <lash: Deal 2 damage to a target.>;]` because it is invalid syntax -- use `transform X to Y` instead. DO NOT RECREATE "<lash: Deal 2 damage to a target.>" because lash should be different from slash. For example, *lash* should give a status effect or have a different effect from *slash*.
     """,
 ]
 
