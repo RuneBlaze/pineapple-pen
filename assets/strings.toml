@@ -1,25 +1,19 @@
 [players.starter]
-name = "Celine, the Magical Swordswoman"
-hit_points = 7
+name = "Typist"
+hit_points = 80
 mp = 6
 profile = """
-Celine, the Magical Swordswoman, is a fierce and determined warrior with an ethereal touch. Her petite frame belying the formidable strength and agility she possesses. Her short, auburn hair cascades around her heart-shaped face, and her bright green eyes, filled with a piercing intensity, reflect the fire of her unyielding spirit.
-
-Celine's mastery of both blade and magic makes her a formidable opponent in any battle. She wields an enchanted sword that shimmers with arcane energy, capable of unleashing devastating spells with every strike. Her attire, a blend of practical armor and mystical garments, is adorned with subtle feline motifs, hinting at her connection to ancient, magical traditions.
-
-Driven by a quest for justice and an insatiable curiosity, Celine ventures through treacherous dungeons and uncharted lands, her unwavering resolve guiding her through every challenge. Her enchanting charm and unwavering courage inspire those who join her on her journey, as she weaves her own legend in a world filled with danger and wonder.
+Typist fights by finishing half-seen words into sudden spells. Their deck turns letters into intent, and intent into impact.
 """
 
 
 [initial_deck]
 
 cards = [
-    "left * 3",
-    "right * 3",
-    "Smash * 1 # Deal 1 damage and apply vulnerable for 2 turn.",
-    "Slash * 4 # Deal 2 damage to a target.",
-    "Block * 3 # Gain 1 shield point.",
-    "4 of Spades * 2",
+    "Strike * 4 # Deal 6 damage.",
+    "Defend * 4 # Gain 5 Block.",
+    "D[Bash] * 1 # @prefix 4 8 cost 1",
+    "Letter Replacer * 1 # @cost 0",
 ]
 
 
@@ -35,6 +29,13 @@ hit_points = 4
 description = "A cursed golem that feeds on the fear of its victims, the Stone Golem haunts the dreams of the unwary."
 pattern = ["attack player for 2 damage", "block for 1 shield points"]
 chara = "mechanical golem"
+
+[enemies.sneaky_gremlin]
+name = "Sneaky Gremlin"
+hit_points = 30
+description = "A nimble knife-fighter used as a simple first combat prototype enemy."
+pattern = ["attack player for 10 damage"]
+chara = "thief"
 
 [enemies.grove_guardian]
 name = "Spire Guardian"

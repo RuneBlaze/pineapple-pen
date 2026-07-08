@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import inspect
-import json
 import random
 import re
 from abc import ABC
@@ -26,11 +25,7 @@ import yaml
 from genio.base import asset_path
 from genio.eventbus import LLMInboundEv, LLMOutboundEv, event_bus
 from genio.utils.robustyaml import cleaning_parse
-from icecream import ic
 from jinja2 import BaseLoader, Environment, StrictUndefined, TemplateNotFound
-from langchain_core.exceptions import OutputParserException
-from langchain_core.output_parsers import BaseOutputParser
-from langchain_core.prompts import ChatPromptTemplate
 from scipy.stats import norm
 from structlog import get_logger
 
@@ -39,7 +34,6 @@ from .llm import aux_llm
 logger = get_logger()
 
 TEMPLATE_REGISTRY = {}
-OUTPUT_FORMAT = "JSON"
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
 
@@ -163,10 +157,10 @@ def render_text(
     return template
 
 
-def render_template(template: str, context: dict[str, Any]) -> ChatPromptTemplate:
+def render_template(template: str, context: dict[str, Any]) -> str:
     rendered_text = render_text(template, context)
     logger.info(rendered_text)
-    return ChatPromptTemplate.from_template(rendered_text)
+    return rendered_text
 
 
 def tomlkit_to_popo(d):
@@ -269,32 +263,75 @@ pattern: re.Pattern = re.compile(
 )
 
 
-class RawJsonParser(BaseOutputParser):
-    expected_keys: list[str] | None
+def _schema_for_keys(expected_keys: list[str] | None) -> dict[str, Any]:
+    schema: dict[str, Any] = {"type": "object"}
+    if expected_keys:
+        schema["properties"] = {key: {} for key in expected_keys}
+        schema["required"] = expected_keys
+    return schema
 
-    def parse(self, text: str) -> Any:
-        logger.info(f"Raw JSON: {text}")
-        if "```" in text:
-            text = pattern.search(text).group("json")
-        try:
-            logger.info(f"Raw JSON: {text}")
-            return cleaning_parse(text.replace("\\_", "_"), self.expected_keys)
-        except yaml.YAMLError as e:
-            msg = f"Failed to parse JSON from completion {text}. Got: {e}"
-            raise OutputParserException(msg, llm_output=text) from e
-        except Exception as e:
-            msg = f"Failed to parse JSON from completion {text}. Got: {e}"
-            raise OutputParserException(msg, llm_output=text) from e
 
-    def get_format_instructions(self) -> str:
-        return "Please return in JSON."
+def _json_schema_for_type(typ: Any) -> dict[str, Any]:
+    origin = get_origin(typ)
+    if origin is Annotated:
+        typ = get_args(typ)[0]
+        origin = get_origin(typ)
+    if origin is list:
+        args = get_args(typ)
+        item_type = args[0] if args else Any
+        return {"type": "array", "items": _json_schema_for_type(item_type)}
+    if origin is dict or typ is dict or typ == "dict":
+        return {"type": "object"}
+    if is_dataclass(typ):
+        return _json_schema_for_struct(typ)
+    if typ is str or typ == "str":
+        return {"type": "string"}
+    if typ is int or typ == "int":
+        return {"type": "integer"}
+    if typ is float or typ == "float":
+        return {"type": "number"}
+    if typ is bool or typ == "bool":
+        return {"type": "boolean"}
+    return {}
+
+
+def _json_schema_for_struct(
+    cls: type, ignore_set: set[str] | None = None
+) -> dict[str, Any]:
+    ignore_set = ignore_set or set()
+    docstrings = get_docstrings(cls)
+    properties = {}
+    required = []
+    for arg in docstrings.args:
+        if arg.name in ignore_set:
+            continue
+        schema = _json_schema_for_type(arg.type)
+        if arg.description:
+            schema["description"] = arg.description
+        properties[arg.name] = schema
+        required.append(arg.name)
+    schema = {
+        "type": "object",
+        "properties": properties,
+        "required": required,
+    }
+    if docstrings.main_description:
+        schema["description"] = docstrings.main_description
+    return schema
 
 
 def ask_for_json(prompt: str, expected_keys: list[str] | None = None) -> Any:
-    template = ChatPromptTemplate.from_template(prompt)
-    llm = aux_llm()
-    chain = template | llm | RawJsonParser(expected_keys=expected_keys)
-    return chain.invoke({})
+    response = aux_llm().generate_content(
+        prompt, response_json_schema=_schema_for_keys(expected_keys)
+    )
+    if response.parsed is not None:
+        return response.parsed
+    if response.text is None:
+        raise ValueError("Gemini returned no text for JSON request.")
+    text = response.text
+    if "```" in text:
+        text = pattern.search(text).group("json")
+    return cleaning_parse(text.replace("\\_", "_"), expected_keys)
 
 
 T = TypeVar("T")
@@ -335,40 +372,50 @@ def instantiate_instance(cls: type[T], data: dict) -> T:
         return cls(**yml)
 
 
-class JsonParser(BaseOutputParser):
-    cls: type
-    predefined_args: dict = {}
+def _normalize_structured_dict(cls: type, data: dict[str, Any]) -> dict[str, Any]:
+    data = {k.replace(" ", "_"): v for k, v in data.items()}
+    data = {k.lower(): v for k, v in data.items()}
+    return auto_fix_typos([f.name for f in fields(cls)], data)
 
-    def parse(self, text: str) -> Any:
-        logger.info(f"JsonParser: {text}")
-        flds = fields(self.cls)
-        if "```" in text:
-            text = pattern.search(text).group("json")
-        try:
-            logger.info(f"JsonParser: {text}")
-            data = cleaning_parse(text)
-            if isinstance(data, dict):
-                data = {k.replace(" ", "_"): v for k, v in data.items()}
-                data = {k.lower(): v for k, v in data.items()}
-                data = auto_fix_typos([f.name for f in flds], data)
-                with_predefined_args = {**data, **self.predefined_args}
-                return instantiate_instance(self.cls, with_predefined_args)
-            else:
-                try:
-                    with_predefined_args = {**data, **self.predefined_args}
-                    return instantiate_instance(self.cls, with_predefined_args)
-                except TypeError:
-                    if isinstance(data, list):
-                        return [instantiate_instance(self.cls, x) for x in data]
-        except json.JSONDecodeError as e:
-            msg = f"Failed to parse JSON from completion {text}. Got: {e}"
-            raise OutputParserException(msg, llm_output=text) from e
-        except Exception as e:
-            msg = f"Failed to parse {self.cls} from completion {text}. Got: {e}"
-            raise OutputParserException(msg, llm_output=text) from e
 
-    def get_format_instructions(self) -> str:
-        return inst_for_struct(self.cls)
+def _coerce_structured_result(
+    cls: type[T], parsed: Any, predefined_args: dict[str, Any] | None = None
+) -> T:
+    predefined_args = predefined_args or {}
+    if isinstance(parsed, cls):
+        if predefined_args and is_dataclass(parsed):
+            return cls(**{**asdict(parsed), **predefined_args})
+        return parsed
+    if isinstance(parsed, dict):
+        return instantiate_instance(
+            cls, {**_normalize_structured_dict(cls, parsed), **predefined_args}
+        )
+    if isinstance(parsed, list):
+        return [instantiate_instance(cls, item) for item in parsed]
+    return instantiate_instance(cls, {**parsed, **predefined_args})
+
+
+def generate_structured(
+    prompt: str, return_type: type[T], predefined_args: dict[str, Any] | None = None
+) -> T:
+    logger.info(f"Prompt: {prompt}")
+    try:
+        response = aux_llm().generate_content(prompt, response_schema=return_type)
+    except ValueError:
+        response = aux_llm().generate_content(
+            prompt,
+            response_json_schema=_json_schema_for_struct(
+                return_type, set((predefined_args or {}).keys())
+            ),
+        )
+    if response.parsed is not None:
+        return _coerce_structured_result(return_type, response.parsed, predefined_args)
+    if response.text is None:
+        raise ValueError(f"Gemini returned no text for {return_type}.")
+    text = response.text
+    if "```" in text:
+        text = pattern.search(text).group("json")
+    return _coerce_structured_result(return_type, cleaning_parse(text), predefined_args)
 
 
 class Mythical(ABC):
@@ -381,81 +428,22 @@ class Mythical(ABC):
         return f"{docstrings.main_description}\n" + "\n".join(flds)
 
 
-T = TypeVar("T", bound=Mythical)
+MT = TypeVar("MT", bound=Mythical)
 
 
 def generate_using_docstring(
-    klass: type[T], args: dict, predefined_args: dict | None = None
-) -> T:
+    klass: type[MT], args: dict, predefined_args: dict | None = None
+) -> MT:
     if predefined_args is None:
         predefined_args = {}
-    llm = aux_llm()
     docstrings = get_docstrings(klass)
     prompt = "Generate me a "
     desc = list(" ".join(docstrings.main_description.split("\n")))
     desc[0] = desc[0].lower()
     prompt += "".join(desc)
     prompt += "\n"
-    prompt += inst_for_struct(klass, ignore_set=set(predefined_args.keys()))
-    template = render_template(prompt, {**args, **predefined_args})
-    logger.info(f"Prompt: {prompt}")
-    chain = template | llm | JsonParser(cls=klass, predefined_args=predefined_args)
-    return chain.invoke({})
-
-
-def typescriptize_type(typ: str | type) -> str:
-    if is_dataclass(typ):
-        # Assuming that they will be parsed from JSON string.
-        return "object"
-    if get_origin(typ) is dict or typ == dict:
-        return "object"
-    if typ == "dict":
-        return "object"
-    if typ == str:
-        return "string"
-    if typ == int:
-        return "number"
-    if typ == float:
-        return "number"
-    if typ == bool:
-        return "boolean"
-    if not isinstance(typ, str) and get_origin(typ) is list:
-        return f"{typescriptize_type(get_args(typ)[0])}[]"
-    typ = typ.replace(" ", "").replace("'", "").replace('"', "")
-    if typ.startswith("list"):
-        return f"{typescriptize_type(typ[5:-1])}[]"
-    if typ == "str":
-        return "string"
-    if typ == "int":
-        return "number"
-    if typ == "float":
-        return "number"
-    if typ == "bool":
-        return "boolean"
-    return typ
-
-
-def inst_for_struct(klass, ignore_set: set[str] | None = None) -> str:
-    if ignore_set is None:
-        ignore_set = set()
-    docstrings = get_docstrings(klass)
-    prompt = ""
-    prompt += "Fill out the following JSON object:\n"
-    prompt += "```json\n"
-    prompt += "{\n"
-    for arg in docstrings.args:
-        if arg.name in ignore_set:
-            continue
-        prompt += (
-            f'"{arg.name}": // {typescriptize_type(arg.type)}, {arg.description}\n'
-            if arg.description
-            else f'"{arg.name}": // {typescriptize_type(arg.type)}\n'
-        )
-    prompt += "}\n"
-    prompt += "```\n"
-    prompt += "Please return a JSON object."
-    logger.info(f"Prompt: {prompt}")
-    return prompt
+    rendered = render_template(prompt, {**args, **predefined_args})
+    return generate_structured(rendered, klass, predefined_args=predefined_args)
 
 
 def make_str_of_value(value):
@@ -474,10 +462,7 @@ def make_str_of_value(value):
 def promptly(f=None, demangle: bool = True):
     """Decorate a function to make it use LLM to generate responses.
 
-    The docstring should contain the following:
-    ```
-    {{formatting_instructions}}
-    ```
+    The return type is passed to Gemini as the native response schema.
     """
     if f is None:
         return partial(promptly, demangle=demangle)
@@ -485,13 +470,8 @@ def promptly(f=None, demangle: bool = True):
     doc = inspect.getdoc(f)
     if doc is None:
         raise ValueError(f"Function {f} has no docstring.")
-    if not re.search(r"{{\s*formatting_instructions\s*}}", doc):
-        raise ValueError(
-            f"Function {f} docstring {doc} does not contain {{formatting_instructions}}"
-        )
 
     sig = inspect.signature(f)
-    llm = aux_llm()
 
     @wraps(f)
     def wrapper(*args, **kwargs):
@@ -511,7 +491,6 @@ def promptly(f=None, demangle: bool = True):
             ctxt.append(yaml.dump(args))
             ctxt.append("```")
         input_str = "\n".join(ctxt)
-        formatting_instructions = inst_for_struct(return_type)
         rest = (
             dict(
                 **{k: make_str_of_value(v) for k, v in args.items()},
@@ -526,16 +505,15 @@ def promptly(f=None, demangle: bool = True):
             doc,
             {
                 "input_yaml": input_str,
-                "formatting_instructions": formatting_instructions,
+                "formatting_instructions": "",
                 **rest,
             },
         )
-        logger.info(f"Prompt: {prompt}")
-        chain = llm | JsonParser(cls=return_type)
         event_bus.emit(LLMOutboundEv())
-        res = chain.invoke([("human", prompt)])
-        event_bus.emit(LLMInboundEv())
-        return res
+        try:
+            return generate_structured(prompt, return_type)
+        finally:
+            event_bus.emit(LLMInboundEv())
 
     return wrapper
 
@@ -547,7 +525,6 @@ def sparkle(f):
         raise ValueError(f"Function {f} has no docstring.")
 
     sig = inspect.signature(f)
-    llm = aux_llm()
 
     @wraps(f)
     def wrapper(self, *args, **kwargs):
@@ -571,11 +548,8 @@ def sparkle(f):
             ctxt.append(yaml.dump(args))
             ctxt.append("```")
         ctxt.append(f"You job is to {doc}.")
-        ctxt.append(inst_for_struct(return_type))
-        prompt = ChatPromptTemplate.from_template("\n".join(ctxt))
-        chain = prompt | llm | JsonParser(cls=return_type)
-        ic(prompt)
-        return chain.invoke({})
+        prompt = "\n".join(ctxt)
+        return generate_structured(prompt, return_type)
 
     return wrapper
 

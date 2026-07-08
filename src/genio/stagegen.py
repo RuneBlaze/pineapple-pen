@@ -100,6 +100,69 @@ class GenerateSTSCardResult(CardsLike):
         return [Card(card["name"], card["description"]) for card in self.cards]
 
 
+@dataclass
+class GeneratePrefixCardResult:
+    """A generated effect description for one completed card name."""
+
+    description: Annotated[
+        str,
+        (
+            "A concise Slay the Spire-style effect description for this card. "
+            "Do not include an energy cost."
+        ),
+    ]
+
+
+@promptly()
+def generate_prefix_card_description(
+    card_name: str, player_name: str
+) -> GeneratePrefixCardResult:
+    """\
+    Act as an excellent game designer.
+
+    {{ player_name }} completed a prefix card into "{{ card_name }}".
+    Write only the effect text for that card. If the word is strange or nonsense,
+    interpret it playfully but keep it usable in combat.
+
+    {{ formatting_instructions }}
+    """
+
+
+@dataclass
+class GenerateLetterReplacementResult:
+    """A rewritten effect description for a card whose title changed by one letter."""
+
+    description: Annotated[
+        str,
+        (
+            "A concise Slay the Spire-style effect description for the rewritten card. "
+            "Do not include an energy cost."
+        ),
+    ]
+
+
+@promptly()
+def generate_letter_replacement_description(
+    original_name: str,
+    original_description: str | None,
+    new_name: str,
+    player_name: str,
+) -> GenerateLetterReplacementResult:
+    """\
+    Act as an excellent game designer.
+
+    {{ player_name }} used Letter Replacer to change "{{ original_name }}" into
+    "{{ new_name }}". Rewrite only the effect text for the new card. Preserve the
+    original card's rough power level and cost. If the new title is strange or
+    nonsense, interpret it playfully but keep it usable in combat.
+
+    Original effect:
+    {{ original_description }}
+
+    {{ formatting_instructions }}
+    """
+
+
 @promptly()
 def generate_sts_cards(avoid: list[str] | None = None) -> GenerateSTSCardResult:
     """\

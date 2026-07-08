@@ -7,55 +7,29 @@ from typing import Any
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-from langchain_core.messages import BaseMessage
-from langchain_core.prompt_values import ChatPromptValue, PromptValue, StringPromptValue
-from langchain_core.runnables import Runnable
-from langchain_core.runnables.config import RunnableConfig
 
 GEMINI_MODEL = "gemini-3.1-flash-lite"
 GEMINI_THINKING_LEVEL = "minimal"
 
 
-def _content_to_text(content: Any) -> str:
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        parts = []
-        for item in content:
-            if isinstance(item, str):
-                parts.append(item)
-            elif isinstance(item, dict) and "text" in item:
-                parts.append(str(item["text"]))
-            else:
-                parts.append(str(item))
-        return "\n".join(parts)
-    return str(content)
-
-
-def _message_to_text(message: BaseMessage | tuple[str, Any] | Any) -> str:
-    if isinstance(message, BaseMessage):
-        return _content_to_text(message.content)
-    if isinstance(message, tuple) and len(message) == 2:
-        return _content_to_text(message[1])
-    return _content_to_text(message)
-
-
-def _prompt_to_text(prompt: Any) -> str:
-    if isinstance(prompt, str):
-        return prompt
-    if isinstance(prompt, StringPromptValue):
-        return prompt.text
-    if isinstance(prompt, ChatPromptValue):
-        return "\n\n".join(_message_to_text(message) for message in prompt.messages)
-    if isinstance(prompt, PromptValue):
-        return prompt.to_string()
-    if isinstance(prompt, list):
-        return "\n\n".join(_message_to_text(message) for message in prompt)
-    return str(prompt)
+SAFETY_SETTINGS = [
+    types.SafetySetting(
+        category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+        threshold=types.HarmBlockThreshold.BLOCK_NONE,
+    ),
+    types.SafetySetting(
+        category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+        threshold=types.HarmBlockThreshold.BLOCK_NONE,
+    ),
+    types.SafetySetting(
+        category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+        threshold=types.HarmBlockThreshold.BLOCK_NONE,
+    ),
+]
 
 
 @dataclass
-class GeminiGenAIRunnable(Runnable[Any, str]):
+class GeminiLLM:
     model: str = GEMINI_MODEL
     thinking_level: str = GEMINI_THINKING_LEVEL
     _client: genai.Client | None = field(default=None, init=False, repr=False)
@@ -67,43 +41,37 @@ class GeminiGenAIRunnable(Runnable[Any, str]):
             self._client = genai.Client()
         return self._client
 
-    def invoke(
+    def generate_content(
         self,
-        input: Any,
-        config: RunnableConfig | None = None,
-        **kwargs: Any,
-    ) -> str:
-        response = self.client.models.generate_content(
-            model=self.model,
-            contents=_prompt_to_text(input),
-            config=types.GenerateContentConfig(
-                safety_settings=[
-                    types.SafetySetting(
-                        category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                        threshold=types.HarmBlockThreshold.BLOCK_NONE,
-                    ),
-                    types.SafetySetting(
-                        category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                        threshold=types.HarmBlockThreshold.BLOCK_NONE,
-                    ),
-                    types.SafetySetting(
-                        category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-                        threshold=types.HarmBlockThreshold.BLOCK_NONE,
-                    ),
-                ],
-                thinking_config=types.ThinkingConfig(
-                    thinking_level=self.thinking_level
-                ),
-            ),
+        contents: str,
+        *,
+        response_schema: Any | None = None,
+        response_json_schema: dict[str, Any] | None = None,
+    ) -> types.GenerateContentResponse:
+        config = types.GenerateContentConfig(
+            safety_settings=SAFETY_SETTINGS,
+            thinking_config=types.ThinkingConfig(thinking_level=self.thinking_level),
         )
+        if response_schema is not None or response_json_schema is not None:
+            config.response_mime_type = "application/json"
+            config.response_schema = response_schema
+            config.response_json_schema = response_json_schema
+        return self.client.models.generate_content(
+            model=self.model,
+            contents=contents,
+            config=config,
+        )
+
+    def invoke(self, input: str) -> str:
+        response = self.generate_content(input)
         return response.text or ""
 
 
 @cache
-def default_llm() -> GeminiGenAIRunnable:
-    return GeminiGenAIRunnable()
+def default_llm() -> GeminiLLM:
+    return GeminiLLM()
 
 
 @cache
-def aux_llm() -> GeminiGenAIRunnable:
+def aux_llm() -> GeminiLLM:
     return default_llm()

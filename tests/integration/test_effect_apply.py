@@ -46,11 +46,11 @@ def test_counter_based_correctly():
 def test_damage_by_correctly():
     bundle = setup_battle_bundle("initial_deck", "players.starter", ["enemies.slime"])
     bundle.process_and_flush_effects(
-        "[Celine: +strength [3 times] [{}: damaged {:d} by ME] -> [{{m[0]}}: damaged {{m[1] * 1.25}} by ME];]"
+        "[Typist: +strength [3 times] [{}: damaged {:d} by ME] -> [{{m[0]}}: damaged {{m[1] * 1.25}} by ME];]"
     )
     assert (
         bundle.process_and_flush_effects(
-            "[Slime A: damaged 4 by celine]"
+            "[Slime A: damaged 4 by typist]"
         ).total_damage()
         == 5
     )

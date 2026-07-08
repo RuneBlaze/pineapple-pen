@@ -50,7 +50,7 @@ class GameState:
     def __init__(self) -> None:
         self.stage = StageDescription.default()
         self.battle_bundle = setup_battle_bundle(
-            "initial_deck", "players.starter", ["enemies.evil_mask"] * 2
+            "initial_deck", "players.starter", ["enemies.sneaky_gremlin"]
         )
         self.gold = 10
         self.battle_bundle.battle_logs = []

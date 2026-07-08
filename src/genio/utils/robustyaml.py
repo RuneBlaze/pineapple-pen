@@ -36,7 +36,7 @@ def recursive_remove_comments_in_dict(d: dict) -> dict:
 
 
 pattern: re.Pattern = re.compile(
-    r"^```(?:json)?(?P<json>[^`]*)", re.MULTILINE | re.DOTALL
+    r"^```(?:ya?ml|json)?(?P<code>[^`]*)", re.MULTILINE | re.DOTALL
 )
 
 
@@ -58,9 +58,9 @@ def fix_invalid_yaml_string(s: str) -> str:
         Please fix it faithfully and return a valid YAML dict in code blocks.
         """
         )
-        response = result.content
+        response = result
         if "```" in response:
-            text = pattern.search(response).group("yaml")
+            text = pattern.search(response).group("code")
         else:
             text = response
         return fix_invalid_yaml_string(text)
